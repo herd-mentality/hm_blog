@@ -22,6 +22,14 @@
   @apply my-5;
 }
 
+.footer-link {
+  @apply underline duration-500 hover:text-gray-400 dark:hover:text-gray-300
+}
+
+.footer-link:hover {
+  @apply underline duration-500 text-gray-400 dark:text-gray-300
+}
+
 /* https://stackoverflow.com/questions/61083813/how-to-avoid-internal-autofill-selected-style-to-be-applied */
 input:-webkit-autofill,
 input:-webkit-autofill:focus {
