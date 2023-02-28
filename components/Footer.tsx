@@ -14,17 +14,42 @@ export default function Footer() {
           <SocialIcon kind="linkedin" href={siteMetadata.linkedin} size={6} />
           <SocialIcon kind="twitter" href={siteMetadata.twitter} size={6} />
         </div>
-        <div className="mb-2 flex space-x-2 text-sm text-gray-500 dark:text-gray-400">
-          <div>{siteMetadata.author}</div>
+        <div className="mb-2 flex space-x-2 text-sm text-gray-500 dark:text-gray-400 ">
+          {/* <div>{siteMetadata.author}</div>
+          <div>{` • `}</div> */}
+          <Link
+            href="/"
+            // TODO: Should be a way to set default styles for certain components
+            className="underline duration-500 hover:text-gray-400 dark:hover:text-gray-300"
+          >
+            {siteMetadata.title}
+          </Link>
           <div>{` • `}</div>
           <div>{`© ${new Date().getFullYear()}`}</div>
-          <div>{` • `}</div>
-          <Link href="/">{siteMetadata.title}</Link>
         </div>
-        <div className="mb-8 text-sm text-gray-500 dark:text-gray-400">
-          <Link href="https://github.com/timlrx/tailwind-nextjs-starter-blog">
+        <div className="mb-2 flex space-x-2 text-sm text-gray-500 dark:text-gray-400">
+          <Link
+            href="https://github.com/timlrx/tailwind-nextjs-starter-blog"
+            className="underline duration-500 hover:text-gray-400 dark:hover:text-gray-300"
+          >
             Tailwind Nextjs Theme
           </Link>
+          <div>{` • `}</div>
+          <div className="flex space-x-1">
+            <Link
+              href="https://iconscout.com/icons/sheep"
+              className="underline duration-500 hover:text-gray-400 dark:hover:text-gray-300"
+            >
+              Sheep Icon
+            </Link>
+            <div>{`by`}</div>
+            <Link
+              href="https://iconscout.com/contributors/icograms"
+              className="underline duration-500 hover:text-gray-400 dark:hover:text-gray-300"
+            >
+              Icograms
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
