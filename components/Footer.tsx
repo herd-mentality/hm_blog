@@ -17,11 +17,7 @@ export default function Footer() {
         <div className="mb-2 flex space-x-2 text-sm text-gray-500 dark:text-gray-400 ">
           {/* <div>{siteMetadata.author}</div>
           <div>{` • `}</div> */}
-          <Link
-            href="/"
-            // TODO: Should be a way to set default styles for certain components
-            className="footer-link"
-          >
+          <Link href="/" className="footer-link">
             {siteMetadata.title}
           </Link>
           <div>{` • `}</div>

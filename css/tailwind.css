@@ -23,7 +23,7 @@
 }
 
 .footer-link {
-  @apply underline duration-500 hover:text-gray-400 dark:hover:text-gray-300
+  @apply underline duration-500 text-gray-500 dark:text-gray-400
 }
 
 .footer-link:hover {
