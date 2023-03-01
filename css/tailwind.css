@@ -30,6 +30,25 @@
   @apply underline duration-500 text-gray-400 dark:text-gray-300
 }
 
+
+/* Nav Links */
+.nav-link {
+  @apply relative  font-medium text-gray-900 dark:text-gray-100 sm:p-4;
+  @apply p-0 !important
+}
+
+.nav-link:hover {
+  @apply text-gray-600 dark:text-gray-300
+}
+
+.nav-link::before {
+  @apply content-[''] bg-teal-500 h-[3px] w-[0%] left-0 -bottom-[0] rounded-xl absolute duration-300 -z-50
+}
+
+.nav-link:hover::before {
+  @apply w-[100%]
+}
+
 /* https://stackoverflow.com/questions/61083813/how-to-avoid-internal-autofill-selected-style-to-be-applied */
 input:-webkit-autofill,
 input:-webkit-autofill:focus {

@@ -25,13 +25,9 @@ const Header = () => {
         </Link>
       </div>
       <div className="flex items-center text-base leading-5">
-        <div className="hidden sm:block">
+        <div className="flex hidden space-x-5 sm:block">
           {headerNavLinks.map((link) => (
-            <Link
-              key={link.title}
-              href={link.href}
-              className="p-1 font-medium text-gray-900 dark:text-gray-100 sm:p-4"
-            >
+            <Link key={link.title} href={link.href} className="nav-link">
               {link.title}
             </Link>
           ))}
