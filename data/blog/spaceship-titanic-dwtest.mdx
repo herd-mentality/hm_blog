@@ -74,39 +74,39 @@ with:
 ```r
 # We have 15 variables and 12,970 observations
 glimpse(all)
-```
 
-    ## Rows: 12,970
-    ## Columns: 15
-    ## $ PassengerId  <chr> "0001_01", "0002_01", "0003_01", "0003_02", "0004_01", "0…
-    ## $ HomePlanet   <chr> "Europa", "Earth", "Europa", "Europa", "Earth", "Earth", …
-    ## $ CryoSleep    <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FA…
-    ## $ Cabin        <chr> "B/0/P", "F/0/S", "A/0/S", "A/0/S", "F/1/S", "F/0/P", "F/…
-    ## $ Destination  <chr> "TRAPPIST-1e", "TRAPPIST-1e", "TRAPPIST-1e", "TRAPPIST-1e…
-    ## $ Age          <dbl> 39, 24, 58, 33, 16, 44, 26, 28, 35, 14, 34, 45, 32, 48, 2…
-    ## $ VIP          <lgl> FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
-    ## $ RoomService  <dbl> 0, 109, 43, 0, 303, 0, 42, 0, 0, 0, 0, 39, 73, 719, 8, 32…
-    ## $ FoodCourt    <dbl> 0, 9, 3576, 1283, 70, 483, 1539, 0, 785, 0, 0, 7295, 0, 1…
-    ## $ ShoppingMall <dbl> 0, 25, 0, 371, 151, 0, 3, 0, 17, 0, NA, 589, 1123, 65, 12…
-    ## $ Spa          <dbl> 0, 549, 6715, 3329, 565, 291, 0, 0, 216, 0, 0, 110, 0, 0,…
-    ## $ VRDeck       <dbl> 0, 44, 49, 193, 2, 0, 0, NA, 0, 0, 0, 124, 113, 24, 7, 0,…
-    ## $ Name         <chr> "Maham Ofracculy", "Juanna Vines", "Altark Susent", "Sola…
-    ## $ Transported  <lgl> FALSE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, …
-    ## $ dataset      <chr> "train", "train", "train", "train", "train", "train", "tr…
+## Rows: 12,970
+## Columns: 15
+## $ PassengerId  <chr> "0001_01", "0002_01", "0003_01", "0003_02", "0004_01", "0…
+## $ HomePlanet   <chr> "Europa", "Earth", "Europa", "Europa", "Earth", "Earth", …
+## $ CryoSleep    <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FA…
+## $ Cabin        <chr> "B/0/P", "F/0/S", "A/0/S", "A/0/S", "F/1/S", "F/0/P", "F/…
+## $ Destination  <chr> "TRAPPIST-1e", "TRAPPIST-1e", "TRAPPIST-1e", "TRAPPIST-1e…
+## $ Age          <dbl> 39, 24, 58, 33, 16, 44, 26, 28, 35, 14, 34, 45, 32, 48, 2…
+## $ VIP          <lgl> FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
+## $ RoomService  <dbl> 0, 109, 43, 0, 303, 0, 42, 0, 0, 0, 0, 39, 73, 719, 8, 32…
+## $ FoodCourt    <dbl> 0, 9, 3576, 1283, 70, 483, 1539, 0, 785, 0, 0, 7295, 0, 1…
+## $ ShoppingMall <dbl> 0, 25, 0, 371, 151, 0, 3, 0, 17, 0, NA, 589, 1123, 65, 12…
+## $ Spa          <dbl> 0, 549, 6715, 3329, 565, 291, 0, 0, 216, 0, 0, 110, 0, 0,…
+## $ VRDeck       <dbl> 0, 44, 49, 193, 2, 0, 0, NA, 0, 0, 0, 124, 113, 24, 7, 0,…
+## $ Name         <chr> "Maham Ofracculy", "Juanna Vines", "Altark Susent", "Sola…
+## $ Transported  <lgl> FALSE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, …
+## $ dataset      <chr> "train", "train", "train", "train", "train", "train", "tr…
+```
 
 ```r
 # View cardinality of variables
 all %>% 
   select(-dataset) %>% 
   sapply(n_distinct)
-```
 
-    ##  PassengerId   HomePlanet    CryoSleep        Cabin  Destination          Age 
-    ##        12970            4            3         9826            4           81 
-    ##          VIP  RoomService    FoodCourt ShoppingMall          Spa       VRDeck 
-    ##            3         1579         1954         1368         1680         1643 
-    ##         Name  Transported 
-    ##        12630            3
+##  PassengerId   HomePlanet    CryoSleep        Cabin  Destination          Age 
+##        12970            4            3         9826            4           81 
+##          VIP  RoomService    FoodCourt ShoppingMall          Spa       VRDeck 
+##            3         1579         1954         1368         1680         1643 
+##         Name  Transported 
+##        12630            3
+```
 
 For completeness, I’ll include the data explanations provided by Kaggle
 here:
@@ -187,14 +187,13 @@ of these variables.
 
 ```r
 table(train$HomePlanet, train$Transported) %>% prop.table(1)
-```
 
-    ##         
-    ##              FALSE      TRUE
-    ##          0.4875622 0.5124378
-    ##   Earth  0.5760539 0.4239461
-    ##   Europa 0.3411544 0.6588456
-    ##   Mars   0.4769756 0.5230244
+##              FALSE      TRUE
+##          0.4875622 0.5124378
+##   Earth  0.5760539 0.4239461
+##   Europa 0.3411544 0.6588456
+##   Mars   0.4769756 0.5230244
+```
 
 It appears that people from Europa are transported at a higher
 frequency, while people from Earth seem to be transported at a lower
@@ -204,15 +203,13 @@ frequency.
 
 ```r
 table(train$Destination, train$Transported) %>% prop.table(1)
+
+##                     FALSE      TRUE
+##                 0.4945055 0.5054945
+##   55 Cancri e   0.3900000 0.6100000
+##   PSO J318.5-22 0.4962312 0.5037688
+##   TRAPPIST-1e   0.5288250 0.4711750
 ```
-
-    ##                
-    ##                     FALSE      TRUE
-    ##                 0.4945055 0.5054945
-    ##   55 Cancri e   0.3900000 0.6100000
-    ##   PSO J318.5-22 0.4962312 0.5037688
-    ##   TRAPPIST-1e   0.5288250 0.4711750
-
 People headed to 55 Cancri e seem to be transported at a higher
 frequency than the other destinations.
 
@@ -220,12 +217,11 @@ frequency than the other destinations.
 
 ```r
 table(train$CryoSleep, train$Transported) %>% prop.table(1)
-```
 
-    ##        
-    ##             FALSE      TRUE
-    ##   FALSE 0.6710792 0.3289208
-    ##   TRUE  0.1824169 0.8175831
+##             FALSE      TRUE
+##   FALSE 0.6710792 0.3289208
+##   TRUE  0.1824169 0.8175831 
+```
 
 People in `CryoSleep` seem to be transported at a higher frequency than
 not.
@@ -234,12 +230,11 @@ not.
 
 ```r
 table(train$VIP, train$Transported) %>% prop.table(1)
-```
 
-    ##        
-    ##             FALSE      TRUE
-    ##   FALSE 0.4936678 0.5063322
-    ##   TRUE  0.6180905 0.3819095
+##             FALSE      TRUE
+##   FALSE 0.4936678 0.5063322
+##   TRUE  0.6180905 0.3819095
+```
 
 People in VIP tend to be transported less, however be wary of this
 variable as there is only very small percentage of passengers are VIPs.
@@ -295,23 +290,22 @@ dimension varies with these features:
 
 **Deck vs. Transported**
 
-```r
+```r {2}
 # Pull only examples from the training dataset as these have non-NA Transported values
 train_cabin_spl <- all_cabin_spl %>% filter(dataset == 'train') %>% select(-dataset)
 
 table(train_cabin_spl$Deck, train_cabin_spl$Transported) %>% prop.table(1)
-```
 
-    ##    
-    ##         FALSE      TRUE
-    ##   A 0.5039062 0.4960938
-    ##   B 0.2657253 0.7342747
-    ##   C 0.3199465 0.6800535
-    ##   D 0.5669456 0.4330544
-    ##   E 0.6426941 0.3573059
-    ##   F 0.5601288 0.4398712
-    ##   G 0.4837827 0.5162173
-    ##   T 0.8000000 0.2000000
+##         FALSE      TRUE
+##   A 0.5039062 0.4960938
+##   B 0.2657253 0.7342747
+##   C 0.3199465 0.6800535
+##   D 0.5669456 0.4330544
+##   E 0.6426941 0.3573059
+##   F 0.5601288 0.4398712
+##   G 0.4837827 0.5162173
+##   T 0.8000000 0.2000000
+```
 
 Passengers on decks B, C, E, T all seem to be transported at a varying
 rate.
@@ -320,12 +314,11 @@ rate.
 
 ```r
 table(train_cabin_spl$Side, train_cabin_spl$Transported) %>% prop.table(1)
-```
 
-    ##    
-    ##         FALSE      TRUE
-    ##   P 0.5487399 0.4512601
-    ##   S 0.4449627 0.5550373
+##         FALSE      TRUE
+##   P 0.5487399 0.4512601
+##   S 0.4449627 0.5550373
+```
 
 Doesn’t look like transportation rate varies much with what side the
 passenger was on.
@@ -371,18 +364,17 @@ all_grouped <- all_grp_sep %>% left_join(all_grps, by = 'GroupId')
 train_grouped <- all_grouped %>% filter(dataset == 'train') %>% select(-dataset)
 
 table(train_grouped$group_size, train_grouped$Transported) %>% prop.table(1)
-```
 
-    ##    
-    ##         FALSE      TRUE
-    ##   1 0.5475546 0.4524454
-    ##   2 0.4619501 0.5380499
-    ##   3 0.4068627 0.5931373
-    ##   4 0.3592233 0.6407767
-    ##   5 0.4075472 0.5924528
-    ##   6 0.3850575 0.6149425
-    ##   7 0.4588745 0.5411255
-    ##   8 0.6057692 0.3942308
+##         FALSE      TRUE
+##   1 0.5475546 0.4524454
+##   2 0.4619501 0.5380499
+##   3 0.4068627 0.5931373
+##   4 0.3592233 0.6407767
+##   5 0.4075472 0.5924528
+##   6 0.3850575 0.6149425
+##   7 0.4588745 0.5411255
+##   8 0.6057692 0.3942308
+```
 
 It looks like transportation rate varies a little bit with group size.
 
@@ -424,9 +416,9 @@ all_name_split <- all_grouped %>%
   separate(Name, c("first_name", "last_name"), extra = 'merge', fill = 'right')
 
 all_name_split %>% distinct(first_name) %>% nrow() # 2,884 - 3 days worth of queries
-```
 
-    ## [1] 2884
+## [1] 2884
+```
 
 ```r
 # Split the distinct list of first names into 3 parts, with max 1,000 rows each
@@ -465,9 +457,8 @@ all_name_split %>%
   distinct(first_name) %>% 
   anti_join(gender_lookup, by = 'first_name') %>%
   nrow() == 0
+## [1] TRUE
 ```
-
-    ## [1] TRUE
 
 ```r
 # Add these back to the main dataset
@@ -482,13 +473,12 @@ Let’s see quickly if transportation rate tends to vary with gender.
 
 ```r
 table(train_gendered$gender, train_gendered$Transported) %>% prop.table(1)
-```
 
-    ##          
-    ##               FALSE      TRUE
-    ##   female  0.5514810 0.4485190
-    ##   male    0.5074228 0.4925772
-    ##   unknown 0.4186420 0.5813580
+##               FALSE      TRUE
+##   female  0.5514810 0.4485190
+##   male    0.5074228 0.4925772
+##   unknown 0.4186420 0.5813580
+```
 
 It looks like male passengers were transported at a slightly higher rate
 than female passengers.
@@ -504,24 +494,24 @@ all %>%
   select(-dataset) %>% 
   select_if(is.numeric) %>% 
   summary()
-```
 
-    ##       Age         RoomService        FoodCourt      ShoppingMall    
-    ##  Min.   : 0.00   Min.   :    0.0   Min.   :    0   Min.   :    0.0  
-    ##  1st Qu.:19.00   1st Qu.:    0.0   1st Qu.:    0   1st Qu.:    0.0  
-    ##  Median :27.00   Median :    0.0   Median :    0   Median :    0.0  
-    ##  Mean   :28.77   Mean   :  222.9   Mean   :  452   Mean   :  174.9  
-    ##  3rd Qu.:38.00   3rd Qu.:   49.0   3rd Qu.:   77   3rd Qu.:   29.0  
-    ##  Max.   :79.00   Max.   :14327.0   Max.   :29813   Max.   :23492.0  
-    ##  NA's   :270     NA's   :263       NA's   :289     NA's   :306      
-    ##       Spa              VRDeck       
-    ##  Min.   :    0.0   Min.   :    0.0  
-    ##  1st Qu.:    0.0   1st Qu.:    0.0  
-    ##  Median :    0.0   Median :    0.0  
-    ##  Mean   :  308.5   Mean   :  306.8  
-    ##  3rd Qu.:   57.0   3rd Qu.:   42.0  
-    ##  Max.   :22408.0   Max.   :24133.0  
-    ##  NA's   :284       NA's   :268
+##       Age         RoomService        FoodCourt      ShoppingMall    
+##  Min.   : 0.00   Min.   :    0.0   Min.   :    0   Min.   :    0.0  
+##  1st Qu.:19.00   1st Qu.:    0.0   1st Qu.:    0   1st Qu.:    0.0  
+##  Median :27.00   Median :    0.0   Median :    0   Median :    0.0  
+##  Mean   :28.77   Mean   :  222.9   Mean   :  452   Mean   :  174.9  
+##  3rd Qu.:38.00   3rd Qu.:   49.0   3rd Qu.:   77   3rd Qu.:   29.0  
+##  Max.   :79.00   Max.   :14327.0   Max.   :29813   Max.   :23492.0  
+##  NA's   :270     NA's   :263       NA's   :289     NA's   :306      
+##       Spa              VRDeck       
+##  Min.   :    0.0   Min.   :    0.0  
+##  1st Qu.:    0.0   1st Qu.:    0.0  
+##  Median :    0.0   Median :    0.0  
+##  Mean   :  308.5   Mean   :  306.8  
+##  3rd Qu.:   57.0   3rd Qu.:   42.0  
+##  Max.   :22408.0   Max.   :24133.0  
+##  NA's   :284       NA's   :268
+```
 
 ```r
 # + the room number of the passenger
@@ -529,16 +519,16 @@ all_cabin_spl %>%
   select(Num) %>% 
   mutate(Num = as.numeric(Num)) %>% 
   summary()
-```
 
-    ##       Num        
-    ##  Min.   :   0.0  
-    ##  1st Qu.: 170.0  
-    ##  Median : 431.0  
-    ##  Mean   : 603.6  
-    ##  3rd Qu.:1008.0  
-    ##  Max.   :1894.0  
-    ##  NA's   :299
+##       Num        
+##  Min.   :   0.0  
+##  1st Qu.: 170.0  
+##  Median : 431.0  
+##  Mean   : 603.6  
+##  3rd Qu.:1008.0  
+##  Max.   :1894.0  
+##  NA's   :299
+```
 
 Let’s view the distributions of these variables for those that were
 transported and those that weren’t to see if we can spot any
@@ -713,9 +703,9 @@ all_wrk_tmp <- all_wrk_tmp %>%
 
 # Count number of rows with at least one NA in it
 all_wrk_tmp[rowSums(is.na(all_wrk_tmp %>% mutate_all(.funs = ~ na_if(., "")))) > 0, ] %>% nrow()
-```
 
-    ## [1] 6364
+## [1] 6364
+```
 
 It looks like 49.1% of the rows in our data-set have at least one NA in
 them. A substantial amount - we’ll want to plug as many of these holes
@@ -733,30 +723,30 @@ Where do these missing values reside?
   data.frame() %>% 
   gather(variable, missing_pct) %>% 
   arrange(desc(missing_pct))
-```
 
-    ##        variable missing_pct
-    ## 1   Transported  0.32976099
-    ## 2     CryoSleep  0.02390131
-    ## 3  ShoppingMall  0.02359291
-    ## 4          Deck  0.02305320
-    ## 5           Num  0.02305320
-    ## 6          Side  0.02305320
-    ## 7           VIP  0.02282190
-    ## 8    first_name  0.02266769
-    ## 9     last_name  0.02266769
-    ## 10    FoodCourt  0.02228219
-    ## 11   HomePlanet  0.02220509
-    ## 12          Spa  0.02189668
-    ## 13  Destination  0.02112567
-    ## 14          Age  0.02081727
-    ## 15       VRDeck  0.02066307
-    ## 16  RoomService  0.02027756
-    ## 17      GroupId  0.00000000
-    ## 18  PassengerId  0.00000000
-    ## 19      dataset  0.00000000
-    ## 20   group_size  0.00000000
-    ## 21       gender  0.00000000
+##        variable missing_pct
+## 1   Transported  0.32976099
+## 2     CryoSleep  0.02390131
+## 3  ShoppingMall  0.02359291
+## 4          Deck  0.02305320
+## 5           Num  0.02305320
+## 6          Side  0.02305320
+## 7           VIP  0.02282190
+## 8    first_name  0.02266769
+## 9     last_name  0.02266769
+## 10    FoodCourt  0.02228219
+## 11   HomePlanet  0.02220509
+## 12          Spa  0.02189668
+## 13  Destination  0.02112567
+## 14          Age  0.02081727
+## 15       VRDeck  0.02066307
+## 16  RoomService  0.02027756
+## 17      GroupId  0.00000000
+## 18  PassengerId  0.00000000
+## 19      dataset  0.00000000
+## 20   group_size  0.00000000
+## 21       gender  0.00000000
+```
 
 We’ll be using two strategies to fill these NAs in here. The first being
 imputation where we infer what the missing values should be based on
@@ -782,9 +772,9 @@ all_cryo_sub <- all_wrk_tmp %>%
   mutate(lux_spend = ShoppingMall + VRDeck + FoodCourt + Spa + RoomService)
 
 all_cryo_sub %>% filter(CryoSleep & lux_spend > 0) %>% nrow() == 0
-```
 
-    ## [1] TRUE
+## [1] TRUE
+```
 
 We can now be fairly certain that we can use this relationship to infer
 that the value of `CryoSleep` is `FALSE` when the sum of all luxury
@@ -809,9 +799,9 @@ that they spent no money on luxury amenities.
     filter(CryoSleep) %>% 
     pull(pct)
 )
-```
 
-    ## [1] 0.8591341
+## [1] 0.8591341
+```
 
 It’s pretty high! Let’s keep this rate in our back pocket to validate
 our results once our imputations and predictions are complete for the
@@ -1052,9 +1042,9 @@ all_wrk_tmp %>%
   group_by(GroupId) %>% 
   summarise(n = n(), .groups = 'drop') %>% 
   filter(n > 1) %>% nrow() == 0
-```
 
-    ## [1] TRUE
+## [1] TRUE
+```
 
 ```r
 # Apply this rule to the dataset
@@ -1179,12 +1169,12 @@ of interest:
 all_wrk_tmp %>% 
   select_at(vars(inf_value %>% filter(IV > 0.1) %>% .$Variable)) %>% 
   sapply(function(x) sum(is.na(x)))
-```
 
-    ##    CryoSleep  RoomService          Spa       VRDeck ShoppingMall    FoodCourt 
-    ##            0            0            0            0            0            0 
-    ##         Deck   HomePlanet 
-    ##            0            0
+##    CryoSleep  RoomService          Spa       VRDeck ShoppingMall    FoodCourt 
+##            0            0            0            0            0            0 
+##         Deck   HomePlanet 
+##            0            0
+```
 
 Let’s impute the value of age in case we need to use it later:
 
@@ -1211,9 +1201,9 @@ identical(
   all_wrk %>% distinct(GroupId, PassengerId) %>% arrange_all(),
   all_wrk_tmp %>% distinct(GroupId, PassengerId) %>% arrange_all()
 )
-```
 
-    ## [1] TRUE
+## [1] TRUE
+```
 
 Finally, we’ll convert all character and logical/boolean features into
 factors for our random forest model.
@@ -1255,9 +1245,9 @@ all_wrk_final %>%
   ungroup() %>% 
   filter(n > 1) %>% 
   nrow() == 0
-```
 
-    ## [1] TRUE
+## [1] TRUE
+```
 
 Next, how we’ll do this is we’ll split on distinct `GroupId` as opposed
 to randomly sampling 70%/30% of `train_clean`’s rows. This will not net
@@ -1281,13 +1271,13 @@ train_val_split %>%
   group_by(grouping) %>% 
   summarise(n = sum(n), .groups = 'drop') %>% 
   mutate(pct = percent(n / sum(n), 0.1))
-```
 
-    ## # A tibble: 2 × 3
-    ##   grouping       n pct  
-    ##   <chr>      <int> <chr>
-    ## 1 train       6100 70.2%
-    ## 2 validation  2593 29.8%
+## # A tibble: 2 × 3
+##   grouping       n pct  
+##   <chr>      <int> <chr>
+## 1 train       6100 70.2%
+## 2 validation  2593 29.8%
+```
 
 ```r
 # Split train_clean based on the decided GroupId arrangement
@@ -1311,9 +1301,9 @@ set.seed(24601)
 
 # As a reminder, here's a list of our features of interest
 ( features_of_interest <- c(inf_value %>% filter(IV > 0.1) %>% .$Variable, 'Age', 'gender') %>% paste(collapse = " + ") )
-```
 
-    ## [1] "CryoSleep + RoomService + Spa + VRDeck + ShoppingMall + FoodCourt + Deck + HomePlanet + Age + gender"
+## [1] "CryoSleep + RoomService + Spa + VRDeck + ShoppingMall + FoodCourt + Deck + HomePlanet + Age + gender"
+```
 
 ```r
 st_rf_mod <- randomForest(
@@ -1383,9 +1373,9 @@ performance(
   ),
   measure = "auc"
 )@y.values[[1]]
-```
 
-    ## [1] 0.8586274
+## [1] 0.8586274
+```
 
 The Receiver Operating Curve from which the Area under the Curve is
 derived can also provide us with the optimal cutoff for use as a
@@ -1401,9 +1391,9 @@ st_rf_cutoff_obj <- performance(
 )
 
 ( st_rf_optimal_cutoff <- st_rf_cutoff_obj@x.values[[1]][which.min(st_rf_cutoff_obj@y.values[[1]])][[1]] ) 
-```
 
-    ## [1] 0.5284974
+## [1] 0.5284974
+```
 
 ### 5.2.2 Validation
 
@@ -1433,30 +1423,29 @@ prediction_cm <- confusionMatrix(
 )
 
 prediction_cm$table
-```
 
-    ##           Reference
-    ## Prediction FALSE TRUE
-    ##      FALSE   992  205
-    ##      TRUE    314 1082
+##           Reference
+## Prediction FALSE TRUE
+##      FALSE   992  205
+##      TRUE    314 1082
+```
 
 ```r
 prediction_cm$overall[['Accuracy']]
-```
 
-    ## [1] 0.7998457
+## [1] 0.7998457
+```
 
 ```r
 prediction_cm$byClass[['Sensitivity']]
+
+## [1] 0.7595712
 ```
-
-    ## [1] 0.7595712
-
 ```r
 prediction_cm$byClass[['Specificity']]
-```
 
-    ## [1] 0.8407148
+## [1] 0.8407148
+```
 
 Accuracy, sensitivity, and specificity all look okay here, but it should
 be noted these do not provide the whole picture. Accuracy in particular
@@ -1478,30 +1467,30 @@ prediction_vip_cm <- confusionMatrix(
 )
 
 prediction_vip_cm$table
-```
 
-    ##           Reference
-    ## Prediction FALSE TRUE
-    ##      FALSE    36    4
-    ##      TRUE      1   14
+##           Reference
+## Prediction FALSE TRUE
+##      FALSE    36    4
+##      TRUE      1   14
+```
 
 ```r
 prediction_vip_cm$overall[['Accuracy']]
-```
 
-    ## [1] 0.9090909
+## [1] 0.9090909
+```
 
 ```r
 prediction_vip_cm$byClass[['Sensitivity']]
-```
 
-    ## [1] 0.972973
+## [1] 0.972973
+```
 
 ```r
 prediction_vip_cm$byClass[['Specificity']]
-```
 
-    ## [1] 0.7777778
+## [1] 0.7777778
+```
 
 It’s not too bad. Note the sensitivity is greater than that of the
 aggregate dataset, but the specificity is lower. i.e. We’re more likely
@@ -1643,9 +1632,9 @@ performance(
   ),
   measure = "auc"
 )@y.values[[1]]
-```
 
-    ## [1] 0.911246
+## [1] 0.911246
+```
 
 ```r
 # Optimal cut-off
@@ -1658,9 +1647,9 @@ st_xgb_cutoff_obj <- performance(
 )
 
 ( st_xgb_optimal_cutoff <- st_xgb_cutoff_obj@x.values[[1]][which.min(st_xgb_cutoff_obj@y.values[[1]])][[1]] )
-```
 
-    ## [1] 0.5083346
+## [1] 0.5083346
+```
 
 ### 5.3.2 Validation
 
@@ -1685,30 +1674,30 @@ prediction_cm_xgb <- confusionMatrix(
 )
 
 prediction_cm_xgb$table
-```
 
-    ##           Reference
-    ## Prediction FALSE TRUE
-    ##      FALSE   998  199
-    ##      TRUE    308 1088
+##           Reference
+## Prediction FALSE TRUE
+##      FALSE   998  199
+##      TRUE    308 1088
+```
 
 ```r
 prediction_cm_xgb$overall[['Accuracy']]
-```
 
-    ## [1] 0.8044736
+## [1] 0.8044736
+```
 
 ```r
 prediction_cm_xgb$byClass[['Sensitivity']]
-```
 
-    ## [1] 0.7641654
+## [1] 0.7641654
+```
 
 ```r
 prediction_cm_xgb$byClass[['Specificity']]
-```
 
-    ## [1] 0.8453768
+## [1] 0.8453768
+```
 
 # 6 Prediction
 
@@ -1730,9 +1719,9 @@ final_output <- test_clean %>%
   mutate(Transported = ifelse(Transported_fct == 'TRUE', 'True', 'False'), .keep = 'unused')
 
 nrow(final_output) == 4277 # Size Kaggle expects for this solution
-```
 
-    ## [1] TRUE
+## [1] TRUE
+```
 
 ```r
 # Write to a csv
@@ -1752,9 +1741,11 @@ final_output_xgb <- test_clean %>%
   mutate(Transported = ifelse(Transported_fct == 'TRUE', 'True', 'False'), .keep = 'unused')
 
 nrow(final_output_xgb) == 4277
+
+ ## [1] TRUE
 ```
 
-    ## [1] TRUE
+   
 
 ```r
 # fwrite(final_output_xgb, 'output/spaceship_titanic_rf_solution_xgb.csv') # Score: 0.79588
