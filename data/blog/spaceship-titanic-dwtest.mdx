@@ -1,11 +1,13 @@
 ---
 title: The Spaceship Titanic
 date: '2023-03-04'
-tags: ['analysis', 'eda', 'binary-classifier']
+tags: ['analysis', 'eda', 'binary-classifier', 'in-depth']
 draft: false
 summary: 'Binary classification with random forests and XGBoost.'
 authors: ['darrenwong']
 ---
+
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 
 <TOCInline toc={props.toc} asDisclosure />
 
@@ -24,10 +26,9 @@ following general way:
 -   Model training and validation using random forests
 -   Final prediction for the test set provided by Kaggle
 
-This article was originally posted [here](https://github.com/wongd-hub/data-sci-practice/tree/main/spaceship-titanic)
-
 Before we begin, some links and setup code:
 
+-   This article was originally posted [here](https://github.com/wongd-hub/data-sci-practice/tree/main/spaceship-titanic)
 -   This write-up is inspired by the excellent report written by
     Megan L. Risdal: [Exploring Survival on the
     Titanic](https://www.kaggle.com/code/mrisdal/exploring-survival-on-the-titanic/report)
@@ -47,13 +48,6 @@ library(randomForest) # Random forests
 library(xgboost)      # XGBoost ML model
 library(caret)        # Confusion matrices & grid search
 library(ROCR)         # Calculation of AUC and optimal classification thresholds
-
-# Set working directory
-if (.Platform$OS.type == "windows") {
-  setwd('E:/Projects/kaggle-analyses/spaceship-titanic') # PC
-} else {
-  setwd('~/Documents/Projects/kaggle/spaceship-titanic') # Macbook
-}
 ```
 
 We can now load the data-sets that Kaggle provides us and then bind them
@@ -186,61 +180,67 @@ To round this off, lets use some frequency tables to see how the rate of
 inadvertent transportation to an alternate dimension varies within each
 of these variables.
 
-**HomePlanet vs. Transported**
+<Tabs>
+  <TabList>
+    <Tab>HomePlanet vs. Transported</Tab>
+    <Tab>Destination vs. Transported</Tab>
+    <Tab>CryoSleep vs. Transported</Tab>
+    <Tab>VIP vs. Transported</Tab>
+  </TabList>
 
-```r
-table(train$HomePlanet, train$Transported) %>% prop.table(1)
+  <TabPanel>
+    ```r
+    table(train$HomePlanet, train$Transported) %>% prop.table(1)
 
-##              FALSE      TRUE
-##          0.4875622 0.5124378
-##   Earth  0.5760539 0.4239461
-##   Europa 0.3411544 0.6588456
-##   Mars   0.4769756 0.5230244
-```
+    ##              FALSE      TRUE
+    ##          0.4875622 0.5124378
+    ##   Earth  0.5760539 0.4239461
+    ##   Europa 0.3411544 0.6588456
+    ##   Mars   0.4769756 0.5230244
+    ```
 
-It appears that people from Europa are transported at a higher
-frequency, while people from Earth seem to be transported at a lower
-frequency.
+    It appears that people from Europa are transported at a higher
+    frequency, while people from Earth seem to be transported at a lower
+    frequency.
+  </TabPanel>
+  <TabPanel>
+    ```r
+    table(train$Destination, train$Transported) %>% prop.table(1)
 
-**Destination vs. Transported**
+    ##                     FALSE      TRUE
+    ##                 0.4945055 0.5054945
+    ##   55 Cancri e   0.3900000 0.6100000
+    ##   PSO J318.5-22 0.4962312 0.5037688
+    ##   TRAPPIST-1e   0.5288250 0.4711750
+    ```
+    People headed to 55 Cancri e seem to be transported at a higher
+    frequency than the other destinations.
+  </TabPanel>
+  <TabPanel>
+    ```r
+    table(train$CryoSleep, train$Transported) %>% prop.table(1)
 
-```r
-table(train$Destination, train$Transported) %>% prop.table(1)
+    ##             FALSE      TRUE
+    ##   FALSE 0.6710792 0.3289208
+    ##   TRUE  0.1824169 0.8175831 
+    ```
 
-##                     FALSE      TRUE
-##                 0.4945055 0.5054945
-##   55 Cancri e   0.3900000 0.6100000
-##   PSO J318.5-22 0.4962312 0.5037688
-##   TRAPPIST-1e   0.5288250 0.4711750
-```
-People headed to 55 Cancri e seem to be transported at a higher
-frequency than the other destinations.
+    People in `CryoSleep` seem to be transported at a higher frequency than
+    not.
+  </TabPanel>
+  <TabPanel>
+    ```r
+    table(train$VIP, train$Transported) %>% prop.table(1)
 
-**CryoSleep vs. Transported**
+    ##             FALSE      TRUE
+    ##   FALSE 0.4936678 0.5063322
+    ##   TRUE  0.6180905 0.3819095
+    ```
 
-```r
-table(train$CryoSleep, train$Transported) %>% prop.table(1)
-
-##             FALSE      TRUE
-##   FALSE 0.6710792 0.3289208
-##   TRUE  0.1824169 0.8175831 
-```
-
-People in `CryoSleep` seem to be transported at a higher frequency than
-not.
-
-**VIP vs. Transported**
-
-```r
-table(train$VIP, train$Transported) %>% prop.table(1)
-
-##             FALSE      TRUE
-##   FALSE 0.4936678 0.5063322
-##   TRUE  0.6180905 0.3819095
-```
-
-People in VIP tend to be transported less, however be wary of this
-variable as there is only very small percentage of passengers are VIPs.
+    People in VIP tend to be transported less, however be wary of this
+    variable as there is only very small percentage of passengers are VIPs.
+  </TabPanel>
+</Tabs>
 
 ### 2.1.1 Deeper dive into `Cabin`
 
@@ -291,40 +291,46 @@ port and starboard sides seems to be around equal.
 Let’s quickly check how the rate of transportation to an alternative
 dimension varies with these features:
 
-**Deck vs. Transported**
+<Tabs>
+  <TabList>
+    <Tab>Deck vs. Transported</Tab>
+    <Tab>Side vs. Transported</Tab>
+  </TabList>
 
-```r {2}
-# Pull only examples from the training dataset as these have non-NA Transported values
-train_cabin_spl <- all_cabin_spl %>% filter(dataset == 'train') %>% select(-dataset)
+  <TabPanel>
+    ```r {2}
+    # Pull only examples from the training dataset as these have non-NA Transported values
+    train_cabin_spl <- all_cabin_spl %>% filter(dataset == 'train') %>% select(-dataset)
 
-table(train_cabin_spl$Deck, train_cabin_spl$Transported) %>% prop.table(1)
+    table(train_cabin_spl$Deck, train_cabin_spl$Transported) %>% prop.table(1)
 
-##         FALSE      TRUE
-##   A 0.5039062 0.4960938
-##   B 0.2657253 0.7342747
-##   C 0.3199465 0.6800535
-##   D 0.5669456 0.4330544
-##   E 0.6426941 0.3573059
-##   F 0.5601288 0.4398712
-##   G 0.4837827 0.5162173
-##   T 0.8000000 0.2000000
-```
+    ##         FALSE      TRUE
+    ##   A 0.5039062 0.4960938
+    ##   B 0.2657253 0.7342747
+    ##   C 0.3199465 0.6800535
+    ##   D 0.5669456 0.4330544
+    ##   E 0.6426941 0.3573059
+    ##   F 0.5601288 0.4398712
+    ##   G 0.4837827 0.5162173
+    ##   T 0.8000000 0.2000000
+    ```
 
-Passengers on decks B, C, E, T all seem to be transported at a varying
-rate.
+    Passengers on decks B, C, E, T all seem to be transported at a varying
+    rate.
+  </TabPanel>
+  <TabPanel>
+    ```r
+    table(train_cabin_spl$Side, train_cabin_spl$Transported) %>% prop.table(1)
 
-**Side vs. Transported**
+    ##         FALSE      TRUE
+    ##   P 0.5487399 0.4512601
+    ##   S 0.4449627 0.5550373
+    ```
 
-```r
-table(train_cabin_spl$Side, train_cabin_spl$Transported) %>% prop.table(1)
-
-##         FALSE      TRUE
-##   P 0.5487399 0.4512601
-##   S 0.4449627 0.5550373
-```
-
-Doesn’t look like transportation rate varies much with what side the
-passenger was on.
+    Doesn’t look like transportation rate varies much with what side the
+    passenger was on.
+  </TabPanel>
+</Tabs>
 
 ### 2.1.2 Deeper dive into `PassengerId`
 
@@ -382,8 +388,7 @@ table(train_grouped$group_size, train_grouped$Transported) %>% prop.table(1)
 It looks like transportation rate varies a little bit with group size.
 
 That’s it for the categorical variables, we’ll move on to the numerical
-variables now. *Note to self*: We may be able to infer with questionable
-success the gender of each individual which may be a useful feature.
+variables now.
 
 ### 2.1.3 Inferring gender from `Name`
 
@@ -896,7 +901,7 @@ all_wrk %>%
   theme(legend.position = 'bottom')
 ```
 
-![na-cryosleep-wrap-1](/static/images/spaceship-titanic-dwtest/fna-cryosleep-wrap-1.png)
+![na-cryosleep-wrap-1](/static/images/spaceship-titanic-dwtest/na-cryosleep-wrap-1.png)
 
 ## 4.2 Luxury amenities
 

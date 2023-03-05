@@ -29,7 +29,7 @@
 }
 
 .react-tabs__tab-panel {
-  @apply hidden mb-6 rounded-t bg-gray-800 px-4 py-3 text-sm text-gray-200;
+  @apply hidden mb-6 rounded bg-gray-700 px-4 py-3 text-sm text-gray-200;
 }
 
 .react-tabs__tab-panel--selected {
