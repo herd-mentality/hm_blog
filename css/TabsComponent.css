@@ -1,0 +1,37 @@
+/* Based on styling from https://flowbite.com/docs/components/tabs/#pills-tabs */
+.react-tabs {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.react-tabs__tab-list {
+  @apply flex flex-wrap text-sm font-medium text-center text-gray-500 dark:text-gray-400;
+  @apply mb-1 !important;
+}
+
+.react-tabs__tab {
+  @apply justify-center mr-2 flex px-4 py-3 rounded-lg cursor-pointer duration-300 !important;
+}
+
+.react-tabs__tab > p {
+  @apply m-0;
+}
+
+.react-tabs__tab:hover {
+  @apply text-gray-900 bg-gray-100 dark:bg-gray-800 dark:text-white;
+}
+
+.react-tabs__tab--selected {
+  @apply text-white bg-blue-600;
+}
+
+.react-tabs__tab--disabled {
+  @apply cursor-not-allowed text-gray-300;
+}
+
+.react-tabs__tab-panel {
+  @apply hidden mb-6 rounded bg-gray-700 px-4 py-3 text-sm text-gray-200;
+}
+
+.react-tabs__tab-panel--selected {
+  @apply block;
+}

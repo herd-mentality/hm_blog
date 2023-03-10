@@ -49,6 +49,7 @@ module.exports = {
               fontWeight: '700',
               letterSpacing: theme('letterSpacing.tight'),
               color: theme('colors.gray.900'),
+              paddingTop: '0.75rem',
             },
             h2: {
               fontWeight: '700',
@@ -117,6 +118,7 @@ module.exports = {
               fontWeight: '700',
               letterSpacing: theme('letterSpacing.tight'),
               color: theme('colors.gray.100'),
+              paddingTop: '0.75rem',
             },
             h2: {
               fontWeight: '700',

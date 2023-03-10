@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import '../css/TabsComponent.css';
 
 .task-list-item::before {
   @apply hidden;
@@ -28,6 +29,14 @@
 
 .footer-link:hover {
   @apply underline duration-500 text-gray-400 dark:text-gray-300
+}
+
+.tag-link {
+  @apply text-primary-500 duration-300
+}
+
+.tag-link:hover {
+  @apply text-primary-600 dark:text-primary-400
 }
 
 
