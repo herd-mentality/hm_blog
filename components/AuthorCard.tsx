@@ -3,7 +3,7 @@ import Link from './Link'
 import SocialIcon from '@/components/social-icons'
 // TODO:
 const AuthorCard = ({ name, description, avatar, href, email, github, linkedin, twitter }) => (
-  <div className="md max-w-[544px] p-4 md:w-1/2">
+  <div className="w-4/5 min-w-[350px] max-w-[544px] p-4 md:w-1/2">
     <div
       className={`${
         avatar && 'h-full'
