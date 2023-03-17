@@ -20,6 +20,7 @@ export default function Authors() {
               <AuthorCard
                 key={a.name}
                 name={a.name}
+                role={a.role}
                 description={a.body.raw}
                 avatar={a.avatar}
                 href={'/'}

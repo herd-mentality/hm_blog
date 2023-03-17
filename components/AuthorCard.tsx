@@ -1,8 +1,19 @@
 import Image from './Image'
 import Link from './Link'
 import SocialIcon from '@/components/social-icons'
-// TODO:
-const AuthorCard = ({ name, description, avatar, href, email, github, linkedin, twitter }) => (
+
+// TODO: find a way to list all author's posts
+const AuthorCard = ({
+  name,
+  description,
+  role,
+  avatar,
+  href,
+  email,
+  github,
+  linkedin,
+  twitter,
+}) => (
   <div className="w-4/5 min-w-[350px] max-w-[544px] p-4 md:w-1/2">
     <div
       className={`${
@@ -36,7 +47,7 @@ const AuthorCard = ({ name, description, avatar, href, email, github, linkedin, 
           <Link href={href} aria-label={`See ${name}'s posts`}>
             <h2 className="nav-link mb-0 text-2xl !font-bold leading-8 tracking-tight">{name}</h2>
           </Link>
-          <h3 className="prose text-gray-500 dark:text-gray-400">Role title</h3>
+          <h3 className="prose text-gray-500 dark:text-gray-400">{role}</h3>
           <div className="flex space-x-3 py-1">
             {email && <SocialIcon kind="mail" href={`mailto:${email}`} size={6} />}
             {github && <SocialIcon kind="github" href={github} size={6} />}
@@ -45,15 +56,9 @@ const AuthorCard = ({ name, description, avatar, href, email, github, linkedin, 
           </div>
         </div>
       </div>
-      {/* <div className="ml-6 flex space-x-3 pt-6">
-        {email && <SocialIcon kind="mail" href={`mailto:${email}`} />}
-        {github && <SocialIcon kind="github" href={github} />}
-        {linkedin && <SocialIcon kind="linkedin" href={linkedin} />}
-        {twitter && <SocialIcon kind="twitter" href={twitter} />}
-      </div> */}
       <div className="p-6">
         <p className="prose mb-3 max-w-none text-gray-500 dark:text-gray-400">{description}</p>
-        {href && (
+        {/* {href && (
           <Link
             href={href}
             className="tag-link text-base font-medium leading-6"
@@ -61,7 +66,7 @@ const AuthorCard = ({ name, description, avatar, href, email, github, linkedin, 
           >
             See {name.match(/^\w+/g)[0]}'s posts &rarr;
           </Link>
-        )}
+        )} */}
       </div>
     </div>
   </div>
