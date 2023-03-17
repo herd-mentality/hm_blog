@@ -4,7 +4,7 @@ date: '2023-03-04'
 tags: ['analysis', 'eda', 'binary-classifier', 'in-depth']
 draft: false
 summary: 'Binary classification with random forests and XGBoost.'
-authors: ['default']
+authors: ['darrenwong']
 ---
 
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
@@ -164,7 +164,7 @@ all %>%
   scale_y_continuous(labels = percent)
 ```
 
-![eda-cat-low-cardinality-1](/static/images/spaceship-titanic-dwtest/eda-cat-low-cardinality-1.png)
+![eda-cat-low-cardinality-1](/static/images/spaceship-titanic/eda-cat-low-cardinality-1.png)
 
 Some takeaways from this chart:
 
@@ -282,7 +282,7 @@ all_cabin_spl %>%
   scale_y_continuous(labels = percent)
 ```
 
-![eda-cat-cabin-cut-1](/static/images/spaceship-titanic-dwtest/eda-cat-cabin-cut-1.png)
+![eda-cat-cabin-cut-1](/static/images/spaceship-titanic/eda-cat-cabin-cut-1.png)
 
 At a glance, passengers tend to be more heavily weighted towards decks F
 and G, with a very small allocation to deck T. The distribution between
@@ -361,7 +361,7 @@ all_grps %>%
   labs(x = 'Group Size', y = "Count", title = "Fig 3. Distribution of Travel Group Sizes")
 ```
 
-![eda-cat-passengerid-1](/static/images/spaceship-titanic-dwtest/eda-cat-passengerid-1.png)
+![eda-cat-passengerid-1](/static/images/spaceship-titanic/eda-cat-passengerid-1.png)
 
 To round this out, we’ll have a quick look at how alternate dimension
 transportation varies across group sizes.
@@ -560,7 +560,7 @@ train_cabin_spl %>%
   labs(x = 'Value', y = 'Count', title = 'Fig 4. Dsn of Numeric Variables vs Target ')
 ```
 
-![eda-num-dsns-1](/static/images/spaceship-titanic-dwtest/eda-num-dsns-1.png)
+![eda-num-dsns-1](/static/images/spaceship-titanic/eda-num-dsns-1.png)
 
 Nothing particularly illuminating here, although it seems like younger
 children are more likely to be transported than others.
@@ -625,7 +625,7 @@ mutual_info %>%
   labs(x = 'Mutual Information', y = 'Variable', title = 'Fig 5. Mutual Information of Features')
 ```
 
-![fi-mi-1](/static/images/spaceship-titanic-dwtest/fi-mi-1.png)
+![fi-mi-1](/static/images/spaceship-titanic/fi-mi-1.png)
 
 Some of our potential candidates for features actually have low mutual
 information! Those would be HomePlanet, Destination, Deck, and Age. It
@@ -687,7 +687,7 @@ grid.arrange(
 )
 ```
 
-![fi-mi-v-woe-1](/static/images/spaceship-titanic-dwtest/fi-mi-v-woe-1.png)
+![fi-mi-v-woe-1](/static/images/spaceship-titanic/fi-mi-v-woe-1.png)
 
 Generally the two measures agree in terms of ranking feature strength.
 Keeping to our 0.1 Information Value cutoff, the variables we’ll be
@@ -901,7 +901,7 @@ all_wrk %>%
   theme(legend.position = 'bottom')
 ```
 
-![na-cryosleep-wrap-1](/static/images/spaceship-titanic-dwtest/na-cryosleep-wrap-1.png)
+![na-cryosleep-wrap-1](/static/images/spaceship-titanic/na-cryosleep-wrap-1.png)
 
 ## 4.2 Luxury amenities
 
@@ -936,7 +936,7 @@ all_wrk_tmp %>%
   labs(x = 'Destination', y = 'Total Luxury Spend', title = 'Fig 8a. Luxury spend vs. Destination, Home Planet')
 ```
 
-![lux-noncryosleepers-1](/static/images/spaceship-titanic-dwtest/lux-noncryosleepers-1.png)
+![lux-noncryosleepers-1](/static/images/spaceship-titanic/lux-noncryosleepers-1.png)
 
 ```r
 all_wrk_tmp %>%
@@ -950,7 +950,7 @@ all_wrk_tmp %>%
   labs(x = 'Number', y = element_blank(), title = 'Fig 8b. Luxury spend vs. Room number, Home Planet')
 ```
 
-![lux-noncryosleepers-2](/static/images/spaceship-titanic-dwtest/lux-noncryosleepers-2.png)
+![lux-noncryosleepers-2](/static/images/spaceship-titanic/lux-noncryosleepers-2.png)
 
 For now, we’ll predict the remaining luxury spend values on some
 variables such as HomePlanet, Destination, and Deck - variables that
@@ -1007,7 +1007,7 @@ all_wrk %>%
   labs(x = 'Value', y = 'Count', fill = 'Dataset', title = 'Fig 9. Imputed vs. original dataset')
 ```
 
-![lux-final-1](/static/images/spaceship-titanic-dwtest/lux-final-1.png)
+![lux-final-1](/static/images/spaceship-titanic/lux-final-1.png)
 
 ## 4.3 `HomePlanet`
 
@@ -1026,7 +1026,7 @@ all_wrk_tmp %>%
   labs(y = 'Count', title = 'Fig 10. HomePlanet vs. Deck')
 ```
 
-![hp-deck-1](/static/images/spaceship-titanic-dwtest/hp-deck-1.png)
+![hp-deck-1](/static/images/spaceship-titanic/hp-deck-1.png)
 
 ```r
 # Apply this rule to the dataset
@@ -1115,7 +1115,7 @@ all_wrk %>%
   )
 ```
 
-![hp-impute-1](/static/images/spaceship-titanic-dwtest/hp-impute-1.png)
+![hp-impute-1](/static/images/spaceship-titanic/hp-impute-1.png)
 
 ## 4.4 `Deck`
 
@@ -1152,7 +1152,7 @@ all_wrk_grps %>%
   labs(x = 'Deck Distance with Groups', y = 'Count', title = 'Fig 12. Dsn of deck distance within groups')
 ```
 
-![de-groups-1](/static/images/spaceship-titanic-dwtest/de-groups-1.png)
+![de-groups-1](/static/images/spaceship-titanic/de-groups-1.png)
 
 This might enable some sort of modelling of missing deck information
 based on the deck of others within the group in future, however we’ll go
@@ -1331,7 +1331,7 @@ legend(
 )
 ```
 
-![fit-rf-1](/static/images/spaceship-titanic-dwtest/fit-rf-1.png)
+![fit-rf-1](/static/images/spaceship-titanic/fit-rf-1.png)
 
 We can see that at the end of the fitting process, the model has an OOB
 error of 0.207377. The red and green lines show the error in predicting
@@ -1357,7 +1357,7 @@ importance %>%
   labs(x = 'Importance', y = 'Variable', title = 'Fig 14. Random Forest - Variable Importance')
 ```
 
-![fit-imp-1](/static/images/spaceship-titanic-dwtest/fit-imp-1.png)
+![fit-imp-1](/static/images/spaceship-titanic/fit-imp-1.png)
 
 Feature importance generally agrees with the feature utility metrics
 used previously that Deck and HomePlanet are less important in
@@ -1626,7 +1626,7 @@ xgb.plot.importance(
 title('Fig 15. XGBoost Feature Importance')
 ```
 
-![xgb-imp-1](/static/images/spaceship-titanic-dwtest/xgb-imp-1.png)
+![xgb-imp-1](/static/images/spaceship-titanic/xgb-imp-1.png)
 
 Finally - before we go on to validation, let’s check the AUC and find
 the optimal classification threshold for this model.
