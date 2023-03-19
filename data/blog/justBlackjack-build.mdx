@@ -1,0 +1,93 @@
+---
+title: Simulating blackjack rounds with JavaScript
+date: '2023-03-19'
+tags: ['web-dev', 'front-end', 'justBlackjack', 'javascript']
+draft: false
+summary: 'How blackjack rounds were simulated in JavaScript for justBlackjack'
+authors: ['darrenwong']
+---
+
+will not be going over insurance/double/splitting
+
+Card graphics stored in a list
+
+```javascript
+const cardList = [
+    {
+        cardName: 'cardBacking',
+        cardEntity:` _____ <br>|<span>\\ ~ /</span>|<br>|<span>}}:{{</span>|<br>|<span>}}:{{</span>|<br>|<span>}}:{{</span>|<br>|<span>/</span>_<span>~</span>_<span>\\</span>|`
+    },
+    {
+        cardName: 'Aspades',
+        cardEntity: ` _____ <br>|<span>A</span> .  |<br>| /.\\ |<br>|(_._)|<br>|  |  |<br>|____<span>A</span>|`
+    },
+    ...
+]
+```
+
+Utility functions to:
+
+    Pull a card and stacks class names on to the spans surrounding the pips to format it for viewing - prepCardStringForHTML
+
+    Plotting cards in a diagonal stack, middle cards have only the first three characters drawn and are concatenated in a staggered fashion. with option to remove most recent card thats plotted to the left of the hand - drawCardStack
+
+    
+
+Building deck:
+
+    constructDeck
+
+    shuffle
+
+    initiateDeckSetup (discard first card from shoe)
+
+
+
+Dealing from deck:
+
+    Update shoe count updateShoeCount
+
+    dealCards
+
+Player/dealer's hands:
+
+    Draw player's hand drawPlayerHand
+
+    addToPlayerHand
+
+    drawDealerHand
+
+    addToDealerHand
+
+    revealDealerSecondHand
+
+Playing hands:
+
+    calculateHValue
+
+    updateScore
+
+    dealerPlay
+
+    *Behaviour funcs to simulate sequence of events
+
+Resetting
+
+    purgeHands
+
+    endOfRoundState
+
+    resetForNextRound
+
+End... further utility functions
+
+    fadeIn
+
+    updateConsole
+
+    introduceRule
+
+        ruleFAceCards - puts up a rule about the value of face or ace cards if one pops up in yours or the dealers hands
+
+
+
