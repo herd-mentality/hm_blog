@@ -64,13 +64,16 @@ export const Authors = defineDocumentType(() => ({
   fields: {
     name: { type: 'string', required: true },
     avatar: { type: 'string' },
+    role: { type: 'string' },
     occupation: { type: 'string' },
     company: { type: 'string' },
     email: { type: 'string' },
     twitter: { type: 'string' },
     linkedin: { type: 'string' },
     github: { type: 'string' },
+    personal: { type: 'string' },
     layout: { type: 'string' },
+    preferred_social: { type: 'string' },
   },
   computedFields,
 }))

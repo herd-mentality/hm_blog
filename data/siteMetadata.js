@@ -5,9 +5,9 @@ const siteMetadata = {
   title: 'The Herd Mentality',
   author: '',
   headerTitle: 'The Herd Mentality',
-  description: 'A blog created with Next.js and Tailwind.css',
+  description: 'See the latest posts from the Herd',
   language: 'en-us',
-  theme: 'dark', // system, dark or light
+  theme: 'system', // system, dark or light
   siteUrl: 'https://tailwind-nextjs-starter-blog.vercel.app',
   siteRepo: 'https://github.com/timlrx/tailwind-nextjs-starter-blog',
   siteLogo: '/static/images/logo.png',

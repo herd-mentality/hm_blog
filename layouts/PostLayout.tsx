@@ -77,14 +77,28 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
                       <dl className="whitespace-nowrap text-sm font-medium leading-5">
                         <dt className="sr-only">Name</dt>
                         <dd className="text-gray-900 dark:text-gray-100">{author.name}</dd>
-                        <dt className="sr-only">Twitter</dt>
+                        <dt className="sr-only">Socials</dt>
                         <dd>
-                          {author.twitter && (
-                            <Link
-                              href={author.twitter}
-                              className="text-primary-500 hover:text-primary-600 dark:hover:text-primary-400"
-                            >
-                              {author.twitter.replace('https://twitter.com/', '@')}
+                          {author.preferred_social && (
+                            <Link href={author[author.preferred_social]} className="tag-link">
+                              {(() => {
+                                switch (author.preferred_social) {
+                                  case 'linkedin':
+                                    return 'LinkedIn'
+                                    break
+                                  case 'twitter':
+                                    return author.twitter.replace('https://twitter.com/', 'tw@')
+                                    break
+                                  case 'github':
+                                    return author.github.replace('https://github.com/', 'gh@')
+                                    break
+                                  case 'personal':
+                                    return author.name.match(/^\w+/g)[0] + "'s blog"
+                                    break
+                                  default:
+                                    return ''
+                                }
+                              })()}
                             </Link>
                           )}
                         </dd>
@@ -136,7 +150,7 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
                         <h2 className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                           Previous Article
                         </h2>
-                        <div className="text-primary-500 hover:text-primary-600 dark:hover:text-primary-400">
+                        <div className="tag-link">
                           <Link href={`/${prev.path}`}>{prev.title}</Link>
                         </div>
                       </div>
@@ -146,7 +160,7 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
                         <h2 className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                           Next Article
                         </h2>
-                        <div className="text-primary-500 hover:text-primary-600 dark:hover:text-primary-400">
+                        <div className="tag-link">
                           <Link href={`/${next.path}`}>{next.title}</Link>
                         </div>
                       </div>
@@ -155,11 +169,7 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
                 )}
               </div>
               <div className="pt-4 xl:pt-8">
-                <Link
-                  href={`/${basePath}`}
-                  className="text-primary-500 hover:text-primary-600 dark:hover:text-primary-400"
-                  aria-label="Back to the blog"
-                >
+                <Link href={`/${basePath}`} className="tag-link" aria-label="Back to the blog">
                   &larr; Back to the blog
                 </Link>
               </div>
