@@ -5,7 +5,7 @@ import { kebabCase } from 'pliny/utils/kebabCase'
 import { getAllTags, allCoreContent } from 'pliny/utils/contentlayer'
 import { InferGetStaticPropsType } from 'next'
 import { allBlogs } from 'contentlayer/generated'
-console.log(allBlogs)
+
 export async function getStaticPaths() {
   const tags = await getAllTags(allBlogs)
 
