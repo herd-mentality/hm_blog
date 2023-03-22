@@ -11,7 +11,7 @@ will not be going over insurance/double/splitting
 
 Card graphics stored in a list
 
-```javascript
+```js:cardList.js
 const cardList = [
     {
         cardName: 'cardBacking',
@@ -24,6 +24,8 @@ const cardList = [
     ...
 ]
 ```
+
+Could put these in the order they're called to set up a game - but this might be the best way to organise these
 
 Utility functions to:
 
@@ -69,7 +71,7 @@ Playing hands:
 
     dealerPlay
 
-    *Behaviour funcs to simulate sequence of events
+    .*Behaviour funcs to simulate sequence of events
 
 Resetting
 
@@ -91,3 +93,243 @@ End... further utility functions
 
 
 
+```html:index.html {5, 10, 14, 18, 26, 30, 34}
+<body>
+
+    <div class="website-body">
+        <div class="title-bar">
+            <!-- Title bar contents -->
+        </div>
+        <div class="side-bar">
+            <h2 class="rules">rule_set</h2>
+            <ul id="rule-set">
+                <!-- Responsive list of blackjack rules -->
+            </ul>
+        </div>
+        <div class="quick-settings-box">
+            <!-- Info in bottom left -->
+        </div>
+        <div class="player-cards" id="player-cards"></div>
+        <div class="player-options">
+            <!-- Player option buttons -->
+            <p id="hit-button">hit</p>
+            <p id="stand-button">stand</p>
+            ...
+        </div>
+        <div class="dealer-cards" id="dealer-cards"></div>
+        <div class="console" id="console">
+            <div class="console-container" id="console-container">
+                <!-- Console in bottom right -->
+            </div>
+        </div>
+        <div class="shoe">
+            <!-- Shoe graphic and score counter -->
+        </div>
+    </div>
+
+    <!-- Calling scripts -->
+    <script src="./cardList.js"></script>
+    <script src="./main.js"></script>
+
+</body>
+```
+
+```
+  _____    _____    _____    _____    _____    _____    _____
+ |2    |  |4    |  |6    |  |A .  |  |Q  ww|  |K  WW|  |\ ~ /|
+ |  v  |  | ^ ^ |  | o o |  | /.\ |  | o {(|  |   {)|  |}}:{{|
+ |     |  |     |  | o o |  |(_._)|  |o o%%|  |(v)%%|  |}}:{{|
+ |  v  |  | ^ ^ |  | o o |  |  |  |  | |%%%|  | v%%%|  |}}:{{|
+ |____2|  |____4|  |____6|  |____A|  |_%%%Q|  |_%%%K|  |/_~_\|
+
+```
+
+Alternative way of structuring this is:
+
+* Administrative stuff - responsive rule set, card/score counter, console log
+* Main entity construction - deck initiation, player & dealer hand initialisation
+
+* Go into the sequence of events:
+    1. Deal to dealer and player, one card face down for dealer
+    2. Provide an example hand (that has no insurance/split/double possibilies), give player standard options: hit or stand
+        2a. Hit behaviour function
+        2b. Stand behaviour function
+    3. Dealer behaviour
+
+
+# Learning game tools
+```js:main.js
+function introduceRule(rule, styleClass) {
+    ...
+        document.getElementById('rule-set').innerHTML += `<li id="${styleClass}" class="${styleClass}">${rule}</li>`;
+        document.getElementById(styleClass).style.visibility = 'visible';
+        fadeIn(document.getElementById(styleClass));
+        ruleSet[styleClass] = true;
+    ...
+}
+```
+
+```js:main.js
+function updateScore(outcome) {
+    if (outcome === 'win' || outcome === 'w') {
+        scoreCount++
+        ...
+            document.getElementById('score-counter').innerHTML += ` <span id="delta" class="col-gree"'>+1</span>`;
+        ...
+    } else if (outcome === 'blackjack' || outcome === 'b') {
+        scoreCount = scoreCount + 1.5;
+        ...
+            document.getElementById('score-counter').innerHTML += ` <span id="delta" class="col-gree"'>+1.5</span>`;
+        ...
+    } else if (outcome === 'lose' || outcome === 'l') {
+        scoreCount--
+        ...
+            document.getElementById('score-counter').innerHTML += ` <span id="delta" class="col-oran"'>-1</span>`;
+        ...
+    } else if (outcome === 'draw' || outcome === 'd') {
+        ...
+            document.getElementById('score-counter').innerHTML += ` <span id="delta" class="col-emphasis"'>+0</span>`;
+        ...
+    } else if ...
+
+    fadeIn(document.getElementById('delta'), timeToFade = 20, removeElement = true);
+    document.getElementById('score-ticker-value').innerHTML = scoreCount;
+    
+    ...
+}
+```
+
+
+```js:main.js
+function updateConsole(update = 'No console update provided') {
+    var parentElement = document.getElementById('blinker').parentNode;
+    var newMessage = document.createElement('p');
+
+    newMessage.innerHTML = `> ${update}<br>`;
+    parentElement.insertBefore(newMessage, document.getElementById('blinker'))
+}
+```
+
+# Main entities
+
+## Constructing deck
+
+```js:main.js
+const suits = ["spades", "diamonds", "clubs", "hearts"];
+const values = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+
+function constructDeck(deckNumber) {
+	let deck = new Array();
+	for(let i = 0; i < suits.length; i++) {
+		for(let x = 0; x < values.length; x++) {
+            var card
+            if (
+                // Will be false if values[x] is not coercible to a numeric
+                !isNaN(values[x]) 
+            ) {
+                card = {value: values[x], suit: suits[i], numericValue: parseInt(values[x]), deckNumber: deckNumber};
+            } else if (values[x] === "J" | values[x] === "Q" | values[x] === "K") {
+                card = {value: values[x], suit: suits[i], numericValue: 10, deckNumber: deckNumber};
+            } else if (values[x] === "A") {
+                card = {value: values[x], suit: suits[i], numericValue: 24601, deckNumber: deckNumber};
+            }
+			deck.push(card);
+		}
+	}
+	return deck;
+}
+
+function shuffle(array) {
+  let i = array.length;
+  while (i--) {
+    const ri = Math.floor(Math.random() * i);
+    [array[i], array[ri]] = [array[ri], array[i]];
+  }
+  return array;
+}
+
+
+```
+
+
+
+```js:main.js
+function calculateHValue(HValueArray) {
+
+    // Initialise return object
+    var result = {};
+    var HValueArray_copy = JSON.parse(JSON.stringify(HValueArray));
+    
+    // Count aces and remove them from the hand for now since
+    //  their value can vary.
+    var aceCounter = 0;
+
+    for (let i = HValueArray_copy.length - 1; i >= 0; i--) {
+        if (HValueArray_copy[i] === 24601) {
+            aceCounter++;
+            HValueArray_copy.splice(i, 1);
+        }
+    }
+
+    result.aceCounter = aceCounter;
+
+    // Sum value of remaining items in hand
+    var preAceSum = HValueArray_copy.reduce((a, b) => a + b, 0);
+    var postAceOptions;
+
+    result.preAceSum = preAceSum;
+
+    // Handle adding Aces.
+    //  Since there's such a limited amount of combinations, there's probably no need to 
+    //  pursue this programatically.
+    if (aceCounter > 0) {
+
+        switch (aceCounter) {
+            case 1: postAceOptions = [1, 11]; break;
+            case 2: postAceOptions = [2, 12, 22]; break;
+            case 3: postAceOptions = [3, 13, 23, 33]; break;
+            case 4: postAceOptions = [4, 14, 24, 34, 44]; break;
+        }
+
+        for(var i = 0; i < postAceOptions.length; i++) { postAceOptions[i] += preAceSum; }
+
+        // Finally, remove all values that are above 21, but if this causes the length of the array 
+        //  to become 0, the hand is bust.
+        
+        var aceOptionBkup = JSON.pare(JSON.stringify(postAceOptions));
+
+        for (let i = postAceOptions.length - 1; i >= 0; i--) {
+            if (postAceOptions[i] > 21) {
+                postAceOptions.splice(i, 1);
+            }
+        }
+
+        if (postAceOptions.length < 1) { 
+            // Display the smallest hand value calculated (which will be > 21)
+            result.postAceOptions = [Math.min.apply(null, aceOptionBkup)];
+            result.initialState = 'bust';
+        } else if (postAceOptions.includes(21)) { 
+            // On a (10, Ace) hand, this assumes that the hand is blackjack, not 11
+            result.postAceOptions = postAceOptions;
+            result.initialState = 'blackjack';
+        } else {
+            result.postAceOptions = postAceOptions;
+            result.initialState = 'none';
+        }
+
+    } else {
+
+        // If no aces, just return the sum of values
+        result.postAceOptions = [preAceSum];
+        if (preAceSum > 21) {
+            result.initialState = 'bust';
+        } else if (preAceSum === 21) {
+            result.initialState = 'blackjack';
+        } else {
+            result.initialState = 'none';
+        }
+
+    }
+    return result;
+} 
+```
