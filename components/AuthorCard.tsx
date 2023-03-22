@@ -2,7 +2,6 @@ import Image from './Image'
 import Link from './Link'
 import SocialIcon from '@/components/social-icons'
 
-// TODO: find a way to list all author's posts
 const AuthorCard = ({
   name,
   description,
@@ -13,6 +12,7 @@ const AuthorCard = ({
   github,
   linkedin,
   twitter,
+  path,
 }) => (
   <div className="w-4/5 min-w-[350px] max-w-[544px] p-4 md:w-1/2">
     <div
@@ -58,15 +58,15 @@ const AuthorCard = ({
       </div>
       <div className="p-6">
         <p className="prose mb-3 max-w-none text-gray-500 dark:text-gray-400">{description}</p>
-        {/* {href && (
+        {href && (
           <Link
-            href={href}
+            href={'/' + path}
             className="tag-link text-base font-medium leading-6"
-            aria-label={`See ${name}'s posts`}
+            aria-label={`See ${name.match(/^\w+/g)[0]}'s posts`}
           >
             See {name.match(/^\w+/g)[0]}'s posts &rarr;
           </Link>
-        )} */}
+        )}
       </div>
     </div>
   </div>

@@ -2,7 +2,7 @@ import siteMetadata from '@/data/siteMetadata'
 import { allAuthors } from 'contentlayer/generated'
 import AuthorCard from '@/components/AuthorCard'
 import { PageSEO } from '@/components/SEO'
-
+console.log(allAuthors)
 export default function Authors() {
   return (
     <>
@@ -28,6 +28,7 @@ export default function Authors() {
                 github={a.github}
                 linkedin={a.linkedin}
                 twitter={a.twitter}
+                path={a.path}
               />
             ))}
           </div>
