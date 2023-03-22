@@ -58,7 +58,9 @@ const AuthorCard = ({
         </div>
       </div>
       <div className="p-6">
-        <p className="prose mb-3 max-w-none text-gray-500 dark:text-gray-400">{description}</p>
+        {description.length != 0 && (
+          <p className="prose mb-3 max-w-none text-gray-500 dark:text-gray-400">{description}</p>
+        )}
         {allBlogs.filter((b) => b.authors.includes(slug)).length != 0 && href && (
           <Link
             href={'/authors/' + slug}
