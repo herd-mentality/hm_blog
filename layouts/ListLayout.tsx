@@ -73,7 +73,9 @@ export default function ListLayout({
       post.tags.join(' ') +
       (post.authors && post.authors.join(' ')) +
       (post.authors &&
-        post.authors.map((author) => allAuthors.filter((i) => i.slug.includes(author))[0].name))
+        post.authors
+          .map((author) => allAuthors.filter((i) => i.slug.includes(author))[0].name)
+          .join(' '))
 
     return searchContent.toLowerCase().includes(searchValue.toLowerCase())
   })
