@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { formatDate } from 'pliny/utils/formatDate'
 import { CoreContent } from 'pliny/utils/contentlayer'
 import type { Blog } from 'contentlayer/generated'
+import { allAuthors } from 'contentlayer/generated'
 import Link from '@/components/Link'
 import Tag from '@/components/Tag'
 import siteMetadata from '@/data/siteMetadata'
@@ -67,7 +68,15 @@ export default function ListLayout({
   const [searchValue, setSearchValue] = useState('')
   const filteredBlogPosts = posts.filter((post) => {
     const searchContent =
-      post.title + post.summary + post.tags.join(' ') + (post.authors && post.authors.join(' '))
+      post.title +
+      post.summary +
+      post.tags.join(' ') +
+      (post.authors && post.authors.join(' ')) +
+      (post.authors &&
+        post.authors
+          .map((author) => allAuthors.filter((i) => i.slug.includes(author))[0].name)
+          .join(' '))
+
     return searchContent.toLowerCase().includes(searchValue.toLowerCase())
   })
 
