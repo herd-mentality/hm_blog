@@ -23,7 +23,7 @@ export default function Authors() {
                 role={a.role}
                 description={a.body.raw}
                 avatar={a.avatar}
-                href={'/'}
+                // href={a.site}
                 email={a.email}
                 github={a.github}
                 linkedin={a.linkedin}

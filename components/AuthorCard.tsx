@@ -8,7 +8,7 @@ const AuthorCard = ({
   description,
   role,
   avatar,
-  href,
+  // href,
   email,
   github,
   linkedin,
@@ -24,8 +24,8 @@ const AuthorCard = ({
       <div className="mt-6 ml-6 flex">
         <div className="flex flex-col justify-center">
           {avatar &&
-            (href ? (
-              <Link href={href} aria-label={`See ${name}'s posts`}>
+            (allBlogs.filter((b) => b.authors.includes(slug)).length != 0 ? (
+              <Link href={'/authors/' + slug} aria-label={`See ${name.match(/^\w+/g)[0]}'s posts`}>
                 <Image
                   alt={name}
                   src={avatar}
@@ -45,9 +45,13 @@ const AuthorCard = ({
             ))}
         </div>
         <div className="ml-4 flex flex-col justify-center">
-          <Link href={href} aria-label={`See ${name}'s posts`}>
+          {allBlogs.filter((b) => b.authors.includes(slug)).length != 0 ? (
+            <Link href={'/authors/' + slug} aria-label={`See ${name.match(/^\w+/g)[0]}'s posts`}>
+              <h2 className="nav-link mb-0 text-2xl !font-bold leading-8 tracking-tight">{name}</h2>
+            </Link>
+          ) : (
             <h2 className="nav-link mb-0 text-2xl !font-bold leading-8 tracking-tight">{name}</h2>
-          </Link>
+          )}
           <h3 className="prose text-gray-500 dark:text-gray-400">{role}</h3>
           <div className="flex space-x-3 py-1">
             {email && <SocialIcon kind="mail" href={`mailto:${email}`} size={6} />}
@@ -61,7 +65,7 @@ const AuthorCard = ({
         {description.length != 0 && (
           <p className="prose mb-3 max-w-none text-gray-500 dark:text-gray-400">{description}</p>
         )}
-        {allBlogs.filter((b) => b.authors.includes(slug)).length != 0 && href && (
+        {allBlogs.filter((b) => b.authors.includes(slug)).length != 0 && slug && (
           <Link
             href={'/authors/' + slug}
             className="tag-link text-base font-medium leading-6"
