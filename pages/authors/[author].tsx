@@ -1,12 +1,11 @@
 import { TagSEO } from '@/components/SEO'
 import siteMetadata from '@/data/siteMetadata'
 import ListLayout from '@/layouts/ListLayout'
-// import { kebabCase } from 'pliny/utils/kebabCase'
 import { allCoreContent } from 'pliny/utils/contentlayer'
 import { getAllAuthors } from 'src/getAllAuthors'
 import { InferGetStaticPropsType } from 'next'
 import { allBlogs, allAuthors } from 'contentlayer/generated'
-console.log(allAuthors)
+
 export async function getStaticPaths() {
   const authors = await getAllAuthors(allBlogs)
 
@@ -32,8 +31,9 @@ export const getStaticProps = async (context) => {
 }
 
 export default function Author({ posts, author }: InferGetStaticPropsType<typeof getStaticProps>) {
-  // Capitalize first letter and convert space to dash
-  const title = author[0].toUpperCase() //+ author.split(' ').join('-').slice(1)
+  // Find author in author data (allAuthors) matching on username first (e.g. sparrowhawk) to pull full name (e.g. 'Sparrow Hawk')
+  const author_full_name = allAuthors.filter((i) => i.slug.includes(author))[0].name
+  const title = author_full_name + "'s posts"
   return (
     <>
       <TagSEO
