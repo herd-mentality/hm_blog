@@ -13,6 +13,7 @@ const AuthorCard = ({
   github,
   linkedin,
   twitter,
+  personal,
   slug,
 }) => (
   <div className="w-4/5 min-w-[350px] max-w-[544px] p-4 md:w-1/2">
@@ -55,6 +56,7 @@ const AuthorCard = ({
           <h3 className="prose text-gray-500 dark:text-gray-400">{role}</h3>
           <div className="flex space-x-3 py-1">
             {email && <SocialIcon kind="mail" href={`mailto:${email}`} size={6} />}
+            {personal && <SocialIcon kind="personal" href={personal} size={6} />}
             {github && <SocialIcon kind="github" href={github} size={6} />}
             {linkedin && <SocialIcon kind="linkedin" href={linkedin} size={6} />}
             {twitter && <SocialIcon kind="twitter" href={twitter} size={6} />}

@@ -29,6 +29,7 @@ export default function Authors() {
                 linkedin={a.linkedin}
                 twitter={a.twitter}
                 slug={a.slug}
+                personal={a.personal}
                 // path={a.path}
               />
             ))}

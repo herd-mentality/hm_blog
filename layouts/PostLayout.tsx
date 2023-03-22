@@ -87,10 +87,13 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
                                     return 'LinkedIn'
                                     break
                                   case 'twitter':
-                                    return author.twitter.replace('https://twitter.com/', '@')
+                                    return author.twitter.replace('https://twitter.com/', 'tw@')
                                     break
                                   case 'github':
-                                    return author.github.replace('https://github.com/', 'gh:')
+                                    return author.github.replace('https://github.com/', 'gh@')
+                                    break
+                                  case 'personal':
+                                    return author.name.match(/^\w+/g)[0] + "'s blog"
                                     break
                                   default:
                                     return ''
