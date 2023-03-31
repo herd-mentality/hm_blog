@@ -11,14 +11,14 @@ const CustomLink = ({
 
   if (isInternalLink) {
     // @ts-ignore
-    return <Link href={href} {...rest} />
+    return <Link className="tag-link" href={href} {...rest} />
   }
 
   if (isAnchorLink) {
-    return <a href={href} {...rest} />
+    return <a className="tag-link" href={href} {...rest} />
   }
 
-  return <a target="_blank" rel="noopener noreferrer" href={href} {...rest} />
+  return <a target="_blank" className="tag-link" rel="noopener noreferrer" href={href} {...rest} />
 }
 
 export default CustomLink
