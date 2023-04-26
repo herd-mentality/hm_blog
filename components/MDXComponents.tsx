@@ -13,6 +13,8 @@ export const Wrapper = ({ layout, content, ...rest }: MDXLayout) => {
   return <Layout content={content} {...rest} />
 }
 
+// Add custom headings here
+
 export const MDXComponents: ComponentMap = {
   Image,
   TOCInline,
