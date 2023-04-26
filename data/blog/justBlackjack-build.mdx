@@ -7,132 +7,100 @@ summary: 'How blackjack rounds were simulated in JavaScript for justBlackjack'
 authors: ['darrenwong']
 ---
 
-will not be going over insurance/double/splitting
+<TOCInline toc={props.toc} indentDepth={2} />
 
-Card graphics stored in a list
+# Introduction
+I’m someone who believes in the power of experiential learning, that the best way to learn something is to do it yourself. So, when I needed to learn JavaScript for the purposes of front-end web development, I decided to tackle a small project - building a browser-based blackjack game. This was also highly inspired by an incredible JavaScript starter project, Universal Paperclips. The goal of this project was to develop a simple, fast-paced environment in which anyone could learn to play blackjack well without risking real money. The project was titled ‘justBlackjack’ to reflect the intended simplicity and focus on core gameplay.
 
-```js:cardList.js
-const cardList = [
-    {
-        cardName: 'cardBacking',
-        cardEntity:` _____ <br>|<span>\\ ~ /</span>|<br>|<span>}}:{{</span>|<br>|<span>}}:{{</span>|<br>|<span>}}:{{</span>|<br>|<span>/</span>_<span>~</span>_<span>\\</span>|`
-    },
-    {
-        cardName: 'Aspades',
-        cardEntity: ` _____ <br>|<span>A</span> .  |<br>| /.\\ |<br>|(_._)|<br>|  |  |<br>|____<span>A</span>|`
-    },
-    ...
-]
-```
+This will be a two-post series to avoid either post being too long. In this post, I’ll step through the setup for this project by discussing:
 
-Could put these in the order they're called to set up a game - but this might be the best way to organise these
+- An overview of the rules of blackjack 
+- The HTML and CSS structure of the project
 
-Utility functions to:
+In the next post, I’ll go through:
 
-    Pull a card and stacks class names on to the spans surrounding the pips to format it for viewing - prepCardStringForHTML
+- How each of the main blackjack components were implemented in JavaScript; and,
+- Next steps for the project.
 
-    Plotting cards in a diagonal stack, middle cards have only the first three characters drawn and are concatenated in a staggered fashion. with option to remove most recent card thats plotted to the left of the hand - drawCardStack
+Links before we get started:
 
-    
+- [justBlackjack](https://wongd-hub.github.io/justBlackjack/)
+- [Repository](https://github.com/wongd-hub/justBlackjack)
 
-Building deck:
+# Overview of Blackjack Rules
+Before moving to the technical aspects of this project, let’s quickly review the rules of this classic and popular card game.
 
-    constructDeck
+The game begins with each player - the player and the dealer - receiving two cards. Each hand's value is determined by adding the values of each card. Face cards are worth 10 points, numbered cards are worth their pip value, and aces can be worth 1 or 11 points.
 
-    shuffle
+The objective of the game is to get as close to a total value of 21 points as possible without going over. The player will draw cards from the deck (called the 'shoe') until they decide to stop, with each draw being referred to as a 'hit'. Once the player decides to stop drawing cards, the dealer will hit until they have a total value of at least 17.
 
-    initiateDeckSetup (discard first card from shoe)
+If a player's total goes over 21, they ‘bust’ or lose. If the dealer's total goes over 21, they bust and the player wins. If neither goes over 21, the player whose total is closest to 21 wins.
 
+To summarise, the dealer's hand, the player's hand, and the shoe are the key entities in blackjack. The goal is to hit until the sum value is as close to 21 as possible without going over.
 
+This is, of course, a simplified version of the rules. Further extensions will be introduced  where relevant, however we won’t discuss the deeper concepts such as splitting, doubling, or insurance in this post. Let’s move on to the next section, where we discuss implementing the visual aspects of blackjack in the browser.
 
-Dealing from deck:
+# Page Visuals
+In this section, I'll provide an overview of the HTML and CSS underlying justBlackjack to create a simple and visually appealing browser-based blackjack game. While the focus of this project is on the JavaScript implementation of the game mechanics, the visual elements are also important in creating an engaging user experience. Using HTML and CSS, we’ll attempt to structure and style the game interface to make it intuitive and easy to use, while also providing visual cues to the player during the game to enhance their playing and learning experience.
 
-    Update shoe count updateShoeCount
+![Full screenshot](/static/images/justblackjack/full-screenshot.png)
 
-    dealCards
+The entire site is contained within a div with the id of `'website-body'`, and components within this div are organised with CSS Grid. Grid suits our purposes here since it allows for precise placement of items on the page in a 2D layout.
 
-Player/dealer's hands:
+All of the sub-components, such as the player’s and dealer’s hands, title bar, and rules sidebar, are contained in separate divs and placed as children within the main div. This approach was chosen for better organisation and ease of positioning within the Grid. This also makes it easier to re-position the components for the mobile layout which is handled using CSS media queries. 
 
-    Draw player's hand drawPlayerHand
+See the basic structure of the HTML below, note that some contents are omitted for brevity.
 
-    addToPlayerHand
+<details>
+  <summary>justBlackjack HTML structure</summary>
+  
+  ```html:index.html {5, 10, 14, 18, 26, 30, 34}
+    <body>
 
-    drawDealerHand
-
-    addToDealerHand
-
-    revealDealerSecondHand
-
-Playing hands:
-
-    calculateHValue
-
-    updateScore
-
-    dealerPlay
-
-    .*Behaviour funcs to simulate sequence of events
-
-Resetting
-
-    purgeHands
-
-    endOfRoundState
-
-    resetForNextRound
-
-End... further utility functions
-
-    fadeIn
-
-    updateConsole
-
-    introduceRule
-
-        ruleFAceCards - puts up a rule about the value of face or ace cards if one pops up in yours or the dealers hands
-
-
-
-```html:index.html {5, 10, 14, 18, 26, 30, 34}
-<body>
-
-    <div class="website-body">
-        <div class="title-bar">
-            <!-- Title bar contents -->
-        </div>
-        <div class="side-bar">
-            <h2 class="rules">rule_set</h2>
-            <ul id="rule-set">
-                <!-- Responsive list of blackjack rules -->
-            </ul>
-        </div>
-        <div class="quick-settings-box">
-            <!-- Info in bottom left -->
-        </div>
-        <div class="player-cards" id="player-cards"></div>
-        <div class="player-options">
-            <!-- Player option buttons -->
-            <p id="hit-button">hit</p>
-            <p id="stand-button">stand</p>
-            ...
-        </div>
-        <div class="dealer-cards" id="dealer-cards"></div>
-        <div class="console" id="console">
-            <div class="console-container" id="console-container">
-                <!-- Console in bottom right -->
+        <div class="website-body">
+            <div class="title-bar">
+                <!-- Title bar contents -->
+            </div>
+            <div class="side-bar">
+                <h2 class="rules">rule_set</h2>
+                <ul id="rule-set">
+                    <!-- Responsive list of blackjack rules -->
+                </ul>
+            </div>
+            <div class="quick-settings-box">
+                <!-- Info in bottom left -->
+            </div>
+            <div class="player-cards" id="player-cards"></div>
+            <div class="player-options">
+                <!-- Player option buttons -->
+                <p id="hit-button">hit</p>
+                <p id="stand-button">stand</p>
+                ...
+            </div>
+            <div class="dealer-cards" id="dealer-cards"></div>
+            <div class="console" id="console">
+                <div class="console-container" id="console-container">
+                    <!-- Console in bottom right -->
+                </div>
+            </div>
+            <div class="shoe">
+                <!-- Shoe graphic and score counter -->
             </div>
         </div>
-        <div class="shoe">
-            <!-- Shoe graphic and score counter -->
-        </div>
-    </div>
 
-    <!-- Calling scripts -->
-    <script src="./cardList.js"></script>
-    <script src="./main.js"></script>
+        <!-- Calling scripts -->
+        <script src="./cardList.js"></script>
+        <script src="./main.js"></script>
 
-</body>
-```
+    </body>
+    ```
+</details>
+
+The choice of colour scheme was inspired by the Tomorrow Night 80's theme which I was introduced to through R Studio. To ensure the proper rendering of ASCII art, a monospace font was used throughout the project.
+
+![Colour palette](/static/images/justblackjack/colour-palette.png)
+
+## Cards
 
 ```
   _____    _____    _____    _____    _____    _____    _____
@@ -144,192 +112,198 @@ End... further utility functions
 
 ```
 
-Alternative way of structuring this is:
+The cards on the website are represented using ASCII art sourced from [asciiart.eu](https://www.asciiart.eu/miscellaneous/playing-cards). To make the pip numbers more visible, each pip number is nested within a span with the class `'col-emphasis'` and styled using CSS. Additionally, to indicate that the cards are dynamic, the pip numbers fade on mouseover. This effect is achieved using a `:hover` CSS selector, which reduces the opacity of the pip numbers when the cursor hovers over them. Overall, this simple design provides players with a clean and visually appealing representation of the cards in the game.
 
-* Administrative stuff - responsive rule set, card/score counter, console log
-* Main entity construction - deck initiation, player & dealer hand initialisation
+```js:cardList.js
+const cardList = [
+    // [...]
+    {
+        cardName: 'Aspades',
+        cardEntity: ` _____ <br>|<span>A</span> .  |<br>| /.\\ |<br>|(_._)|<br>|  |  |<br>|____<span>A</span>|`
+    },
+    {
+        cardName: '2spades',
+        cardEntity:` _____ <br>|<span>2</span>    |<br>|  ^  |<br>|     |<br>|  ^  |<br>|____<span>2</span>|`
+    },
+    // [...]
+]
+```
 
-* Go into the sequence of events:
-    1. Deal to dealer and player, one card face down for dealer
-    2. Provide an example hand (that has no insurance/split/double possibilies), give player standard options: hit or stand
-        2a. Hit behaviour function
-        2b. Stand behaviour function
-    3. Dealer behaviour
+The card entities as well as their string representations are stored in an array of objects (`cardList`). To assist with drawing these to the screen, I’ve written two convenience functions:
 
+- `prepCardStringForHTML()`: When passed a card item from `cardList`, this function takes the corresponding ASCII art string and reformats the HTML to print correctly on the site. It also utilises [regex](https://www.rexegg.com/) to add the class `‘col-emphasis’` to spans that contain the pip values so that we can target their text colour using CSS.
 
-# Learning game tools
+<details>
+  <summary>Code block</summary>
+
+    ```js:cardList.js
+    function prepCardStringForHTML(
+        cardElement, 
+        // [...]
+    ) {
+        // [...]
+
+            // Replace any spaces with the non-breaking space HTML entity
+            var tmp = cardElement.replace(/\s/g, '&nbsp;');
+
+            // Add class 'col-emphasis' to the first instance of a <span> in each card's string 
+            var t = 0;
+            var tmp_1 = tmp.replace(/<span>/g, match => ++t === 1 ? '<span class="col-emphasis">' : match)
+                    // Add further 'bottom-pip' class to the second <span> for now deprecated additional styling
+                    .replace(/<span>/g, '<span class="col-emphasis bottom-pip">');
+        
+            return tmp_1;
+
+        // [...]
+    }
+    ```
+</details>
+
+- `drawCardStack()`: We need to be able to draw stacks of cards for when a player’s hand goes over two cards. Ideally we’d be able to quickly see the pip value of every card in the stack as well. This function makes use of JavaScript loops (as well as `map()`-ing over each element in an array) to take multiple card elements and plot them in a diagonal stack, with all cards under the top one showing the first three characters of their card.
+
+![Screenshot of card stack](/static/images/justblackjack/card-screenshot.png)
+
+<details>
+  <summary>Code block</summary>
+
+    ```js:cardList.js
+    function drawCardStack(hand, orient = 'row', removeLastNCards = 0) {
+        
+        // This is used to leave out the newest card in the hand,
+        // this card will be shown separately
+        var handTmp = hand.slice(0, hand.length - removeLastNCards);
+
+        // If there's only one card to stack, no action required
+        if (handTmp.length === 1) {return null}
+
+        // This function returns the visible characters of the ASCII art
+        // for cards that are under the top card in the stack
+        function pullFirstThreeChars(hand, index, orient = 'row') { 
+            return cardList
+                // Query cardList for ASCII string and split by newline 
+                // into list of strings 
+                .filter(obj => {return obj.cardName === hand[index].value + hand[index].suit})[0]
+                .cardEntity
+                .split('<br>')
+                // For each line of ASCII art, pull the right number 
+                // of characters
+                .map(function(el, i) { 
+                    if (i === 0 && orient === 'diag') {
+                        // If a diagonal stack, the full first line of 
+                        // the card is visible
+                        return el
+                    } else if (i === 1) {
+                        // The second line of the card includes a span 
+                        // element, so to capture the first 3 letters of 
+                        // the second line, we need to account for the
+                        // extra characters this tag adds. e.g. for an 
+                        // ace of spades, this is what is captured: 
+                        //   '|<span>A</span> '
+                        return el.slice(0, 16)
+                    } else {
+                        // Otherwise, return the first 3 characters of 
+                        // the line as normal
+                        return el.slice(0, 3)
+                    }
+                });
+        }
+
+        if (orient === 'row) {
+
+            // [...]
+
+        } else if (orient === 'diag') {
+
+            // Get the visible characters of the card at the bottom of
+            // the stack. The remaining card characters will be appended
+            // to this
+            var leftSides = pullFirstThreeChars(handTmp, 0, 'diag');
+
+            // For each card between the first and the last in the stack...
+            for (let j = 1; j <= handTmp.length - 2; j++) {
+                // ... get visible characters
+                var toAdd = pullFirstThreeChars(handTmp, j, 'diag');
+                
+                // ... then add the contents of each card to the lines 
+                // currently in leftSides, starting further down by one
+                // line for each new card in the hand creating a diagonal 
+                // cascading effect. 
+                var len = leftSides.length;
+                for (let k = 0; k <= len; k++) { 
+                    if (k >= j && k <= len - 1) {
+                        leftSides[k] = leftSides[k] + toAdd[k - j];
+                    } else if (k === len) {
+                        leftSides[k] = '   '.repeat(j) + toAdd[k - j];
+                    }    
+                }
+            }
+
+            // Add the full contents of the final card on top 
+            var finalCard = cardList
+                .filter(obj => {return obj.cardName === handTmp[handTmp.length - 1].value + handTmp[handTmp.length - 1].suit})[0]
+                .cardEntity
+                .split('<br>');
+
+            var len = leftSides.length;
+            for (let j = 0; j <= len; j++) { 
+                if (j >= handTmp.length - 1 && j <= len - 1) {
+                    leftSides[j] = leftSides[j] + finalCard[j - handTmp.length + 1];
+                } else if (j === len) {
+                    leftSides[j] = '   '.repeat(handTmp.length - 1) + finalCard[j - handTmp.length + 1];
+                }    
+            }
+
+            // This output is then run through prepCardStringForHTML()
+            // to ensure that pips are properly styled with the 
+            // appropriate colour.
+            return leftSides.join('<br>');
+
+        }
+
+    }
+    ```
+</details>
+<br />
+# Javascript Blackjack Implementation
+...
+## Learning and game tools
+...
+### Responsive rule set
+
 ```js:main.js
+// Initiate rule switches
+var ruleSet = {
+    'face-rule': false, 
+    'ace-rule': false, 
+    'split-rule': false, 
+    'double-rule': false, 
+    'insurance-rule': false, 
+    'split-max-rule': false
+}
+
+// [...]
+
 function introduceRule(rule, styleClass) {
-    ...
+    if (!ruleSet[styleClass]) {
         document.getElementById('rule-set').innerHTML += `<li id="${styleClass}" class="${styleClass}">${rule}</li>`;
         document.getElementById(styleClass).style.visibility = 'visible';
-        fadeIn(document.getElementById(styleClass));
+        fadeIn(document.getElementById(styleClass)); // Another convenience function defined in main.js
         ruleSet[styleClass] = true;
-    ...
-}
-```
 
-```js:main.js
-function updateScore(outcome) {
-    if (outcome === 'win' || outcome === 'w') {
-        scoreCount++
-        ...
-            document.getElementById('score-counter').innerHTML += ` <span id="delta" class="col-gree"'>+1</span>`;
-        ...
-    } else if (outcome === 'blackjack' || outcome === 'b') {
-        scoreCount = scoreCount + 1.5;
-        ...
-            document.getElementById('score-counter').innerHTML += ` <span id="delta" class="col-gree"'>+1.5</span>`;
-        ...
-    } else if (outcome === 'lose' || outcome === 'l') {
-        scoreCount--
-        ...
-            document.getElementById('score-counter').innerHTML += ` <span id="delta" class="col-oran"'>-1</span>`;
-        ...
-    } else if (outcome === 'draw' || outcome === 'd') {
-        ...
-            document.getElementById('score-counter').innerHTML += ` <span id="delta" class="col-emphasis"'>+0</span>`;
-        ...
-    } else if ...
-
-    fadeIn(document.getElementById('delta'), timeToFade = 20, removeElement = true);
-    document.getElementById('score-ticker-value').innerHTML = scoreCount;
-    
-    ...
-}
-```
-
-
-```js:main.js
-function updateConsole(update = 'No console update provided') {
-    var parentElement = document.getElementById('blinker').parentNode;
-    var newMessage = document.createElement('p');
-
-    newMessage.innerHTML = `> ${update}<br>`;
-    parentElement.insertBefore(newMessage, document.getElementById('blinker'))
-}
-```
-
-# Main entities
-
-## Constructing deck
-
-```js:main.js
-const suits = ["spades", "diamonds", "clubs", "hearts"];
-const values = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
-
-function constructDeck(deckNumber) {
-	let deck = new Array();
-	for(let i = 0; i < suits.length; i++) {
-		for(let x = 0; x < values.length; x++) {
-            var card
-            if (
-                // Will be false if values[x] is not coercible to a numeric
-                !isNaN(values[x]) 
-            ) {
-                card = {value: values[x], suit: suits[i], numericValue: parseInt(values[x]), deckNumber: deckNumber};
-            } else if (values[x] === "J" | values[x] === "Q" | values[x] === "K") {
-                card = {value: values[x], suit: suits[i], numericValue: 10, deckNumber: deckNumber};
-            } else if (values[x] === "A") {
-                card = {value: values[x], suit: suits[i], numericValue: 24601, deckNumber: deckNumber};
-            }
-			deck.push(card);
-		}
-	}
-	return deck;
-}
-
-function shuffle(array) {
-  let i = array.length;
-  while (i--) {
-    const ri = Math.floor(Math.random() * i);
-    [array[i], array[ri]] = [array[ri], array[i]];
-  }
-  return array;
-}
-
-
-```
-
-
-
-```js:main.js
-function calculateHValue(HValueArray) {
-
-    // Initialise return object
-    var result = {};
-    var HValueArray_copy = JSON.parse(JSON.stringify(HValueArray));
-    
-    // Count aces and remove them from the hand for now since
-    //  their value can vary.
-    var aceCounter = 0;
-
-    for (let i = HValueArray_copy.length - 1; i >= 0; i--) {
-        if (HValueArray_copy[i] === 24601) {
-            aceCounter++;
-            HValueArray_copy.splice(i, 1);
-        }
+        // Also add to mobile list
+        document.getElementById('rule-2').innerHTML += `<li id="${styleClass + '2'}" class="${styleClass}">${rule}</li>`;
+        document.getElementById(styleClass + '2').style.visibility = 'visible';
     }
 
-    result.aceCounter = aceCounter;
+    // If multiple rules are introduced at once, the interval will mess up;
+    //  bandaid fix is to catch any rules that have no opacity and assign the correct opacity
+    document.querySelectorAll('li[class*=\'-rule\']').forEach(function(x) {if (x.style.opacity === '') { x.style.opacity = 1 }});
 
-    // Sum value of remaining items in hand
-    var preAceSum = HValueArray_copy.reduce((a, b) => a + b, 0);
-    var postAceOptions;
+}
 
-    result.preAceSum = preAceSum;
+// [...]
 
-    // Handle adding Aces.
-    //  Since there's such a limited amount of combinations, there's probably no need to 
-    //  pursue this programatically.
-    if (aceCounter > 0) {
-
-        switch (aceCounter) {
-            case 1: postAceOptions = [1, 11]; break;
-            case 2: postAceOptions = [2, 12, 22]; break;
-            case 3: postAceOptions = [3, 13, 23, 33]; break;
-            case 4: postAceOptions = [4, 14, 24, 34, 44]; break;
-        }
-
-        for(var i = 0; i < postAceOptions.length; i++) { postAceOptions[i] += preAceSum; }
-
-        // Finally, remove all values that are above 21, but if this causes the length of the array 
-        //  to become 0, the hand is bust.
-        
-        var aceOptionBkup = JSON.pare(JSON.stringify(postAceOptions));
-
-        for (let i = postAceOptions.length - 1; i >= 0; i--) {
-            if (postAceOptions[i] > 21) {
-                postAceOptions.splice(i, 1);
-            }
-        }
-
-        if (postAceOptions.length < 1) { 
-            // Display the smallest hand value calculated (which will be > 21)
-            result.postAceOptions = [Math.min.apply(null, aceOptionBkup)];
-            result.initialState = 'bust';
-        } else if (postAceOptions.includes(21)) { 
-            // On a (10, Ace) hand, this assumes that the hand is blackjack, not 11
-            result.postAceOptions = postAceOptions;
-            result.initialState = 'blackjack';
-        } else {
-            result.postAceOptions = postAceOptions;
-            result.initialState = 'none';
-        }
-
-    } else {
-
-        // If no aces, just return the sum of values
-        result.postAceOptions = [preAceSum];
-        if (preAceSum > 21) {
-            result.initialState = 'bust';
-        } else if (preAceSum === 21) {
-            result.initialState = 'blackjack';
-        } else {
-            result.initialState = 'none';
-        }
-
-    }
-    return result;
-} 
+// Usage example
+introduceRule('face cards are worth <span class="col-emphasis">10</span>', 'face-rule')
 ```
+
