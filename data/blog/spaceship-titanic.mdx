@@ -35,20 +35,23 @@ Before we begin, some links and setup code:
 -   [Kaggle competition
     link](https://www.kaggle.com/competitions/spaceship-titanic/overview)
 
-```r
-library(tidyverse)    # Data manipulation and cleaning
-library(data.table)   # Same as above & utilities for loading/saving csvs
-library(ggplot2)      # Charting
-library(scales)       # Prettier printing of values in charts
-library(gridExtra)    # Arrange multiple ggplot2 plots on one chart
-library(infotheo)     # Mutual information
-library(Information)  # Weight of evidence/information value
-library(mice)         # Missing value prediction
-library(randomForest) # Random forests
-library(xgboost)      # XGBoost ML model
-library(caret)        # Confusion matrices & grid search
-library(ROCR)         # Calculation of AUC and optimal classification thresholds
-```
+<details>
+  <summary>See R libraries used</summary>
+  ```r
+  library(tidyverse)    # Data manipulation and cleaning
+  library(data.table)   # Same as above & utilities for loading/saving csvs
+  library(ggplot2)      # Charting
+  library(scales)       # Prettier printing of values in charts
+  library(gridExtra)    # Arrange multiple ggplot2 plots on one chart
+  library(infotheo)     # Mutual information
+  library(Information)  # Weight of evidence/information value
+  library(mice)         # Missing value prediction
+  library(randomForest) # Random forests
+  library(xgboost)      # XGBoost ML model
+  library(caret)        # Confusion matrices & grid search
+  library(ROCR)         # Calculation of AUC and optimal classification thresholds
+  ```
+</details>
 
 We can now load the data-sets that Kaggle provides us and then bind them
 together.
@@ -136,33 +139,37 @@ variables.
 Let’s first view the distinct value sets and their distributions for the
 cardinality categorical variables.
 
-```r
-all %>% 
-  # Variables of interest
-  select(HomePlanet, Destination, CryoSleep, VIP) %>% 
-  gather(variable, value) %>% 
-  # Calculating percentage distributions for each value
-  group_by(variable, value) %>% 
-  summarise(
-    n = n(),
-    .groups = 'drop'
-  ) %>% 
-  group_by(variable) %>% 
-  mutate(percentage = n / sum(n)) %>% 
-  ungroup() %>% 
-  # Charting
-  ggplot(aes(x = value, y = percentage, label = percent(percentage, accuracy = 0.1))) +
-  geom_col() +
-  facet_wrap(vars(variable), scales = 'free') +
-  # Label formatting
-  labs(x = 'Value', y = 'Percent', title = 'Fig 1. Dsn of Categorical Variables') +
-  geom_text(
-    position = position_dodge(width = .9),
-    vjust = -0.5,
-    size = 3
-  ) + 
-  scale_y_continuous(labels = percent)
-```
+<details>
+  <summary>`ggplot2` code</summary>
+
+  ```r
+  all %>% 
+    # Variables of interest
+    select(HomePlanet, Destination, CryoSleep, VIP) %>% 
+    gather(variable, value) %>% 
+    # Calculating percentage distributions for each value
+    group_by(variable, value) %>% 
+    summarise(
+      n = n(),
+      .groups = 'drop'
+    ) %>% 
+    group_by(variable) %>% 
+    mutate(percentage = n / sum(n)) %>% 
+    ungroup() %>% 
+    # Charting
+    ggplot(aes(x = value, y = percentage, label = percent(percentage, accuracy = 0.1))) +
+    geom_col() +
+    facet_wrap(vars(variable), scales = 'free') +
+    # Label formatting
+    labs(x = 'Value', y = 'Percent', title = 'Fig 1. Dsn of Categorical Variables') +
+    geom_text(
+      position = position_dodge(width = .9),
+      vjust = -0.5,
+      size = 3
+    ) + 
+    scale_y_continuous(labels = percent)
+  ```
+</details>
 
 ![eda-cat-low-cardinality-1](/static/images/spaceship-titanic/eda-cat-low-cardinality-1.png)
 
@@ -250,37 +257,40 @@ substituent pieces of information it provides. First we’ll split the
 we’ll view the distributions of the categorical information provided by
 `Deck` and `Side`.
 
-```r
-all_cabin_spl <- all %>% 
-  mutate(Cabin = na_if(Cabin, "")) %>% 
-  separate(Cabin, c("Deck", "Num", "Side"), "/")
+<details>
+  <summary>`ggplot2` code</summary>
+  ```r
+  all_cabin_spl <- all %>% 
+    mutate(Cabin = na_if(Cabin, "")) %>% 
+    separate(Cabin, c("Deck", "Num", "Side"), "/")
 
-all_cabin_spl %>% 
-  # Variables of interest
-  select(Deck, Side) %>% 
-  gather(variable, value) %>% 
-  # Calculating percentage distributions for each value
-  group_by(variable, value) %>% 
-  summarise(
-    n = n(),
-    .groups = 'drop'
-  ) %>% 
-  group_by(variable) %>% 
-  mutate(percentage = n / sum(n)) %>% 
-  ungroup() %>% 
-  # Charting
-  ggplot(aes(x = value, y = percentage, label = percent(percentage, accuracy = 0.1))) +
-  geom_col() +
-  facet_wrap(vars(variable), scales = 'free') +
-  # Label formatting
-  labs(x = 'Value', y = 'Percent', title = 'Fig 2. Dsn of Deck and Side') +
-  geom_text(
-    position = position_dodge(width = .9),
-    vjust = -0.5,
-    size = 3
-  ) + 
-  scale_y_continuous(labels = percent)
-```
+  all_cabin_spl %>% 
+    # Variables of interest
+    select(Deck, Side) %>% 
+    gather(variable, value) %>% 
+    # Calculating percentage distributions for each value
+    group_by(variable, value) %>% 
+    summarise(
+      n = n(),
+      .groups = 'drop'
+    ) %>% 
+    group_by(variable) %>% 
+    mutate(percentage = n / sum(n)) %>% 
+    ungroup() %>% 
+    # Charting
+    ggplot(aes(x = value, y = percentage, label = percent(percentage, accuracy = 0.1))) +
+    geom_col() +
+    facet_wrap(vars(variable), scales = 'free') +
+    # Label formatting
+    labs(x = 'Value', y = 'Percent', title = 'Fig 2. Dsn of Deck and Side') +
+    geom_text(
+      position = position_dodge(width = .9),
+      vjust = -0.5,
+      size = 3
+    ) + 
+    scale_y_continuous(labels = percent)
+  ```
+</details>
 
 ![eda-cat-cabin-cut-1](/static/images/spaceship-titanic/eda-cat-cabin-cut-1.png)
 
@@ -338,28 +348,32 @@ Let’s see if the traveller’s group size will be helpful for our
 purposes, first we’ll see what the distribution of group sizes looks
 like.
 
-```r
-# Separate the PassengerId variable into a Group and Passenger ID.
-all_grp_sep <- all %>% 
-  separate(PassengerId, c('GroupId', 'PassengerId'), "_")
+<details>
+  <summary>Manipulation & `ggplot2` code</summary>
 
-# Get number of individuals within each group ID.
-all_grps <- all_grp_sep %>% 
-  distinct(GroupId, PassengerId) %>% 
-  group_by(GroupId) %>% 
-  summarise(
-    group_size = n(), 
-    .groups = 'drop'
-  )
+  ```r
+  # Separate the PassengerId variable into a Group and Passenger ID.
+  all_grp_sep <- all %>% 
+    separate(PassengerId, c('GroupId', 'PassengerId'), "_")
 
-# View distribution of group sizes
-all_grps %>% 
-  ggplot(aes(x = group_size)) +
-  geom_histogram(bins = 30) +
-  scale_x_continuous(breaks = unique(all_grps$group_size) %>% sort()) +
-  scale_y_continuous(labels = comma) +
-  labs(x = 'Group Size', y = "Count", title = "Fig 3. Distribution of Travel Group Sizes")
-```
+  # Get number of individuals within each group ID.
+  all_grps <- all_grp_sep %>% 
+    distinct(GroupId, PassengerId) %>% 
+    group_by(GroupId) %>% 
+    summarise(
+      group_size = n(), 
+      .groups = 'drop'
+    )
+
+  # View distribution of group sizes
+  all_grps %>% 
+    ggplot(aes(x = group_size)) +
+    geom_histogram(bins = 30) +
+    scale_x_continuous(breaks = unique(all_grps$group_size) %>% sort()) +
+    scale_y_continuous(labels = comma) +
+    labs(x = 'Group Size', y = "Count", title = "Fig 3. Distribution of Travel Group Sizes")
+  ```
+</details>
 
 ![eda-cat-passengerid-1](/static/images/spaceship-titanic/eda-cat-passengerid-1.png)
 
@@ -427,55 +441,58 @@ all_name_split %>% distinct(first_name) %>% nrow() # 2,884 - 3 days worth of que
 
 ## [1] 2884
 ```
+<details>
+  <summary>Using genderize.io's CSV tool</summary>
 
-```r
-# Split the distinct list of first names into 3 parts, with max 1,000 rows each
-split_name_list <- all_name_split %>% 
-  distinct(first_name) %>% 
-  split(rep(1:ceiling(nrow(.) / 1000), each = 1000, length.out = nrow(.)))
+  ```r
+  # Split the distinct list of first names into 3 parts, with max 1,000 rows each
+  split_name_list <- all_name_split %>% 
+    distinct(first_name) %>% 
+    split(rep(1:ceiling(nrow(.) / 1000), each = 1000, length.out = nrow(.)))
 
-for (i in 1:length(split_name_list)) {
-  fwrite(split_name_list[[i]], paste0('output/intermediate/', i, '.csv'))
-}
+  for (i in 1:length(split_name_list)) {
+    fwrite(split_name_list[[i]], paste0('output/intermediate/', i, '.csv'))
+  }
 
-#### Run through genderize.io's CSV tool
+  #### Run through genderize.io's CSV tool
 
-# Check for names that may have been missed by the API
-all_name_split %>% 
-  distinct(first_name) %>% 
-  anti_join(
-    bind_rows(
-      fread('other-inputs/1_genderize.csv'),
-      fread('other-inputs/2_genderize.csv'),
-      fread('other-inputs/3_genderize.csv')
-    )
-    , by = 'first_name'
-  ) %>%
-  fwrite('output/intermediate/4.csv')
+  # Check for names that may have been missed by the API
+  all_name_split %>% 
+    distinct(first_name) %>% 
+    anti_join(
+      bind_rows(
+        fread('other-inputs/1_genderize.csv'),
+        fread('other-inputs/2_genderize.csv'),
+        fread('other-inputs/3_genderize.csv')
+      )
+      , by = 'first_name'
+    ) %>%
+    fwrite('output/intermediate/4.csv')
 
-# Check that all names have now been genderised
-gender_lookup <- bind_rows(
-  fread('other-inputs/1_genderize.csv'),
-  fread('other-inputs/2_genderize.csv'),
-  fread('other-inputs/3_genderize.csv'),
-  fread('other-inputs/4_genderize.csv'),
-)
+  # Check that all names have now been genderised
+  gender_lookup <- bind_rows(
+    fread('other-inputs/1_genderize.csv'),
+    fread('other-inputs/2_genderize.csv'),
+    fread('other-inputs/3_genderize.csv'),
+    fread('other-inputs/4_genderize.csv'),
+  )
 
-all_name_split %>% 
-  distinct(first_name) %>% 
-  anti_join(gender_lookup, by = 'first_name') %>%
-  nrow() == 0
-## [1] TRUE
-```
+  all_name_split %>% 
+    distinct(first_name) %>% 
+    anti_join(gender_lookup, by = 'first_name') %>%
+    nrow() == 0
+  ## [1] TRUE
+  ```
 
-```r
-# Add these back to the main dataset
-all_gendered <- all_grouped %>% 
-  separate(Name, c("first_name", "last_name"), extra = 'merge', fill = 'right') %>% 
-  left_join(gender_lookup, by = 'first_name')
+  ```r
+  # Add these back to the main dataset
+  all_gendered <- all_grouped %>% 
+    separate(Name, c("first_name", "last_name"), extra = 'merge', fill = 'right') %>% 
+    left_join(gender_lookup, by = 'first_name')
 
-train_gendered <- all_gendered %>% filter(dataset == 'train')
-```
+  train_gendered <- all_gendered %>% filter(dataset == 'train')
+  ```
+</details>
 
 Let’s see quickly if transportation rate tends to vary with gender.
 
@@ -542,23 +559,27 @@ Let’s view the distributions of these variables for those that were
 transported and those that weren’t to see if we can spot any
 relationships.
 
-```r
-train_cabin_spl %>% 
-  mutate(Num = as.numeric(Num)) %>% 
-  # Select variables that are numeric or those named 'Transported' (the target)
-  select_if(sapply(., is.numeric) | str_detect(names(.), "Transported")) %>% 
-  gather(variable, value, -Transported) %>% 
-  # Charting
-  ggplot(aes(x = value, fill = Transported)) +
-  geom_histogram(position = 'dodge', bins = 30) +
-  # Split charts by variable
-  facet_wrap(vars(variable), scales = 'free') +
-  # Labels and legends
-  scale_y_continuous(labels = comma) +
-  scale_x_continuous(labels = comma) +
-  theme(legend.position = "bottom") + 
-  labs(x = 'Value', y = 'Count', title = 'Fig 4. Dsn of Numeric Variables vs Target ')
-```
+<details>
+  <summary>`ggplot2` code</summary>
+
+  ```r
+  train_cabin_spl %>% 
+    mutate(Num = as.numeric(Num)) %>% 
+    # Select variables that are numeric or those named 'Transported' (the target)
+    select_if(sapply(., is.numeric) | str_detect(names(.), "Transported")) %>% 
+    gather(variable, value, -Transported) %>% 
+    # Charting
+    ggplot(aes(x = value, fill = Transported)) +
+    geom_histogram(position = 'dodge', bins = 30) +
+    # Split charts by variable
+    facet_wrap(vars(variable), scales = 'free') +
+    # Labels and legends
+    scale_y_continuous(labels = comma) +
+    scale_x_continuous(labels = comma) +
+    theme(legend.position = "bottom") + 
+    labs(x = 'Value', y = 'Count', title = 'Fig 4. Dsn of Numeric Variables vs Target ')
+  ```
+<details>
 
 ![eda-num-dsns-1](/static/images/spaceship-titanic/eda-num-dsns-1.png)
 
@@ -574,18 +595,22 @@ the features in terms of relationship with the target variable, then
 weight of evidence/information value to rank features and determine
 which features we’ll use in our random forest.
 
-```r
-# Prep the dataset - all_wrk will have both our PassengerId and GroupId variables split out, as well as our group size variable
-all_wrk <- all_cabin_spl %>% 
-  separate(PassengerId, c('GroupId', 'PassengerId'), "_") %>% 
-  left_join(all_grps, by = 'GroupId') %>% 
-  mutate_all(.funs = ~ na_if(., "")) %>% 
-  separate(Name, c("first_name", "last_name"), extra = 'merge', fill = 'right') %>% 
-  left_join(gender_lookup, by = 'first_name')
+<details>
+  <summary>Manipulation code</summary>
 
-# We'll pull the training subset of this data-set since we want to compare values to the target
-train_wrk <- all_wrk %>% filter(dataset == 'train') %>% select(-dataset)
-```
+  ```r
+  # Prep the dataset - all_wrk will have both our PassengerId and GroupId variables split out, as well as our group size variable
+  all_wrk <- all_cabin_spl %>% 
+    separate(PassengerId, c('GroupId', 'PassengerId'), "_") %>% 
+    left_join(all_grps, by = 'GroupId') %>% 
+    mutate_all(.funs = ~ na_if(., "")) %>% 
+    separate(Name, c("first_name", "last_name"), extra = 'merge', fill = 'right') %>% 
+    left_join(gender_lookup, by = 'first_name')
+
+  # We'll pull the training subset of this data-set since we want to compare values to the target
+  train_wrk <- all_wrk %>% filter(dataset == 'train') %>% select(-dataset)
+  ```
+</details>
 
 ## 3.1 Mutual information
 
@@ -599,31 +624,35 @@ which knowledge of one variable reduces uncertainty about another.
 We’ll be using the `infotheo` package to perform this part of the
 analysis.
 
-```r
-# Set up a data-frame that tracks variables and their mutual information value which we'll fill in...
-mutual_info <- tibble(
-  variable = train_wrk %>% select(-Transported, -GroupId, -PassengerId, -Num, -ends_with('_name')) %>% colnames(),
-  mutual_info = NA_real_
-)
+<details>
+  <summary>Mutual information & `ggplot2` code</summary>
 
-# ... with this for-loop
-for (i in 1:nrow(mutual_info)) {
+  ```r
+  # Set up a data-frame that tracks variables and their mutual information value which we'll fill in...
+  mutual_info <- tibble(
+    variable = train_wrk %>% select(-Transported, -GroupId, -PassengerId, -Num, -ends_with('_name')) %>% colnames(),
+    mutual_info = NA_real_
+  )
 
-  mutual_info[[i, 2]] <- mutinformation(train_wrk[mutual_info[[i, 1]]], train_wrk$Transported)
-  
-}
+  # ... with this for-loop
+  for (i in 1:nrow(mutual_info)) {
 
-# Now that we have our mutual information values, let's create an ordered factor to ensure our plot has them in descending order
-mutual_info_fct_order <- mutual_info %>% arrange(mutual_info) %>% pull(variable)
+    mutual_info[[i, 2]] <- mutinformation(train_wrk[mutual_info[[i, 1]]], train_wrk$Transported)
+    
+  }
 
-mutual_info <- mutual_info %>% mutate(variable = factor(variable, levels = mutual_info_fct_order))
+  # Now that we have our mutual information values, let's create an ordered factor to ensure our plot has them in descending order
+  mutual_info_fct_order <- mutual_info %>% arrange(mutual_info) %>% pull(variable)
 
-# Finally, chart the mutual information values
-mutual_info %>% 
-  ggplot(aes(x = mutual_info, y = variable)) +
-  geom_col() +
-  labs(x = 'Mutual Information', y = 'Variable', title = 'Fig 5. Mutual Information of Features')
-```
+  mutual_info <- mutual_info %>% mutate(variable = factor(variable, levels = mutual_info_fct_order))
+
+  # Finally, chart the mutual information values
+  mutual_info %>% 
+    ggplot(aes(x = mutual_info, y = variable)) +
+    geom_col() +
+    labs(x = 'Mutual Information', y = 'Variable', title = 'Fig 5. Mutual Information of Features')
+  ```
+</details>
 
 ![fi-mi-1](/static/images/spaceship-titanic/fi-mi-1.png)
 
@@ -651,41 +680,49 @@ indicates at least medium predictive power, we’ll be using this as our
 baseline IV cutoff for feature importance. We’ll be using the
 `Information` package to perform this part of this analysis.
 
-```r
-# To do this, we'll need all character variables as factors and logical variables as numerics
-train_woe <- train_wrk %>% 
-  select(-GroupId, -PassengerId, -ends_with('_name')) %>% 
-  # Convert all character columns to factors
-  mutate_if(
-    is.character,
-    factor
-  ) %>% 
-  # Force Transported to numeric
-  mutate(Transported = as.numeric(Transported))
+<details>
+  <summary>Weight of evidence code</summary>
 
-# Calculate Weight of Evidence over each column, then Information Value
-inf_value <- create_infotables(data = train_woe, y = "Transported", bins = 10)$Summary
-```
+  ```r
+  # To do this, we'll need all character variables as factors and logical variables as numerics
+  train_woe <- train_wrk %>% 
+    select(-GroupId, -PassengerId, -ends_with('_name')) %>% 
+    # Convert all character columns to factors
+    mutate_if(
+      is.character,
+      factor
+    ) %>% 
+    # Force Transported to numeric
+    mutate(Transported = as.numeric(Transported))
+
+  # Calculate Weight of Evidence over each column, then Information Value
+  inf_value <- create_infotables(data = train_woe, y = "Transported", bins = 10)$Summary
+  ```
+</details>
 
 With the Information Values calculated, let’s then compare the order of
 variables with those produced by the mutual information analysis:
 
-```r
-# Using gridExtra to arrange two separate ggplot2 charts
-grid.arrange(
-  mutual_info %>% 
-    ggplot(aes(x = mutual_info, y = variable)) +
-    geom_col() +
-    labs(x = 'Mutual Information', y = 'Variable', title = 'Fig 6. Mutual Information vs.'),
-  inf_value %>% 
-    mutate(Variable = factor(Variable, levels = inf_value %>% arrange(IV) %>% pull(Variable))) %>% 
-    ggplot(aes(x = IV, y = Variable)) +
-    geom_col() +
-    labs(x = 'Information Value', y = element_blank(), title = 'Information Value') +
-    geom_vline(xintercept = 0.1),
-  ncol = 2
-)
-```
+<details>
+  <summary>`ggplot2` code</summary>
+
+  ```r
+  # Using gridExtra to arrange two separate ggplot2 charts
+  grid.arrange(
+    mutual_info %>% 
+      ggplot(aes(x = mutual_info, y = variable)) +
+      geom_col() +
+      labs(x = 'Mutual Information', y = 'Variable', title = 'Fig 6. Mutual Information vs.'),
+    inf_value %>% 
+      mutate(Variable = factor(Variable, levels = inf_value %>% arrange(IV) %>% pull(Variable))) %>% 
+      ggplot(aes(x = IV, y = Variable)) +
+      geom_col() +
+      labs(x = 'Information Value', y = element_blank(), title = 'Information Value') +
+      geom_vline(xintercept = 0.1),
+    ncol = 2
+  )
+  ```
+</details>
 
 ![fi-mi-v-woe-1](/static/images/spaceship-titanic/fi-mi-v-woe-1.png)
 
@@ -818,46 +855,54 @@ our results once our imputations and predictions are complete for the
 For now, let’s put what we’ve learnt into effect and assign `FALSE`s to
 `CryoSleep` where luxury spend is \> 0:
 
-```r
-all_wrk_tmp <- all_wrk_tmp %>% 
-  mutate(
-    # Create a sum of all luxury spends, allowing NAs to flow through so we don't accidentally catch any in the following statement
-    lux_spend_ignorenas = rowSums(select(., ShoppingMall, VRDeck, FoodCourt, Spa, RoomService), na.rm = TRUE),
-    # Impute the value of CryoSleep where the sum of luxury spend (where all values of luxury spend were available) is non-zero
-    CryoSleep = case_when(
-      is.na(CryoSleep) & lux_spend_ignorenas > 0 ~ FALSE,
-      TRUE ~ CryoSleep
+<details>
+  <summary>Manipulation code</summary>
+
+  ```r
+  all_wrk_tmp <- all_wrk_tmp %>% 
+    mutate(
+      # Create a sum of all luxury spends, allowing NAs to flow through so we don't accidentally catch any in the following statement
+      lux_spend_ignorenas = rowSums(select(., ShoppingMall, VRDeck, FoodCourt, Spa, RoomService), na.rm = TRUE),
+      # Impute the value of CryoSleep where the sum of luxury spend (where all values of luxury spend were available) is non-zero
+      CryoSleep = case_when(
+        is.na(CryoSleep) & lux_spend_ignorenas > 0 ~ FALSE,
+        TRUE ~ CryoSleep
+      )
     )
-  )
-```
+  ```
+</details>
 
 For `CryoSleep` where luxury spend isn’t greater than zero, we’ll use
 the `mice` package to predict missing values with random forests.
 
-```r
-# Create imputation
-imput_cryosleep <- all_wrk_tmp %>%
-  mutate(
-    HomePlanet_fct = factor(HomePlanet), 
-    Destination_fct = factor(Destination), 
-    Deck_fct = factor(Deck)
-  ) %>%
-  select(CryoSleep, HomePlanet_fct, Destination_fct, Deck_fct, ShoppingMall, VRDeck, FoodCourt, Spa, RoomService) %>%
-  mice(method = 'rf', seed = 24601, maxit = 1) %>% # Who am I?
-  complete() %>% 
-  mutate(CryoSleep = as.logical(CryoSleep)) %>% 
-  select(-ends_with('_fct'))
+<details>
+  <summary>Manipulation code</summary>
 
-# Let's quickly check the percentage of passengers who spend 0 on luxury amenities and who were also in cryosleep to compare against what we calculated earlier
-imput_cryosleep %>% 
-  mutate(lux_spend_keepnas = ShoppingMall + VRDeck + FoodCourt + Spa + RoomService) %>% 
-  filter(!is.na(CryoSleep) & lux_spend_keepnas == 0) %>% 
-  group_by(CryoSleep) %>% 
-  tally() %>% 
-  mutate(pct = n / sum(n)) %>% 
-  filter(CryoSleep) %>% 
-  pull(pct)
-```
+  ```r
+  # Create imputation
+  imput_cryosleep <- all_wrk_tmp %>%
+    mutate(
+      HomePlanet_fct = factor(HomePlanet), 
+      Destination_fct = factor(Destination), 
+      Deck_fct = factor(Deck)
+    ) %>%
+    select(CryoSleep, HomePlanet_fct, Destination_fct, Deck_fct, ShoppingMall, VRDeck, FoodCourt, Spa, RoomService) %>%
+    mice(method = 'rf', seed = 24601, maxit = 1) %>% # Who am I?
+    complete() %>% 
+    mutate(CryoSleep = as.logical(CryoSleep)) %>% 
+    select(-ends_with('_fct'))
+
+  # Let's quickly check the percentage of passengers who spend 0 on luxury amenities and who were also in cryosleep to compare against what we calculated earlier
+  imput_cryosleep %>% 
+    mutate(lux_spend_keepnas = ShoppingMall + VRDeck + FoodCourt + Spa + RoomService) %>% 
+    filter(!is.na(CryoSleep) & lux_spend_keepnas == 0) %>% 
+    group_by(CryoSleep) %>% 
+    tally() %>% 
+    mutate(pct = n / sum(n)) %>% 
+    filter(CryoSleep) %>% 
+    pull(pct)
+  ```
+</details>
 
 Pretty close to our previously calculated rate of 85.9%.
 
@@ -865,41 +910,45 @@ To wrap up for the cryosleep imputation, we’ll add the filled in values
 back to the main dataset and compare the distribution of imputed values
 against those that were there originally.
 
-```r
-all_wrk_tmp <- all_wrk_tmp %>% 
-  select(-CryoSleep) %>% 
-  bind_cols(imput_cryosleep %>% select(CryoSleep))
+<details>
+  <summary>`ggplot2` code</summary>
 
-# See if imputed values on aggregate change the distribution
-all_wrk %>%
-  filter(!is.na(CryoSleep)) %>% 
-  group_by(CryoSleep) %>% 
-  # Get number of rows for CryoSleep == TRUE and CryoSleep == FALSE
-  tally() %>% 
-  mutate(dataset = 'Unmodified') %>% 
-  bind_rows(
-    all_wrk_tmp %>% 
-      filter(!is.na(CryoSleep)) %>% 
-      group_by(CryoSleep) %>% 
-      tally() %>% 
-      mutate(dataset = 'Imputed')
-  ) %>% 
-  group_by(dataset) %>% 
-  mutate(pct = n / sum(n)) %>% 
-  ungroup() %>% 
-  # Charting
-  ggplot(aes(x = dataset, fill = CryoSleep, y = pct, label = percent(pct, 0.1))) +
-  geom_col(position = 'dodge') +
-  # Labels and theme
-  scale_y_continuous(labels = percent) +
-  labs(x = 'Dataset', y = 'Percent', title = 'Fig 7. Imputed vs. original dataset') +
-  geom_text(
-    position = position_dodge(width = .9),
-    vjust = -0.5,
-    size = 3
-  ) +
-  theme(legend.position = 'bottom')
-```
+  ```r
+  all_wrk_tmp <- all_wrk_tmp %>% 
+    select(-CryoSleep) %>% 
+    bind_cols(imput_cryosleep %>% select(CryoSleep))
+
+  # See if imputed values on aggregate change the distribution
+  all_wrk %>%
+    filter(!is.na(CryoSleep)) %>% 
+    group_by(CryoSleep) %>% 
+    # Get number of rows for CryoSleep == TRUE and CryoSleep == FALSE
+    tally() %>% 
+    mutate(dataset = 'Unmodified') %>% 
+    bind_rows(
+      all_wrk_tmp %>% 
+        filter(!is.na(CryoSleep)) %>% 
+        group_by(CryoSleep) %>% 
+        tally() %>% 
+        mutate(dataset = 'Imputed')
+    ) %>% 
+    group_by(dataset) %>% 
+    mutate(pct = n / sum(n)) %>% 
+    ungroup() %>% 
+    # Charting
+    ggplot(aes(x = dataset, fill = CryoSleep, y = pct, label = percent(pct, 0.1))) +
+    geom_col(position = 'dodge') +
+    # Labels and theme
+    scale_y_continuous(labels = percent) +
+    labs(x = 'Dataset', y = 'Percent', title = 'Fig 7. Imputed vs. original dataset') +
+    geom_text(
+      position = position_dodge(width = .9),
+      vjust = -0.5,
+      size = 3
+    ) +
+    theme(legend.position = 'bottom')
+  ```
+</details>
 
 ![na-cryosleep-wrap-1](/static/images/spaceship-titanic/na-cryosleep-wrap-1.png)
 
