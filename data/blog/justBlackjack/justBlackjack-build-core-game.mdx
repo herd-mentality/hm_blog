@@ -1,0 +1,300 @@
+---
+title: Simulating blackjack with JavaScript
+date: '2023-04-29'
+tags: ['web-dev', 'front-end', 'justBlackjack', 'javascript']
+draft: false
+summary: 'How blackjack rounds were simulated in JavaScript for justBlackjack'
+authors: ['darrenwong']
+---
+
+<TOCInline toc={props.toc} indentDepth={2} />
+<br/>
+
+# Introduction
+
+
+# Javascript Blackjack Implementation
+JavaScript facilitates the interactivity in justBlackjack, allowing it to be responsive to user input and also for us to define how the dealer behaves. In this section, we'll take a closer look at the key functions and code snippets that make the game possible.
+
+
+## Main entities
+
+### Construction of the decks and the shoe
+
+```js:main.js
+// Initialise model of a card deck, with values included
+const suits = ["spades", "diamonds", "clubs", "hearts"];
+const values = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+
+function constructDeck(deckNumber) {
+	let deck = new Array();
+	for(let i = 0; i < suits.length; i++) {
+		for(let x = 0; x < values.length; x++) {
+            var card
+            if (!isNaN(values[x])) {
+                card = {value: values[x], suit: suits[i], numericValue: parseInt(values[x]), deckNumber: deckNumber};
+            } else if (values[x] === "J" | values[x] === "Q" | values[x] === "K") {
+                card = {value: values[x], suit: suits[i], numericValue: 10, deckNumber: deckNumber};
+            } else if (values[x] === "A") {
+                card = {value: values[x], suit: suits[i], numericValue: 24601, deckNumber: deckNumber};
+            }
+			deck.push(card);
+		}
+	}
+	return deck;
+}
+
+// Usage
+const deck_1 = constructDeck(1);
+const deck_2 = constructDeck(2);
+const deck_3 = constructDeck(3);
+const deck_4 = constructDeck(4);
+const deck_5 = constructDeck(5);
+const deck_6 = constructDeck(6);
+
+
+```
+
+```js:main.js
+//  Shuffle based on Fisher-Yates method
+function shuffle(array) {
+  let i = array.length;
+  while (i--) {
+    const ri = Math.floor(Math.random() * i);
+    [array[i], array[ri]] = [array[ri], array[i]];
+  }
+  return array;
+}
+
+var shoe = shuffle(deck_1.concat(deck_2, deck_3, deck_4, deck_5, deck_6));
+```
+
+<details>
+    <summary>The `shoe` object</summary>
+
+    ```js
+    [
+        {
+            "value": "7",
+            "suit": "hearts",
+            "numericValue": 7,
+            "deckNumber": 3
+        },
+        {
+            "value": "A",
+            "suit": "diamonds",
+            "numericValue": 24601,
+            "deckNumber": 3
+        },
+        {
+            "value": "Q",
+            "suit": "hearts",
+            "numericValue": 10,
+            "deckNumber": 5
+        },
+        {
+            "value": "10",
+            "suit": "hearts",
+            "numericValue": 10,
+            "deckNumber": 2
+        },
+        // [...]
+    ]
+    ```
+</details>
+
+
+
+### Dealing hands
+
+```js:main.js
+// Initialise dealer hand and hand-value array
+var dealerHand = [];
+var dealerHValue = [];
+
+// Initialise player hand and hand-value array
+var playerHand = [];
+var playerHValue = [];
+
+function dealCards(shoe) {
+
+    // Remove all cards from the dealer and player's hands,
+    // as well as values from their hand-value arrays
+    purgeHands();
+
+    // Deal cards sequentially, two cards each
+    playerHand.push(shoe.shift());
+    dealerHand.push(shoe.shift());
+    playerHand.push(shoe.shift());
+    dealerHand.push(shoe.shift());
+
+    // Extract numerical values to playerHValue and dealerHValue
+    playerHand.forEach(function (item) { playerHValue.push(item.numericValue) });
+    dealerHand.forEach(function (item) { dealerHValue.push(item.numericValue) });
+
+    // Plot the cards to the screen. drawDealerHand handles drawing the dealer's 
+    // second card as face down
+    drawPlayerHand(playerHand);
+    drawDealerHand(dealerHand);
+
+    // [...]
+
+    // If a face or ace card is currently shown face up post-deal, introduce the 
+    // face/ace card rules to the rule-set
+    ruleFAceCards(cardType = 'face', beforeDealReveal = true, playerHand, dealerHand);
+    ruleFAceCards(cardType = 'ace', beforeDealReveal = true, playerHand, dealerHand);
+
+    // [...] this is where the player's eligibility for insurance is checked
+
+    // Determine which buttons are available to user
+    if (calculateHValue(playerHValue).initialState === 'blackjack') {
+        if (calculateHValue(dealerHValue).initialState === 'blackjack') {
+
+            // If both the player and the dealer have blackjack, the outcome is a draw
+            // i.e. a push - the player is notified and the round ends
+            revealDealerSecondCard(dealerHand);
+            document.getElementById('player-total').innerHTML += ' <span class="col-purp">PUSH</span>';
+            updateScore('draw');
+            updateConsole('Both player and dealer have blackjack');
+            endOfRoundState();
+        } else if (calculateHValue(dealerHValue).initialState != 'blackjack') {
+
+            // Otherwise if only the player has blackjack, they immediately win
+            revealDealerSecondCard(dealerHand);
+            document.getElementById('player-total').innerHTML += ' <span class="col-gree">BLACKJACK</span>';
+            updateScore('b');
+            updateConsole('Player has blackjack');
+            endOfRoundState();
+        }
+    }
+
+    // [...] splitting and doubling sections are handled here. Abridged versions are shown in the
+    // hand value calculation section below to illustrate how hand value calculation is done.
+
+}
+```
+
+
+### Hand value calculation
+
+```js:main.js
+function calculateHValue(HValueArray) {
+
+    // Initialise return object
+    var result = {};
+    var HValueArray_copy = JSON.parse(JSON.stringify(HValueArray));
+    
+    // Count aces and remove them from the hand for now since
+    //  their value can vary.
+    var aceCounter = 0;
+    for (let i = HValueArray_copy.length - 1; i >= 0; i--) {
+        if (HValueArray_copy[i] === 24601) {
+            aceCounter++;
+            HValueArray_copy.splice(i, 1);
+        }
+    }
+
+    result.aceCounter = aceCounter;
+
+    // Sum value of remaining items in hand
+    var preAceSum = HValueArray_copy.reduce((a, b) => a + b, 0);
+    var postAceOptions;
+    result.preAceSum = preAceSum;
+
+    // Handle adding Aces.
+    //  Since there's such a limited amount of combinations, there's probably no need to 
+    //  pursue this programatically.
+    if (aceCounter > 0) {
+
+        switch (aceCounter) {
+            case 1:
+                postAceOptions = [1, 11];
+                break;
+            case 2:
+                postAceOptions = [2, 12, 22];
+                break;
+            case 3:
+                postAceOptions = [3, 13, 23, 33];
+                break;
+            case 4:
+                postAceOptions = [4, 14, 24, 34, 44];
+                break;
+        }
+
+        // Add all possible ace values to the preAceSum
+        for(var i = 0; i < postAceOptions.length; i++) { postAceOptions[i] += preAceSum; }
+
+        // Finally, remove all values that are above 21, but if this causes the length of the array 
+        //  to become 0, the hand is bust.
+        var aceOptionBkup = JSON.parse(JSON.stringify(postAceOptions));
+        for (let i = postAceOptions.length - 1; i >= 0; i--) {
+            if (postAceOptions[i] > 21) {
+                postAceOptions.splice(i, 1);
+            }
+        }
+
+        // If the player has no value options under 21, they are bust. 
+        // Otherwise, if their hand options include 21, they have blackjack.
+        if (postAceOptions.length < 1) { 
+            // Use minimum of the temp post ace values to display
+            result.postAceOptions = [Math.min.apply(null, aceOptionBkup)];
+            result.initialState = 'bust';
+        } else if (postAceOptions.includes(21)) { 
+            // On a (10, Ace) hand, this assumes that the hand is blackjack, not 11
+            result.postAceOptions = postAceOptions;
+            result.initialState = 'blackjack';
+        } else {
+            result.postAceOptions = postAceOptions;
+            result.initialState = 'none';
+        }
+
+    } else {
+
+        // If no aces in hand, simply sum all numeric values in hand-value array
+        result.postAceOptions = [preAceSum];
+        if (preAceSum > 21) {
+            result.initialState = 'bust';
+        } else if (preAceSum === 21) {
+            result.initialState = 'blackjack';
+        } else {
+            result.initialState = 'none';
+        }
+    }
+    return result;
+} 
+
+// Usage
+function dealCards(shoe) {
+
+    // Initial content as shown in the last section
+    // [,,,]
+
+    // Insurance
+    if (dealerHand[0].numericValue === 24601) {
+        // If the dealer's face-up card is an ace, insurance against the dealer having blackjack
+        // may be offered to the player, this is handled here
+        // [...]
+    }
+
+    // [...] checking for blackjack in either player's hand here
+
+    // Splitting
+    if ((playerHValue[0] === playerHValue[1]) && (handsInPlay <= 3)) { 
+        // If both of the player's cards are of the same value, they may split their hand,
+        // this block handles this
+        // [...]
+    }
+
+    // Doubling
+    if (
+        (calculateHValue(playerHValue).postAceOptions.length === 1) && 
+        (calculateHValue(playerHValue).postAceOptions[0] >= 9 && calculateHValue(playerHValue).postAceOptions[0] <= 11)
+    ) {
+        // If a player's total is 9, 10, or 11 after the initial deal, they may double their 
+        // bet, this block handles this
+        // [...]
+    }
+
+}
+```
+

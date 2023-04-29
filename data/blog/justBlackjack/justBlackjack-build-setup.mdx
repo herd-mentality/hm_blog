@@ -1,0 +1,448 @@
+---
+title: Setting the table for justBlackjack - a JavaScript blackjack simulator
+date: '2023-04-28'
+tags: ['web-dev', 'front-end', 'justBlackjack', 'javascript']
+draft: false
+summary: 'How UX/UI was implemented in justBlackjack, a browser-based blackjack simulator'
+authors: ['darrenwong']
+---
+
+<TOCInline toc={props.toc} indentDepth={2} asDisclosure />
+<br/>
+
+# Introduction
+I’m someone who believes in the power of experiential learning, that the best way to learn something is to do it yourself. So, when I needed to learn JavaScript for the purposes of front-end web development, I decided to tackle a small project - building a browser-based blackjack game. I chose blackjack for this project due to its relative simplicity and the straightforward decision-making process the dealer follows, which makes simulating their behaviour a more manageable task. This was also highly inspired by an incredible JavaScript starter project, Universal Paperclips. 
+
+The goal of this project was to develop a simple, fast-paced environment in which anyone could learn to play blackjack well without risking real money. The project was titled ‘justBlackjack’ to reflect the intended simplicity and focus on core gameplay.
+
+The introduction of this project in its current state will be a two-post series. In this post, I’ll step through the setup for this project by discussing:
+
+- An overview of the rules of blackjack 
+- An overview of the key technologies used
+- The HTML and CSS structure of the project
+- The JavaScript implementation of the game’s UX/learning tools
+
+In the next post, I’ll go through:
+
+- How each of the main blackjack components were implemented in JavaScript; and,
+- Next steps for the project.
+
+Links before we get started: [justBlackjack page](https://wongd-hub.github.io/justBlackjack/), [Repository](https://github.com/wongd-hub/justBlackjack)
+
+# Overview of Blackjack Rules
+Before moving to the technical aspects of this project, let’s quickly review the rules of this classic and popular card game.
+
+The game begins with each participant - the player and the dealer - receiving two cards. Each hand's value is determined by adding the values of each card. Face cards are worth 10 points, numbered cards are worth their pip value, and aces can be worth 1 or 11 points.
+
+The objective of the game is to get as close to a total value of 21 points as possible without going over. The player will draw cards from the deck (really 6 decks combined into what’s called the 'shoe') until they decide to stop, with each draw being referred to as a 'hit'. Once the player decides to stop drawing cards, the dealer will hit until they have a total value of at least 17.
+
+If a player's total goes over 21, they ‘bust’ or lose. If the dealer's total goes over 21, they bust and the player wins. If neither goes over 21, the player whose total is closest to 21 wins.
+
+To summarise, the dealer's hand, the player's hand, and the shoe are the key entities in blackjack. The goal is to hit until the sum value is as close to 21 as possible without going over.
+
+This is, of course, a simplified version of the rules. Further extensions will be introduced  where relevant, however we won’t discuss the deeper concepts such as splitting, doubling, or insurance in this post. Let’s move on to the next section, where we discuss implementing the visual aspects of blackjack in the browser.
+
+# Technologies Used
+Before diving into the project details, let's briefly discuss the core technologies used in justBlackjack: HTML, CSS, and JavaScript. If you know what these are, feel free to skip to the next section!
+
+- HTML (HyperText Markup Language) is the standard markup language used to create web pages. It provides the structure and content of the page, such as headings, paragraphs, images, and links. 
+- CSS (Cascading Style Sheets) is a stylesheet language used for describing the look and formatting of the contents of a page. It gives us the ability to style and control the layout of web pages, including colours, fonts, and positioning. 
+- JavaScript is a programming language that enables us to add interactivity and dynamic content to websites. 
+
+In justBlackjack, JavaScript is used to implement the game mechanics, manage user interactions, and power learning tools to help players learn and enjoy the game of blackjack.
+
+# Page Visuals
+In this section, I'll provide an overview of the HTML and CSS underlying justBlackjack to create a simple and visually appealing browser-based blackjack game. While the focus of this project is on the JavaScript implementation of the game mechanics, the visual elements are also important in creating an engaging user experience. Using HTML and CSS, we’ll attempt to structure and style the game interface to make it intuitive and easy to use, while also providing visual cues to the player during the game to enhance their playing and learning experience.
+
+![Full screenshot](/static/images/justblackjack/full-screenshot.png)
+
+The entire site is contained within a div with the id of `'website-body'`, and components within this div are organised with CSS Grid. Grid suits our purposes here since it allows for precise placement of items on the page in a 2D layout.
+
+All of the sub-components, such as the player’s and dealer’s hands, title bar, and rules sidebar, are contained in separate divs and placed as children within the main div. This approach was chosen for better organisation and ease of positioning within the Grid. This also makes it easier to re-position the components for the mobile layout which is handled using CSS media queries. 
+
+See the basic structure of the HTML below, note that some contents are omitted for brevity.
+
+<details>
+  <summary>justBlackjack HTML structure</summary>
+  
+  ```html:index.html {5, 10, 14, 18, 26, 30, 34}
+    <body>
+
+        <div class="website-body">
+            <div class="title-bar">
+                <!-- Title bar contents -->
+            </div>
+            <div class="side-bar">
+                <h2 class="rules">rule_set</h2>
+                <ul id="rule-set">
+                    <!-- Responsive list of blackjack rules -->
+                </ul>
+            </div>
+            <div class="quick-settings-box">
+                <!-- Info in bottom left -->
+            </div>
+            <div class="player-cards" id="player-cards"></div>
+            <div class="player-options">
+                <!-- Player option buttons -->
+                <p id="hit-button">hit</p>
+                <p id="stand-button">stand</p>
+                ...
+            </div>
+            <div class="dealer-cards" id="dealer-cards"></div>
+            <div class="console" id="console">
+                <div class="console-container" id="console-container">
+                    <!-- Console in bottom right -->
+                </div>
+            </div>
+            <div class="shoe">
+                <!-- Shoe graphic and score counter -->
+            </div>
+        </div>
+
+        <!-- Calling scripts -->
+        <script src="./cardList.js"></script>
+        <script src="./main.js"></script>
+
+    </body>
+    ```
+</details>
+
+The choice of colour scheme was inspired by the Tomorrow Night 80's theme I was introduced to through the R Studio IDE. To ensure the proper rendering of ASCII art, a monospace font was used throughout the project.
+
+![Colour palette](/static/images/justblackjack/colour-palette.png)
+
+## Cards
+
+```
+  _____    _____    _____    _____    _____    _____    _____
+ |2    |  |4    |  |6    |  |A .  |  |Q  ww|  |K  WW|  |\ ~ /|
+ |  v  |  | ^ ^ |  | o o |  | /.\ |  | o {(|  |   {)|  |}}:{{|
+ |     |  |     |  | o o |  |(_._)|  |o o%%|  |(v)%%|  |}}:{{|
+ |  v  |  | ^ ^ |  | o o |  |  |  |  | |%%%|  | v%%%|  |}}:{{|
+ |____2|  |____4|  |____6|  |____A|  |_%%%Q|  |_%%%K|  |/_~_\|
+
+```
+
+The cards on the website are represented using ASCII art sourced from [asciiart.eu](https://www.asciiart.eu/miscellaneous/playing-cards). To make the pip numbers more visible, each pip number is nested within a span with the class `'col-emphasis'` and styled using CSS. Additionally, to indicate that the cards are dynamic, the pip numbers fade on mouseover. This effect is achieved using a `:hover` CSS selector, which reduces the opacity of the pip numbers when the cursor hovers over them. Overall, this simple design provides players with a clean and visually appealing representation of the cards in the game.
+
+```js:cardList.js
+const cardList = [
+    // [...]
+    {
+        cardName: 'Aspades',
+        cardEntity: ` _____ <br>|<span>A</span> .  |<br>| /.\\ |<br>|(_._)|<br>|  |  |<br>|____<span>A</span>|`
+    },
+    {
+        cardName: '2spades',
+        cardEntity:` _____ <br>|<span>2</span>    |<br>|  ^  |<br>|     |<br>|  ^  |<br>|____<span>2</span>|`
+    },
+    // [...]
+]
+```
+
+The card entities as well as their string representations are stored in an array of objects (`cardList`). To assist with drawing these to the screen, I’ve written two convenience functions:
+
+- `prepCardStringForHTML()`: When passed a card item from `cardList`, this function takes the corresponding ASCII art string and reformats the HTML to print correctly on the site. It also adds class `‘col-emphasis’` to the spans that contain the pip values so that we can change their text colour.
+
+<details>
+  <summary>Code block</summary>
+
+    ```js:cardList.js
+    function prepCardStringForHTML(
+        cardElement, 
+        // [...]
+    ) {
+        // [...]
+
+            // Replace any spaces with the non-breaking space HTML entity
+            var tmp = cardElement.replace(/\s/g, '&nbsp;');
+
+            // Add class 'col-emphasis' to the first instance of a <span> in each card's string 
+            var t = 0;
+            var tmp_1 = tmp.replace(/<span>/g, match => ++t === 1 ? '<span class="col-emphasis">' : match)
+                    // Add further 'bottom-pip' class to the second <span> for now deprecated additional styling
+                    .replace(/<span>/g, '<span class="col-emphasis bottom-pip">');
+        
+            return tmp_1;
+
+        // [...]
+    }
+    ```
+</details>
+
+- `drawCardStack()`: We need to be able to draw stacks of cards for when a player’s hand goes over two cards. Ideally we’d be able to quickly see the pip value of every card in the stack as well. This function takes multiple card elements and plots them in a diagonal stack, with all cards under the top one showing the first three characters of their card.
+
+![Screenshot of card stack](/static/images/justblackjack/card-screenshot.png)
+
+<details>
+  <summary>Code block</summary>
+
+    ```js:cardList.js
+    function drawCardStack(hand, orient = 'row', removeLastNCards = 0) {
+        
+        // This is used to leave out the newest card in the hand,
+        // this card will be shown separately
+        var handTmp = hand.slice(0, hand.length - removeLastNCards);
+
+        // If there's only one card to stack, no action required
+        if (handTmp.length === 1) {return null}
+
+        // This function returns the visible characters of the ASCII art
+        // for cards that are under the top card in the stack
+        function pullFirstThreeChars(hand, index, orient = 'row') { 
+            return cardList
+                // Query cardList for ASCII string and split by newline 
+                // into list of strings 
+                .filter(obj => {return obj.cardName === hand[index].value + hand[index].suit})[0]
+                .cardEntity
+                .split('<br>')
+                // For each line of ASCII art, pull the right number 
+                // of characters
+                .map(function(el, i) { 
+                    if (i === 0 && orient === 'diag') {
+                        // If a diagonal stack, the full first line of 
+                        // the card is visible
+                        return el
+                    } else if (i === 1) {
+                        // The second line of the card includes a span 
+                        // element, so to capture the first 3 letters of 
+                        // the second line, we need to account for the
+                        // extra characters this tag adds. e.g. for an 
+                        // ace of spades, this is what is captured: 
+                        //   '|<span>A</span> '
+                        return el.slice(0, 16)
+                    } else {
+                        // Otherwise, return the first 3 characters of 
+                        // the line as normal
+                        return el.slice(0, 3)
+                    }
+                });
+        }
+
+        if (orient === 'row) {
+
+            // [...]
+
+        } else if (orient === 'diag') {
+
+            // Get the visible characters of the card at the bottom of
+            // the stack. The remaining card characters will be appended
+            // to this
+            var leftSides = pullFirstThreeChars(handTmp, 0, 'diag');
+
+            // For each card between the first and the last in the stack...
+            for (let j = 1; j <= handTmp.length - 2; j++) {
+                // ... get visible characters
+                var toAdd = pullFirstThreeChars(handTmp, j, 'diag');
+                
+                // ... then add the contents of each card to the lines 
+                // currently in leftSides, starting further down by one
+                // line for each new card in the hand creating a diagonal 
+                // cascading effect. 
+                var len = leftSides.length;
+                for (let k = 0; k <= len; k++) { 
+                    if (k >= j && k <= len - 1) {
+                        leftSides[k] = leftSides[k] + toAdd[k - j];
+                    } else if (k === len) {
+                        leftSides[k] = '   '.repeat(j) + toAdd[k - j];
+                    }    
+                }
+            }
+
+            // Add the full contents of the final card on top 
+            var finalCard = cardList
+                .filter(obj => {return obj.cardName === handTmp[handTmp.length - 1].value + handTmp[handTmp.length - 1].suit})[0]
+                .cardEntity
+                .split('<br>');
+
+            var len = leftSides.length;
+            for (let j = 0; j <= len; j++) { 
+                if (j >= handTmp.length - 1 && j <= len - 1) {
+                    leftSides[j] = leftSides[j] + finalCard[j - handTmp.length + 1];
+                } else if (j === len) {
+                    leftSides[j] = '   '.repeat(handTmp.length - 1) + finalCard[j - handTmp.length + 1];
+                }    
+            }
+
+            // This output is then run through prepCardStringForHTML()
+            // to ensure that pips are properly styled with the 
+            // appropriate colour.
+            return leftSides.join('<br>');
+
+        }
+
+    }
+    ```
+</details>
+<br />
+
+# Learning and game tools
+justBlackjack includes a set of learning and game tools to enhance the player's experience and understanding of the game. In this section, we will explore the various features, including the responsive rule set, card and score counters, and console log. These tools provide players with real-time feedback and helpful information as they play, with the aim of providing a non-intrusive and gentle learning aid for beginners to the game.
+
+## Responsive rule set
+To enhance the learning experience for newcomers to blackjack, a list of rules is provided in the top left of the screen. This list aims to be as simple and brief as possible to not overwhelm any new players. To this end, by default there are only two rules displayed when the player first starts their session, the win condition and the rules the dealer must adhere to:
+
+- Get a higher total than the dealer, but don’t go over 21
+- Dealer must hit until 17 
+
+From here, it is up to the player to press either ‘hit’ or ‘stand’ to learn what they do and to start their play. In an attempt to drip-feed rules to players, new rules are only added when the relevant scenario presents itself to the player. For example, when the first face card comes into play, a rule is appended to the rule list stating that ‘face cards are worth 10’. 
+
+The addition of new rules to the rule set is facilitated using:
+
+- An object (`ruleSet`) which stores boolean flags for each of the rules that are available, and tracks which ones have been switched on to ensure that no duplicate rules are added.
+- The `introduceRule()` helper function which:
+    - Checks if the rule is `false` in `ruleSet`
+    - If so (i.e. the rule hasn’t already been introduced), then a new list item is created and added to the contents of the `rule-set` unordered list. A separately defined helper function gently fades the rule into visibility.
+
+<details>
+    <summary>Rule-set code</summary>
+
+    ```js:main.js
+    // Initiate rule switches
+    var ruleSet = {
+        'face-rule': false, 
+        'ace-rule': false, 
+        'split-rule': false, 
+        'double-rule': false, 
+        'insurance-rule': false, 
+        'split-max-rule': false
+    }
+
+    // [...]
+
+    function introduceRule(rule, styleClass) {
+        if (!ruleSet[styleClass]) {
+            document.getElementById('rule-set').innerHTML += `<li id="${styleClass}" class="${styleClass}">${rule}</li>`;
+            document.getElementById(styleClass).style.visibility = 'visible';
+            fadeIn(document.getElementById(styleClass)); // Another convenience function defined in main.js
+            ruleSet[styleClass] = true;
+
+            // Also add to mobile list
+            document.getElementById('rule-2').innerHTML += `<li id="${styleClass + '2'}" class="${styleClass}">${rule}</li>`;
+            document.getElementById(styleClass + '2').style.visibility = 'visible';
+        }
+
+        // If multiple rules are introduced at once, the interval will mess up;
+        //  bandaid fix is to catch any rules that have no opacity and assign the correct opacity
+        document.querySelectorAll('li[class*=\'-rule\']').forEach(function(x) {if (x.style.opacity === '') { x.style.opacity = 1 }});
+
+    }
+
+    // [...]
+
+    // Usage
+    introduceRule('face cards are worth <span class="col-emphasis">10</span>', 'face-rule')
+    ```
+</details>
+
+## Score counter
+To show the player how they’re doing overall in this session, a cumulative score counter is shown in the top right of the screen. The score count at any given time is held in a global variable, `scoreCount`, which is initialised at 0 at the start of the session. The `updateScore()` function is called every time we want to update the score:
+
+- If the outcome is that the player wins, `scoreCount` is incremented up by one
+- If the outcome is a loss, `scoreCount` is reduced by one
+- If the outcome is a draw, `scoreCount` remains unchanged
+- This function handles the outcomes of insurance wins/losses and double wins/losses, but for the sake of brevity we won’t go through those here
+
+This function will then show a small pop-up indicating how much the score has changed by next to the score counter, and will update the score counter itself.
+
+<details>
+    <summary>Score counter code</summary>
+
+    ```js:main.js
+    // Initialise score counter
+    var scoreCount = 0;
+
+    // [...]
+
+    function updateScore(outcome) {
+
+        console.log(`Score before update: ${scoreCount}`);
+
+        if (outcome === 'win' || outcome === 'w') {
+
+            // Increment the score upwards
+            scoreCount++
+
+            // [...]
+
+            // Add a span indicating the direction and magnitude of the score change
+            // to the end of the score counter
+            document.getElementById('score-counter').innerHTML += ` <span id="delta" class="col-gree"'>+1</span>`;
+
+            // [...]
+
+        } // else if ...
+
+        // [...] 
+
+        // Fade in the delta pop-up
+        fadeIn(document.getElementById('delta'), timeToFade = 20, removeElement = true);
+
+        // Update the actual score counter
+        document.getElementById('score-ticker-value').innerHTML = scoreCount;
+        document.getElementById('score-ticker-value-2').innerHTML = scoreCount;
+        console.log(`Score after update: ${scoreCount}`);
+    }
+
+    // Usage
+    updateScore('win');
+
+    ```
+</details>
+
+In a similar manner, a count of the number of cards left in the shoe and until the cut card (more on this later) is shown in the top right of the site.
+
+## Console log
+As a supplemental tool that shows what’s going on under the hood, a log is shown in the bottom right of the screen. The container div has CSS property `overflow: scroll` to ensure that it’s scrollable, and the blinking cursor animation is handled using CSS keyframes.
+
+<details>
+    <summary>Console log blinker CSS</summary>
+
+    ```css:style.css
+    .blinker {
+        -webkit-animation: 1s blink step-end infinite;
+        -moz-animation: 1s blink step-end infinite;
+        -ms-animation: 1s blink step-end infinite;
+        -o-animation: 1s blink step-end infinite;
+        animation: 1s blink step-end infinite;
+    }
+
+    @keyframes blink {
+        from, to {
+            color: transparent;
+        }
+        50% {
+            color: #cccccc;
+        }
+    }
+    ```
+</details>
+
+Every time an action is taken in the game, the log will have a `<p>` tag appended to it with a log message. This is facilitated with the `updateConsole()` helper function:
+
+<details>
+    <summary>Code block</summary>
+
+    ```js:main.js
+    function updateConsole(update = 'No console update provided') {
+        
+        // Get the blinker element, so we can place our message before it
+        var parentElement = document.getElementById('blinker').parentNode;
+
+        // Create a new <p> tag and fill with message contents
+        var newMessage = document.createElement('p');
+        newMessage.innerHTML = `> ${update}<br>`;
+
+        // Insert <p> tag just before the blinker element
+        parentElement.insertBefore(newMessage, document.getElementById('blinker'))
+    }
+    ```
+</details>
+<br/>
+
+# Conclusion
+In this post, we've introduced justBlackjack, a web-based implementation of the classic casino card game. We've covered the basic rules of blackjack, as well as the layout and styling of the website, which aims for a non-intrusive, friendly, and simple design. We've also looked at some of the tools available to help players learn the game, including the responsive list of rules, the score counter, and the console log. 
+
+In the next post, we'll delve deeper into the code that drives the game, exploring how the player and dealer hands are dealt, how the game is scored, how the dealer behaves, and how the game progresses from round to round. Stay tuned!
+
+In the meantime, feel free to try out [justBlackjack](https://wongd-hub.github.io/justBlackjack/), share your feedback, or even contribute to the project, as we continue to improve and refine this project that aims to benefit blackjack beginners and JavaScript learners alike.
