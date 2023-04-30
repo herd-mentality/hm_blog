@@ -5,7 +5,6 @@ import { TOCInline } from 'pliny/ui/TOCInline'
 import { Pre } from 'pliny/ui/Pre'
 import { BlogNewsletterForm } from 'pliny/ui/NewsletterForm'
 import { useRouter } from 'next/router'
-import Link from 'next/link'
 
 import Image from './Image'
 import CustomLink from './Link'
@@ -18,15 +17,43 @@ export const Wrapper = ({ layout, content, ...rest }: MDXLayout) => {
 interface AutoLinkedHeadingProps {
   tag: keyof JSX.IntrinsicElements
   id: string
+  children: React.ReactNode
 }
 
-const AutoLinkedHeading: React.FC<AutoLinkedHeadingProps> = ({ tag: Tag, id, ...props }) => {
+// This is necessary to extract text from the children of the node
+// which actually looks like this:
+// "children": [
+//   "<CustomLink />",
+//   "Introduction"
+// ]
+const getTextContent = (children: React.ReactNode): string => {
+  let text = ''
+  React.Children.forEach(children, (child) => {
+    if (typeof child === 'string') {
+      text += child
+    }
+  })
+  return text
+}
+
+const AutoLinkedHeading: React.FC<AutoLinkedHeadingProps> = ({
+  tag: Tag,
+  id,
+  children,
+  ...props
+}) => {
   const router = useRouter()
+  const textContent = getTextContent(children)
+
+  // Remove any existing slug from the URL
+  const basePath = router.asPath.split('#')[0]
 
   return (
-    <Link href={`${router.asPath}#${id}`} passHref>
-      <Tag id={id} {...props} />
-    </Link>
+    <Tag id={id} {...props}>
+      <CustomLink href={`${basePath}#${id}`} aria-label={`Link to ${id}`}>
+        {textContent}
+      </CustomLink>
+    </Tag>
   )
 }
 
