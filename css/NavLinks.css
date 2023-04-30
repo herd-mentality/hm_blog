@@ -1,9 +1,13 @@
 /* Nav Links */
 .nav-link, .heading-anchor a {
-    @apply relative  font-medium text-gray-900 dark:text-gray-100 sm:p-4;
-    @apply p-0 no-underline !important
-  }
-  
+  @apply relative  font-medium text-gray-900 dark:text-gray-100 sm:p-4;
+  @apply p-0 no-underline !important
+}
+
+.heading-anchor a {
+  @apply font-bold
+}
+
 .nav-link:hover, .heading-anchor a:hover {
   @apply text-gray-600 dark:text-gray-300 !important
 }
