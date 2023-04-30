@@ -325,38 +325,19 @@ The calculation of the total value of the player’s and dealer’s hand isn’t
     } 
 
     // Usage
-    function dealCards(shoe) {
+    //  Check if the player's first two cards have the same value
+    //  (if they do, the player is allowed to split their hand)
+    playerHValue[0] === playerHValue[1]
 
-        // Initial content as shown in the last section
-        // [,,,]
-
-        // Insurance
-        if (dealerHand[0].numericValue === 24601) {
-            // If the dealer's face-up card is an ace, insurance against the dealer having blackjack
-            // may be offered to the player, this is handled here
-            // [...]
-        }
-
-        // [...] checking for blackjack in either player's hand here
-
-        // Splitting
-        if ((playerHValue[0] === playerHValue[1]) && (handsInPlay <= 3)) { 
-            // If both of the player's cards are of the same value, they may split their hand,
-            // this block handles this
-            // [...]
-        }
-
-        // Doubling
-        if (
-            (calculateHValue(playerHValue).postAceOptions.length === 1) && 
-            (calculateHValue(playerHValue).postAceOptions[0] >= 9 && calculateHValue(playerHValue).postAceOptions[0] <= 11)
-        ) {
-            // If a player's total is 9, 10, or 11 after the initial deal, they may double their 
-            // bet, this block handles this
-            // [...]
-        }
-
-    }
+    //  Check if the player's total is between 9 and 11, if so, 
+    //  the player may double their bet
+    //   First check that there is only the one option (may not be
+    //   the case if Aces are present)
+    (calculateHValue(playerHValue).postAceOptions.length === 1) && 
+            (
+                calculateHValue(playerHValue).postAceOptions[0] >= 9 && 
+                calculateHValue(playerHValue).postAceOptions[0] <= 11
+            )
     ```
 </details>
 <br/>

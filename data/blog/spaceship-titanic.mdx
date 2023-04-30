@@ -977,29 +977,37 @@ there aren’t many convincing relationships we can draw on to impute
 missing values for individuals who aren’t cryosleeping. However, there
 are some patterns visible in the data:
 
-```r
-all_wrk_tmp %>%
-  filter(!CryoSleep) %>%
-  mutate(lux_spend = ShoppingMall + VRDeck + FoodCourt + Spa + RoomService) %>%
-  ggplot(aes(y = lux_spend, x = Destination, fill = HomePlanet)) +
-  geom_boxplot() +
-  scale_y_continuous(labels = dollar) +
-  labs(x = 'Destination', y = 'Total Luxury Spend', title = 'Fig 8a. Luxury spend vs. Destination, Home Planet')
-```
+<details>
+  <summary>`ggplot2` code</summary>
+
+  ```r
+  all_wrk_tmp %>%
+    filter(!CryoSleep) %>%
+    mutate(lux_spend = ShoppingMall + VRDeck + FoodCourt + Spa + RoomService) %>%
+    ggplot(aes(y = lux_spend, x = Destination, fill = HomePlanet)) +
+    geom_boxplot() +
+    scale_y_continuous(labels = dollar) +
+    labs(x = 'Destination', y = 'Total Luxury Spend', title = 'Fig 8a. Luxury spend vs. Destination, Home Planet')
+  ```
+</details>
 
 ![lux-noncryosleepers-1](/static/images/spaceship-titanic/lux-noncryosleepers-1.png)
 
-```r
-all_wrk_tmp %>%
-  filter(!CryoSleep) %>%
-  mutate(lux_spend = ShoppingMall + VRDeck + FoodCourt + Spa + RoomService) %>%
-  mutate(Num = as.numeric(Num)) %>%
-  ggplot(aes(x = Num, y = lux_spend, colour = HomePlanet)) +
-  geom_point() +
-  scale_y_continuous(labels = dollar) +
-  scale_x_continuous(labels = comma) +
-  labs(x = 'Number', y = element_blank(), title = 'Fig 8b. Luxury spend vs. Room number, Home Planet')
-```
+<details>
+  <summary>`ggplot2` code</summary>
+
+  ```r
+  all_wrk_tmp %>%
+    filter(!CryoSleep) %>%
+    mutate(lux_spend = ShoppingMall + VRDeck + FoodCourt + Spa + RoomService) %>%
+    mutate(Num = as.numeric(Num)) %>%
+    ggplot(aes(x = Num, y = lux_spend, colour = HomePlanet)) +
+    geom_point() +
+    scale_y_continuous(labels = dollar) +
+    scale_x_continuous(labels = comma) +
+    labs(x = 'Number', y = element_blank(), title = 'Fig 8b. Luxury spend vs. Room number, Home Planet')
+  ```
+</details>
 
 ![lux-noncryosleepers-2](/static/images/spaceship-titanic/lux-noncryosleepers-2.png)
 
@@ -1007,56 +1015,64 @@ For now, we’ll predict the remaining luxury spend values on some
 variables such as HomePlanet, Destination, and Deck - variables that
 seem to have some association with luxury spend.
 
-```r
-# Pull out examples where CryoSleep is not TRUE
-all_wrk_noncryo <- all_wrk_tmp %>% filter(!CryoSleep | is.na(CryoSleep))
-  
-imput_lux_spend <- all_wrk_noncryo %>% 
-  mutate(
-    HomePlanet_fct = factor(HomePlanet), 
-    Destination_fct = factor(Destination), 
-    Deck_fct = factor(Deck)
-  ) %>% 
-  select(HomePlanet_fct, Destination_fct, Deck_fct, ShoppingMall, VRDeck, FoodCourt, Spa, RoomService) %>% 
-  mice(method = 'rf', seed = 24601, maxit = 1) %>% 
-  complete() %>% 
-  select(-ends_with('_fct'))
-```
+<details>
+  <summary>Manipulation code</summary>
+
+  ```r
+  # Pull out examples where CryoSleep is not TRUE
+  all_wrk_noncryo <- all_wrk_tmp %>% filter(!CryoSleep | is.na(CryoSleep))
+    
+  imput_lux_spend <- all_wrk_noncryo %>% 
+    mutate(
+      HomePlanet_fct = factor(HomePlanet), 
+      Destination_fct = factor(Destination), 
+      Deck_fct = factor(Deck)
+    ) %>% 
+    select(HomePlanet_fct, Destination_fct, Deck_fct, ShoppingMall, VRDeck, FoodCourt, Spa, RoomService) %>% 
+    mice(method = 'rf', seed = 24601, maxit = 1) %>% 
+    complete() %>% 
+    select(-ends_with('_fct'))
+  ```
+</details>
 
 Finally, we’ll add the predicted values back to the dataset, and compare
 the distributions of predicted/imputed values vs. the original dataset.
 
-```r
-all_wrk_tmp <- all_wrk_tmp %>% 
-  # Filter out !CryoSleep and is.na(CryoSleep) as they're contained in all_wrk_noncryo
-  filter(CryoSleep) %>% 
-  bind_rows(
-    all_wrk_noncryo %>%
-      select(-ShoppingMall, -VRDeck, -FoodCourt, -Spa, -RoomService) %>% 
-      bind_cols(
-        imput_lux_spend %>% 
-          select(ShoppingMall, VRDeck, FoodCourt, Spa, RoomService)
-      )
-  ) %>% 
-  mutate(lux_spend = ShoppingMall + VRDeck + FoodCourt + Spa + RoomService)
+<details>
+  <summary>Manipulation and `ggplot2` code</summary>
 
-all_wrk %>% 
-  select(ShoppingMall, VRDeck, FoodCourt, Spa, RoomService) %>% 
-  mutate(dataset = 'Unmodified') %>% 
-  bind_rows(
-    all_wrk_tmp %>% 
-      select(ShoppingMall, VRDeck, FoodCourt, Spa, RoomService) %>% 
-      mutate(dataset = 'Imputed')
-  ) %>% 
-  gather(variable, value, -dataset) %>% 
-  ggplot(aes(x = value, fill = dataset)) +
-  geom_histogram(position = 'dodge') +
-  facet_grid(rows = vars(variable), scales = 'free') +
-  theme(legend.position = 'bottom') +
-  scale_x_continuous(limits = c(NA, 10000), labels = comma) +
-  scale_y_continuous(labels = comma) +
-  labs(x = 'Value', y = 'Count', fill = 'Dataset', title = 'Fig 9. Imputed vs. original dataset')
-```
+  ```r
+  all_wrk_tmp <- all_wrk_tmp %>% 
+    # Filter out !CryoSleep and is.na(CryoSleep) as they're contained in all_wrk_noncryo
+    filter(CryoSleep) %>% 
+    bind_rows(
+      all_wrk_noncryo %>%
+        select(-ShoppingMall, -VRDeck, -FoodCourt, -Spa, -RoomService) %>% 
+        bind_cols(
+          imput_lux_spend %>% 
+            select(ShoppingMall, VRDeck, FoodCourt, Spa, RoomService)
+        )
+    ) %>% 
+    mutate(lux_spend = ShoppingMall + VRDeck + FoodCourt + Spa + RoomService)
+
+  all_wrk %>% 
+    select(ShoppingMall, VRDeck, FoodCourt, Spa, RoomService) %>% 
+    mutate(dataset = 'Unmodified') %>% 
+    bind_rows(
+      all_wrk_tmp %>% 
+        select(ShoppingMall, VRDeck, FoodCourt, Spa, RoomService) %>% 
+        mutate(dataset = 'Imputed')
+    ) %>% 
+    gather(variable, value, -dataset) %>% 
+    ggplot(aes(x = value, fill = dataset)) +
+    geom_histogram(position = 'dodge') +
+    facet_grid(rows = vars(variable), scales = 'free') +
+    theme(legend.position = 'bottom') +
+    scale_x_continuous(limits = c(NA, 10000), labels = comma) +
+    scale_y_continuous(labels = comma) +
+    labs(x = 'Value', y = 'Count', fill = 'Dataset', title = 'Fig 9. Imputed vs. original dataset')
+  ```
+</details>
 
 ![lux-final-1](/static/images/spaceship-titanic/lux-final-1.png)
 
@@ -1067,29 +1083,37 @@ we can reasonably infer that if you are on decks A, B, C, or T, your
 HomePlanet was Europa. Further, it looks like deck G is only inhabited
 by people from Earth.
 
-```r
-all_wrk_tmp %>% 
-  group_by(HomePlanet, Deck) %>% 
-  tally() %>% 
-  ggplot(aes(x = Deck, y = n, fill = HomePlanet)) +
-  geom_col(position = 'dodge') +
-  scale_y_continuous(labels = comma) +
-  labs(y = 'Count', title = 'Fig 10. HomePlanet vs. Deck')
-```
+<details>
+  <summary>`ggplot2` code</summary>
+
+  ```r
+  all_wrk_tmp %>% 
+    group_by(HomePlanet, Deck) %>% 
+    tally() %>% 
+    ggplot(aes(x = Deck, y = n, fill = HomePlanet)) +
+    geom_col(position = 'dodge') +
+    scale_y_continuous(labels = comma) +
+    labs(y = 'Count', title = 'Fig 10. HomePlanet vs. Deck')
+  ```
+</details>
 
 ![hp-deck-1](/static/images/spaceship-titanic/hp-deck-1.png)
 
-```r
-# Apply this rule to the dataset
-all_wrk_tmp <- all_wrk_tmp %>% 
-  mutate(
-    HomePlanet = case_when(
-      is.na(HomePlanet) & Deck %in% c('A', 'B', 'C', 'T') ~ 'Europa',
-      is.na(HomePlanet) & Deck == 'G' ~ 'Earth',
-      TRUE ~ HomePlanet
+<details>
+  <summary>Manipulation code</summary>
+
+  ```r
+  # Apply this rule to the dataset
+  all_wrk_tmp <- all_wrk_tmp %>% 
+    mutate(
+      HomePlanet = case_when(
+        is.na(HomePlanet) & Deck %in% c('A', 'B', 'C', 'T') ~ 'Europa',
+        is.na(HomePlanet) & Deck == 'G' ~ 'Earth',
+        TRUE ~ HomePlanet
+      )
     )
-  )
-```
+  ```
+</details>
 
 We can also hypothesise that people within the same travel group are
 most likely to have the same home planet. Confirming this:
@@ -1105,66 +1129,74 @@ all_wrk_tmp %>%
 ## [1] TRUE
 ```
 
-```r
-# Apply this rule to the dataset
-all_wrk_grp_homes <- all_wrk_tmp %>% 
-  filter(!is.na(HomePlanet)) %>% 
-  distinct(GroupId, HomePlanet) %>% 
-  rename(HomePlanet_supplement = HomePlanet)
+<details>
+  <summary>Manipulation code</summary>
 
-all_wrk_tmp <- all_wrk_tmp %>% 
-  left_join(all_wrk_grp_homes, by = c("GroupId")) %>% 
-  mutate(HomePlanet = coalesce(HomePlanet, HomePlanet_supplement), .keep = 'unused')
-```
+  ```r
+  # Apply this rule to the dataset
+  all_wrk_grp_homes <- all_wrk_tmp %>% 
+    filter(!is.na(HomePlanet)) %>% 
+    distinct(GroupId, HomePlanet) %>% 
+    rename(HomePlanet_supplement = HomePlanet)
+
+  all_wrk_tmp <- all_wrk_tmp %>% 
+    left_join(all_wrk_grp_homes, by = c("GroupId")) %>% 
+    mutate(HomePlanet = coalesce(HomePlanet, HomePlanet_supplement), .keep = 'unused')
+  ```
+</details>
 
 Finally, we know that there is some association between `HomePlanet` and
 room number based on information from the last section, so we’ll use
 this as one of the values used to predict the remaining NA values:
 
-```r
-imput_homeplanet <- all_wrk_tmp %>% 
-  mutate(
-    HomePlanet_fct = factor(HomePlanet),
-    Deck_fct = factor(Deck),
-    Num_num = as.numeric(Num)
-  ) %>% 
-  select(HomePlanet_fct, Deck_fct, Num_num) %>% 
-  mice(method = 'rf', seed = 24601, maxit = 1) %>% 
-  complete() %>% 
-  mutate(HomePlanet = as.character(HomePlanet_fct)) %>% 
-  select(-ends_with('_fct'), -ends_with('_num'))
+<details>
+  <summary>Manipulation and `ggplot2` code</summary>
 
-# Add these back to the dataset
-all_wrk_tmp <- all_wrk_tmp %>% 
-  select(-HomePlanet) %>% 
-  bind_cols(imput_homeplanet)
-  
-# Check distribution of imputed values
-all_wrk %>% 
-  group_by(HomePlanet) %>% 
-  tally() %>% 
-  mutate(pct = n / sum(n)) %>% 
-  mutate(dataset = 'Unmodified') %>% 
-  bind_rows(
-    all_wrk_tmp %>% 
-      group_by(HomePlanet) %>% 
-      tally() %>% 
-      mutate(pct = n / sum(n)) %>% 
-      mutate(dataset = 'Imputed')
-  ) %>% 
-  # Charting
-  ggplot(aes(x = HomePlanet, y = pct, fill = dataset, label = percent(pct, 0.1))) +
-  geom_col(position = 'dodge') +
-  # Labels
-  scale_y_continuous(labels = percent) +
-  theme(legend.position = 'bottom') +  
-  labs(x = 'Home Planet', y = 'Percent', fill = 'Dataset', title = 'Fig 11. Imputed vs. original dataset') +
-  geom_text(
-    position = position_dodge(width = .9),
-    vjust = -0.5,
-    size = 3
-  )
-```
+  ```r
+  imput_homeplanet <- all_wrk_tmp %>% 
+    mutate(
+      HomePlanet_fct = factor(HomePlanet),
+      Deck_fct = factor(Deck),
+      Num_num = as.numeric(Num)
+    ) %>% 
+    select(HomePlanet_fct, Deck_fct, Num_num) %>% 
+    mice(method = 'rf', seed = 24601, maxit = 1) %>% 
+    complete() %>% 
+    mutate(HomePlanet = as.character(HomePlanet_fct)) %>% 
+    select(-ends_with('_fct'), -ends_with('_num'))
+
+  # Add these back to the dataset
+  all_wrk_tmp <- all_wrk_tmp %>% 
+    select(-HomePlanet) %>% 
+    bind_cols(imput_homeplanet)
+    
+  # Check distribution of imputed values
+  all_wrk %>% 
+    group_by(HomePlanet) %>% 
+    tally() %>% 
+    mutate(pct = n / sum(n)) %>% 
+    mutate(dataset = 'Unmodified') %>% 
+    bind_rows(
+      all_wrk_tmp %>% 
+        group_by(HomePlanet) %>% 
+        tally() %>% 
+        mutate(pct = n / sum(n)) %>% 
+        mutate(dataset = 'Imputed')
+    ) %>% 
+    # Charting
+    ggplot(aes(x = HomePlanet, y = pct, fill = dataset, label = percent(pct, 0.1))) +
+    geom_col(position = 'dodge') +
+    # Labels
+    scale_y_continuous(labels = percent) +
+    theme(legend.position = 'bottom') +  
+    labs(x = 'Home Planet', y = 'Percent', fill = 'Dataset', title = 'Fig 11. Imputed vs. original dataset') +
+    geom_text(
+      position = position_dodge(width = .9),
+      vjust = -0.5,
+      size = 3
+    )
+  ```
+</details>
 
 ![hp-impute-1](/static/images/spaceship-titanic/hp-impute-1.png)
 
@@ -1174,34 +1206,38 @@ There isn’t much to go on for imputing missing `Deck` values, except for
 the fact that people within the same travel group tend to stay on decks
 are in close vicinity to each other.
 
-```r
-# Get number of people in each group and where they're located
-all_wrk_grps <- all_wrk_tmp %>% 
-  filter(group_size > 1) %>% 
-  select(GroupId, PassengerId, Deck, Num, Side) %>% 
-  group_by(GroupId) %>% 
-  mutate(count = n()) %>% 
-  ungroup() %>% 
-  arrange(GroupId, PassengerId)
+<details>
+  <summary>Manipulation and `ggplot2` code</summary>
 
-# Convert the Deck variable to a numeric mapping so that deck distance may be calculated easily
-deck_refactor <- tibble(
-  Deck = all_wrk_grps %>% filter(!is.na(Deck)) %>% distinct(Deck) %>% pull(Deck) %>% sort(),
-  DeckNum = c(1:(all_wrk_grps %>% filter(!is.na(Deck)) %>% distinct(Deck) %>% pull(Deck) %>% length()))
-)
+  ```r
+  # Get number of people in each group and where they're located
+  all_wrk_grps <- all_wrk_tmp %>% 
+    filter(group_size > 1) %>% 
+    select(GroupId, PassengerId, Deck, Num, Side) %>% 
+    group_by(GroupId) %>% 
+    mutate(count = n()) %>% 
+    ungroup() %>% 
+    arrange(GroupId, PassengerId)
 
-all_wrk_grps %>% 
-  left_join(deck_refactor, by = 'Deck') %>% 
-  group_by(GroupId) %>% 
-  summarise(
-    range = max(DeckNum) - min(DeckNum),
-    .groups = 'drop'
-  ) %>% 
-  ggplot(aes(x = range)) +
-  geom_histogram() +
-  scale_y_continuous(labels = comma) +
-  labs(x = 'Deck Distance with Groups', y = 'Count', title = 'Fig 12. Dsn of deck distance within groups')
-```
+  # Convert the Deck variable to a numeric mapping so that deck distance may be calculated easily
+  deck_refactor <- tibble(
+    Deck = all_wrk_grps %>% filter(!is.na(Deck)) %>% distinct(Deck) %>% pull(Deck) %>% sort(),
+    DeckNum = c(1:(all_wrk_grps %>% filter(!is.na(Deck)) %>% distinct(Deck) %>% pull(Deck) %>% length()))
+  )
+
+  all_wrk_grps %>% 
+    left_join(deck_refactor, by = 'Deck') %>% 
+    group_by(GroupId) %>% 
+    summarise(
+      range = max(DeckNum) - min(DeckNum),
+      .groups = 'drop'
+    ) %>% 
+    ggplot(aes(x = range)) +
+    geom_histogram() +
+    scale_y_continuous(labels = comma) +
+    labs(x = 'Deck Distance with Groups', y = 'Count', title = 'Fig 12. Dsn of deck distance within groups')
+  ```
+</details>
 
 ![de-groups-1](/static/images/spaceship-titanic/de-groups-1.png)
 
@@ -1237,21 +1273,25 @@ all_wrk_tmp %>%
 
 Let’s impute the value of age in case we need to use it later:
 
-```r
-imput_age <- all_wrk_tmp %>% 
-  select(-GroupId, -PassengerId, -Transported, -dataset, -Num, -ends_with('_name')) %>% 
-  # Convert all character columns to factors
-  mutate_if(
-    is.character,
-    factor
-  ) %>%
-  mice(method = 'rf', seed = 24601, maxit = 1) %>% 
-  complete()
+<details>
+  <summary>Imputation code</summary>
 
-all_wrk_tmp <- all_wrk_tmp %>% 
-  select(-Age) %>% 
-  bind_cols(imput_age %>% select(Age))
-```
+  ```r
+  imput_age <- all_wrk_tmp %>% 
+    select(-GroupId, -PassengerId, -Transported, -dataset, -Num, -ends_with('_name')) %>% 
+    # Convert all character columns to factors
+    mutate_if(
+      is.character,
+      factor
+    ) %>%
+    mice(method = 'rf', seed = 24601, maxit = 1) %>% 
+    complete()
+
+  all_wrk_tmp <- all_wrk_tmp %>% 
+    select(-Age) %>% 
+    bind_cols(imput_age %>% select(Age))
+  ```
+</details>
 
 Next, we’ll check that we haven’t lost any people during this process:
 
@@ -1267,13 +1307,18 @@ identical(
 Finally, we’ll convert all character and logical/boolean features into
 factors for our random forest model.
 
-```r
-all_wrk_final <- all_wrk_tmp %>% 
-  mutate_at(
-    .vars = vars(Transported, CryoSleep, Deck, HomePlanet),
-    .funs = factor
-  )
-```
+<details>
+  <summary>Manipulation code</summary>
+
+  ```r
+  all_wrk_final <- all_wrk_tmp %>% 
+    mutate_at(
+      .vars = vars(Transported, CryoSleep, Deck, HomePlanet),
+      .funs = factor
+    )
+  ```
+</details>
+<br/>
 
 # 5 Training
 
@@ -1364,23 +1409,27 @@ set.seed(24601)
 ## [1] "CryoSleep + RoomService + Spa + VRDeck + ShoppingMall + FoodCourt + Deck + HomePlanet + Age + gender"
 ```
 
-```r
-st_rf_mod <- randomForest(
-  as.formula(
-    paste('Transported', "~", features_of_interest)
-  ),
-  data = train_new
-)
+<details>
+  <summary>Random forest training</summary>
 
-# Plot OOB error
-plot(st_rf_mod, main = 'Fig 13. Random Forest OOB Error')
-legend(
-  'topright',
-  colnames(st_rf_mod$err.rate),
-  col = 1:3,
-  fill = 1:3
-)
-```
+  ```r
+  st_rf_mod <- randomForest(
+    as.formula(
+      paste('Transported', "~", features_of_interest)
+    ),
+    data = train_new
+  )
+
+  # Plot OOB error
+  plot(st_rf_mod, main = 'Fig 13. Random Forest OOB Error')
+  legend(
+    'topright',
+    colnames(st_rf_mod$err.rate),
+    col = 1:3,
+    fill = 1:3
+  )
+  ```
+</details>
 
 ![fit-rf-1](/static/images/spaceship-titanic/fit-rf-1.png)
 
@@ -1392,6 +1441,9 @@ was transported generally being lower (0.1743772 vs 0.2412762).
 
 We’ll take a quick look at variable importance before moving on to
 checking performance over our validation set.
+
+<details>
+  <summary>Variable importance</summary>
 
 ```r
 # Plot variable importance
@@ -1407,6 +1459,7 @@ importance %>%
   geom_col() +
   labs(x = 'Importance', y = 'Variable', title = 'Fig 14. Random Forest - Variable Importance')
 ```
+</details>
 
 ![fit-imp-1](/static/images/spaceship-titanic/fit-imp-1.png)
 
@@ -1576,42 +1629,46 @@ mainly controls for high variance in the model.
 XGBoost only works over numeric variables, so we’ll need to one-hot
 encode our factors, we’ll use `caret` to do this:
 
-```r
-# Define a function pipeline to clean all three data-frames
-xgb_prep <- function(data, iv_threshold = 0.1) {
-  
-  # Bin Age and filter only for variables we're interested in
-  data_tmp <- data %>% 
-    mutate(AgeGrp = cut(Age, breaks = 10 * c(-1:10))) %>% 
-    select_at(vars(inf_value %>% filter(IV > iv_threshold) %>% .$Variable, AgeGrp, Transported, gender))
-  
-  # Force logical to numeric
-  data_tmp <- data_tmp %>% 
-    mutate_at(
-      .vars = vars(CryoSleep),
-      .funs = ~ as.numeric(.) - 1
-    ) %>% 
-    # Label needs to be a factor to show this is a classification problem
-    mutate(Transported = as.factor(Transported)) 
-  
-  # One-hot encode Deck and HomePlanet
-  dummy_var_model <- dummyVars(~ Deck + HomePlanet + AgeGrp + gender, data = data_tmp)
-  
-  # Add back to main dataset
-  data_tmp <- data_tmp %>% 
-    select(-Deck, -HomePlanet, -AgeGrp, -gender) %>% 
-    bind_cols(
-      predict(dummy_var_model, newdata = data_tmp)
-    )
-  
-  return(data_tmp)
-  
-}
+<details>
+  <summary>XGBoost prep</summary>
 
-train_xgb <- xgb_prep(train_new)
-valid_xgb <- xgb_prep(valid_new)
-test_xgb <- xgb_prep(test_clean)
-```
+  ```r
+  # Define a function pipeline to clean all three data-frames
+  xgb_prep <- function(data, iv_threshold = 0.1) {
+    
+    # Bin Age and filter only for variables we're interested in
+    data_tmp <- data %>% 
+      mutate(AgeGrp = cut(Age, breaks = 10 * c(-1:10))) %>% 
+      select_at(vars(inf_value %>% filter(IV > iv_threshold) %>% .$Variable, AgeGrp, Transported, gender))
+    
+    # Force logical to numeric
+    data_tmp <- data_tmp %>% 
+      mutate_at(
+        .vars = vars(CryoSleep),
+        .funs = ~ as.numeric(.) - 1
+      ) %>% 
+      # Label needs to be a factor to show this is a classification problem
+      mutate(Transported = as.factor(Transported)) 
+    
+    # One-hot encode Deck and HomePlanet
+    dummy_var_model <- dummyVars(~ Deck + HomePlanet + AgeGrp + gender, data = data_tmp)
+    
+    # Add back to main dataset
+    data_tmp <- data_tmp %>% 
+      select(-Deck, -HomePlanet, -AgeGrp, -gender) %>% 
+      bind_cols(
+        predict(dummy_var_model, newdata = data_tmp)
+      )
+    
+    return(data_tmp)
+    
+  }
+
+  train_xgb <- xgb_prep(train_new)
+  valid_xgb <- xgb_prep(valid_new)
+  test_xgb <- xgb_prep(test_clean)
+  ```
+</details>
 
 ### 5.3.1 Fitting process
 
@@ -1626,56 +1683,64 @@ XGBoost model across all possible permutations of these possible values,
 and will then select the model with the lowest Root Mean Squared Error
 (RMSE).
 
-```r
-# First, define the controls we want to train with; we're choosing 10-fold cross-validation and a grid search
-xgb_control <- trainControl(
-  method = "cv", 
-  number = 5, 
-  search = "grid"
-)
+<details>
+  <summary>XGBoost training</summary>
 
-# Next, listing the possible hyper-parameters we'll train over
-#  For hyper-parameters not listed here, we'll use the default value
-xgb_hyp_params <- expand.grid(
-  max_depth = c(3, 4, 5, 6), # Controls the max depth of each tree; higher values = more chance of over-fitting 
-  nrounds = c(1:15) * 50, # Number of trees to go through
-  eta = c(0.01, 0.1, 0.2), # Analogous to learning rate
-  gamma = c(0, 0.01, 0.1), # The minimum loss reduction required to split the next node
-  
-  # Default values for remaining hyper-parameters
-  subsample = c(0.5, 0.75, 1),
-  min_child_weight = 1,
-  colsample_bytree = 0.6
-)
+  ```r
+  # First, define the controls we want to train with; we're choosing 10-fold cross-validation and a grid search
+  xgb_control <- trainControl(
+    method = "cv", 
+    number = 5, 
+    search = "grid"
+  )
 
-# Unregister any parallel workers
-env <- foreach:::.foreachGlobals
-rm(list=ls(name=env), pos=env)
+  # Next, listing the possible hyper-parameters we'll train over
+  #  For hyper-parameters not listed here, we'll use the default value
+  xgb_hyp_params <- expand.grid(
+    max_depth = c(3, 4, 5, 6), # Controls the max depth of each tree; higher values = more chance of over-fitting 
+    nrounds = c(1:15) * 50, # Number of trees to go through
+    eta = c(0.01, 0.1, 0.2), # Analogous to learning rate
+    gamma = c(0, 0.01, 0.1), # The minimum loss reduction required to split the next node
+    
+    # Default values for remaining hyper-parameters
+    subsample = c(0.5, 0.75, 1),
+    min_child_weight = 1,
+    colsample_bytree = 0.6
+  )
 
-set.seed(24601)
+  # Unregister any parallel workers
+  env <- foreach:::.foreachGlobals
+  rm(list=ls(name=env), pos=env)
 
-# Training the model
-st_xgb_mod <- train(
-  Transported ~ ., 
-  data = train_xgb, 
-  method = "xgbTree", 
-  trControl = xgb_control, 
-  tuneGrid = xgb_hyp_params
-)
-```
+  set.seed(24601)
+
+  # Training the model
+  st_xgb_mod <- train(
+    Transported ~ ., 
+    data = train_xgb, 
+    method = "xgbTree", 
+    trControl = xgb_control, 
+    tuneGrid = xgb_hyp_params
+  )
+  ```
+</details>
 
 Taking a quick look at feature importance, everything seems to generally
 align with what we’ve seen previously.
 
-```r
-xgb.plot.importance(
-  xgb.importance(
-    colnames(train_xgb %>% select(-Transported)), 
-    model = st_xgb_mod$finalModel
+<details>
+  <summary>Variable importance plot</summary>
+
+  ```r
+  xgb.plot.importance(
+    xgb.importance(
+      colnames(train_xgb %>% select(-Transported)), 
+      model = st_xgb_mod$finalModel
+    )
   )
-)
-title('Fig 15. XGBoost Feature Importance')
-```
+  title('Fig 15. XGBoost Feature Importance')
+  ```
+</details>
 
 ![xgb-imp-1](/static/images/spaceship-titanic/xgb-imp-1.png)
 
