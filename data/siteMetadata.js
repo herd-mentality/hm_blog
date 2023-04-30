@@ -12,7 +12,7 @@ const siteMetadata = {
   siteRepo: 'https://github.com/timlrx/tailwind-nextjs-starter-blog',
   siteLogo: '/static/images/logo.png',
   image: '/static/images/avatar.png',
-  socialBanner: '/static/images/logo.png',
+  socialBanner: '/static/images/twitter-card.png',
   email: '',
   github: 'https://github.com/herd-mentality/',
   twitter: '',
