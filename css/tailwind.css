@@ -3,7 +3,6 @@
 @tailwind utilities;
 @import '../css/TabsComponent.css';
 @import '../css/NavLinks.css';
-@import '../css/Headers.css';
 
 .task-list-item::before {
   @apply hidden;

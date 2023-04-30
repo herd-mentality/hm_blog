@@ -49,7 +49,7 @@ const AutoLinkedHeading: React.FC<AutoLinkedHeadingProps> = ({
   const basePath = router.asPath.split('#')[0]
 
   return (
-    <Tag id={id} {...props}>
+    <Tag id={id} className="heading-anchor" {...props}>
       <CustomLink href={`${basePath}#${id}`} aria-label={`Link to ${id}`}>
         {textContent}
       </CustomLink>
