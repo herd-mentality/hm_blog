@@ -430,28 +430,37 @@ We’ve stepped through all the main entities and how calculations are done unde
 
 ## Player’s turn
 3. The player can choose what they’d like to do from here
-    a. If the player chooses to hit (i.e. draw a card from the shoe), the `hitBehaviour()` function is run (triggered by an on-click event on the hit button). 
-        i. This function removes the top card from the shoe and places it at the end of the player’s hand (both in the hand/hand-value arrays, and visually on screen).
-        ii. Next, if there are any face/ace cards, the appropriate rule is added to the rule-set
-        iii. The player’s hand value options are calculated
-            1. If no value options are smaller than 21, the player busts
-            2. If the value options include 21, the player gets blackjack
-            3. Otherwise, the player is allowed to either hit or stand again
-    b. If the player chooses to stand (i.e. not draw another card from the deck and end their turn), the `standBehaviour()` function is run (triggered by an on-click event on the stand button).
-        i. If the player stands, their hand remains unchanged. The dealer’s second card is revealed, and if they don’t have a blackjack, initiate the dealer’s turn.
-    c. Depending on the context, the player may be able to take out insurance, split their hand, or double their bet - these have been left out of this post for the sake of brevity
+
+    1. If the player chooses to hit (i.e. draw a card from the shoe), the `hitBehaviour()` function is run (triggered by an on-click event on the hit button). 
+
+        1. This function removes the top card from the shoe and places it at the end of the player’s hand (both in the hand/hand-value arrays, and visually on screen).
+        2. Next, if there are any face/ace cards, the appropriate rule is added to the rule-set
+        3. The player’s hand value options are calculated
+
+            - If no value options are smaller than 21, the player busts
+            - If the value options include 21, the player gets blackjack
+            - Otherwise, the player is allowed to either hit or stand again
+
+    2. If the player chooses to stand (i.e. not draw another card from the deck and end their turn), the `standBehaviour()` function is run (triggered by an on-click event on the stand button).
+
+        - If the player stands, their hand remains unchanged. The dealer’s second card is revealed, and if they don’t have a blackjack, initiate the dealer’s turn.
+
+    3. Depending on the context, the player may be able to take out insurance, split their hand, or double their bet - these have been left out of this post for the sake of brevity
 
 ## Dealer’s turn
 The dealer’s behaviour in this game boils down to them hitting until their total value is at least 17. This will sometimes result in them busting. The dealer’s behaviour is handled in the `dealerPlay()` function.
 
 4. Dealer takes their turn
-    a. First, calculate values for the player/dealer’s hands. If the player has blackjack, check for dealer blackjack. If the dealer has blackjack, it’s a push/draw. If the dealer doesn’t have blackjack, the player wins. Otherwise, continue the dealer’s turn.
-    b. While the outcome of the round is not bust, win, draw, nor lose (from the player’s perspective), the following checks are run in order:
-        i. If the dealer has blackjack, they win
-        ii. If the dealer has an ace and counting it as an 11 will bring the card total to 17 or more (but not over 21) - the dealer must count it as an 11 and stand
-        iii. If the dealer has no value options under 21, the dealer goes bust
-        iv. If the dealer’s value options start at 17 or more, the dealer must stand
-        v. If the dealer’s value options are all lower than 17, then the dealer must hit again
+
+    1. First, calculate values for the player/dealer’s hands. If the player has blackjack, check for dealer blackjack. If the dealer has blackjack, it’s a push/draw. If the dealer doesn’t have blackjack, the player wins. Otherwise, continue the dealer’s turn.
+
+    2. While the outcome of the round is not bust, win, draw, nor lose (from the player’s perspective), the following checks are run in order:
+
+        - If the dealer has blackjack, they win
+        - If the dealer has an ace and counting it as an 11 will bring the card total to 17 or more (but not over 21) - the dealer must count it as an 11 and stand
+        - If the dealer has no value options under 21, the dealer goes bust
+        - If the dealer’s value options start at 17 or more, the dealer must stand
+        - If the dealer’s value options are all lower than 17, then the dealer must hit again
 
 ## Resetting for the next round
 The dealer’s turn ends once the round reaches either a win, draw, or loss (from the player’s perspective). After the result is displayed on screen, a few things are done to reset for the next round.
