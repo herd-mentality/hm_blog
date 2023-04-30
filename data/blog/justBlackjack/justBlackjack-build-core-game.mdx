@@ -26,6 +26,8 @@ Now, we'll delve deeper into the game's core mechanics. In this post, we'll cove
 
 By the end of this post, you'll have a comprehensive understanding of how justBlackjack works under the hood and learn about the future plans for this project.
 
+If you need a recap on the rules of blackjack, you can find that in the [previous article](./justBlackjack-build-setup).
+
 # JavaScript Blackjack Implementation
 JavaScript facilitates the interactivity in justBlackjack, allowing it to be responsive to user input and also for us to define how the dealer behaves. In this section, we'll take a closer look at the key functions and code snippets that make the game possible.
 
@@ -146,7 +148,7 @@ To store the contents of the dealer and the player’s hands, two empty arrays a
 - Events based on the player/dealer’s hand values are then checked:
     - If any face/ace cards are face-up now, the relevant rules are added to the rule-set
     - If the dealer’s face-up card is an ace, the player is able to take out ‘insurance’; the mechanism of this is beyond the scope of this post
-    - Next, the function checks whether the player and/or the dealer have blackjack and will end the round accordingly
+    - Next, the function checks whether the player and/or the dealer have blackjack (ie. they have a total of 21) and will end the round accordingly
     - Finally, the function determines if the player is able to either ‘split’ their hand (eligible if the player’s cards have equal value), or ‘double’ their bet (if their total value is between 9 and 11). These scenarios are beyond the scope of this post.
 
 With this, the initial deal is complete - the player and dealer have their hands, and if neither have blackjack the round can continue.
@@ -470,7 +472,7 @@ The dealer’s turn ends once the round reaches either a win, draw, or loss (fro
 7. Once ‘next round’ is clicked, `resetForNextRound()` checks if we’re past the cut card at the end of this round. If so, the deck will be re-initialised. The ‘next round’ button is hidden, cards are dealt out, and the player is again allowed to either hit or stand depending on their new hand.
 
 # Lessons learnt and next steps
-Planning out and developing justBlackjack allowed me to gain valuable hands-on experience with JavaScript, especially with respects to how it works together with the other aspects of the web app. This project not only helped me uncover new programming techniques that I could apply to my day job where I work primarily in R, but also allowed me to tackle the challenge of translating real-world rules into code - something I have a particular interest in.
+Planning out and developing justBlackjack allowed me to gain valuable hands-on experience with JavaScript, especially with respect to how it works together with the other aspects of the web app. This project not only helped me uncover new programming techniques that I could apply to my day job where I work primarily in R, but also allowed me to tackle the challenge of translating real-world rules into code - something I have a particular interest in.
 
 With that being said, this project is far from over and there are plenty of ways in which things may be improved:
 
