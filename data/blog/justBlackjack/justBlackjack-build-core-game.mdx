@@ -7,6 +7,8 @@ summary: 'How blackjack rounds were simulated in JavaScript for justBlackjack'
 authors: ['darrenwong']
 ---
 
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+
 <TOCInline toc={props.toc} indentDepth={2} />
 <br/>
 
@@ -340,6 +342,81 @@ The calculation of the total value of the player’s and dealer’s hand isn’t
             )
     ```
 </details>
+<br/>
+
+<Tabs>
+  <TabList>
+    <Tab>Examples without Aces</Tab>
+    <Tab>Examples with Aces</Tab>
+  </TabList>
+
+  <TabPanel>
+
+    **Example 1**
+    ![Hand Value calculation example 1](/static/images/justblackjack/hvalue-example1.png)
+
+    ```js
+    calculateHValue([10, 2])
+
+    // Results:
+    // {
+    //    aceCounter: 0, 
+    //    preAceSum: 12, 
+    //    postAceOptions: [12], 
+    //    initialState: 'none'
+    // }
+    ```
+
+    **Example 2**
+    ![Hand Value calculation example 2](/static/images/justblackjack/hvalue-example2.png)
+
+    ```js
+    calculateHValue([9, 10, 2])
+
+    // Results:
+    // {
+    //    aceCounter: 0, 
+    //    preAceSum: 21, 
+    //    postAceOptions: [21], 
+    //    initialState: 'blackjack'
+    // }
+    ```
+
+  </TabPanel>
+  <TabPanel>
+
+    **Example 3**
+    ![Hand Value calculation example 3](/static/images/justblackjack/hvalue-example3.png)
+
+    ```js
+    calculateHValue([2, 24601])
+
+    // Results:
+    // {
+    //    aceCounter: 1, 
+    //    preAceSum: 2, 
+    //    postAceOptions: [3, 13], 
+    //    initialState: 'none'
+    // }
+    ```
+
+    **Example 4**
+    ![Hand Value calculation example 4](/static/images/justblackjack/hvalue-example4.png)
+
+    ```js
+    calculateHValue([10, 2, 24601, 10])
+
+    // Results:
+    // {
+    //    aceCounter: 1, 
+    //    preAceSum: 22, 
+    //    postAceOptions: [23],
+    //    initialState: 'bust'
+    // }
+    ```
+
+  </TabPanel>
+</Tabs>
 <br/>
 
 # Playing a round
