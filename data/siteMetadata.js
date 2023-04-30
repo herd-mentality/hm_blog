@@ -3,7 +3,7 @@
 /** @type {import("pliny/config").PlinyConfig } */
 const siteMetadata = {
   title: 'The Herd Mentality',
-  author: '',
+  author: 'Herd Mentality',
   headerTitle: 'The Herd Mentality',
   description: 'See the latest posts from the Herd',
   language: 'en-us',
