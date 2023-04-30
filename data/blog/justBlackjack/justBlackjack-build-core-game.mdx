@@ -26,7 +26,7 @@ Now, we'll delve deeper into the game's core mechanics. In this post, we'll cove
 
 By the end of this post, you'll have a comprehensive understanding of how justBlackjack works under the hood and learn about the future plans for this project.
 
-If you need a recap on the rules of blackjack, you can find that in the [previous article](./justBlackjack-build-setup).
+If you need a recap on the rules of blackjack, you can find that in the [previous article](./justBlackjack-build-setup#overview-of-blackjack-rules).
 
 # JavaScript Blackjack Implementation
 JavaScript facilitates the interactivity in justBlackjack, allowing it to be responsive to user input and also for us to define how the dealer behaves. In this section, we'll take a closer look at the key functions and code snippets that make the game possible.
@@ -355,7 +355,7 @@ The calculation of the total value of the player’s and dealer’s hand isn’t
   <TabPanel>
 
     **Example 1**
-    ![Hand Value calculation example 1](/static/images/justblackjack/hvalue-example1.png)
+    ![Hand Value calculation example 1](/static/images/justBlackjack/hvalue-example1.png)
 
     ```js
     calculateHValue([10, 2])
@@ -370,7 +370,7 @@ The calculation of the total value of the player’s and dealer’s hand isn’t
     ```
 
     **Example 2**
-    ![Hand Value calculation example 2](/static/images/justblackjack/hvalue-example2.png)
+    ![Hand Value calculation example 2](/static/images/justBlackjack/hvalue-example2.png)
 
     ```js
     calculateHValue([9, 10, 2])
@@ -388,7 +388,7 @@ The calculation of the total value of the player’s and dealer’s hand isn’t
   <TabPanel>
 
     **Example 3**
-    ![Hand Value calculation example 3](/static/images/justblackjack/hvalue-example3.png)
+    ![Hand Value calculation example 3](/static/images/justBlackjack/hvalue-example3.png)
 
     ```js
     calculateHValue([2, 24601])
@@ -403,7 +403,7 @@ The calculation of the total value of the player’s and dealer’s hand isn’t
     ```
 
     **Example 4**
-    ![Hand Value calculation example 4](/static/images/justblackjack/hvalue-example4.png)
+    ![Hand Value calculation example 4](/static/images/justBlackjack/hvalue-example4.png)
 
     ```js
     calculateHValue([10, 2, 24601, 10])
