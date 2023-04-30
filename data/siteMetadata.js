@@ -3,7 +3,7 @@
 /** @type {import("pliny/config").PlinyConfig } */
 const siteMetadata = {
   title: 'The Herd Mentality',
-  author: '',
+  author: 'Herd Mentality',
   headerTitle: 'The Herd Mentality',
   description: 'See the latest posts from the Herd',
   language: 'en-us',
@@ -12,8 +12,8 @@ const siteMetadata = {
   siteRepo: 'https://github.com/timlrx/tailwind-nextjs-starter-blog',
   siteLogo: '/static/images/logo.png',
   image: '/static/images/avatar.png',
-  socialBanner: '/static/images/twitter-card.png',
-  email: 'hello@herdmentality.xyz',
+  socialBanner: '/static/images/logo.png',
+  email: '',
   github: 'https://github.com/herd-mentality/',
   twitter: '',
   facebook: '',
