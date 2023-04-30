@@ -35,10 +35,11 @@ export default function Footer() {
             <Link href="https://iconscout.com/icons/sheep" className="footer-link">
               Sheep Icon
             </Link>
-            <div>{`by`}</div>
+            <div>by</div>
             <Link href="https://iconscout.com/contributors/icograms" className="footer-link">
               Icograms
             </Link>
+            <span> 🐑</span>
           </div>
         </div>
       </div>
