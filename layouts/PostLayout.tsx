@@ -35,6 +35,15 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
   const basePath = path.split('/')[0]
   const [loadComments, setLoadComments] = useState(false)
 
+  const split_path = path.split('/')
+  const nested_group = split_path.slice(1, split_path.length - 1)
+
+  nested_group.length > 0 ? 'nested group' : 'not a nested group'
+  // If nested group, show the component. If not, then show nothing.
+  // Since nests of depth > 1 are allowed, just do nested_group.join('/') (regardless of length of nested_group) and report that name
+  // Would also be good to query the data - need to find where the nested data go
+  // Looks like we can filter the json from generated/Blog/_index.json for those with a path that matches the nested route?
+
   return (
     <SectionContainer>
       <BlogSEO url={`${siteMetadata.siteUrl}/${path}`} authorDetails={authorDetails} {...content} />
