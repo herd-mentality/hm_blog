@@ -16,3 +16,8 @@ export const getStaticProps = async (context) => {
 }
 
 // Unsure if we'll be able to get the full list of blogs here - need to figure that out
+
+// Get full list of blogs from getStaticProps
+// Filter down to the correct nested route; will need to be done within the component code
+//    Not particularly efficient since it loads all of the blog posts then does the filtering in the component
+// Then use info to build the component
