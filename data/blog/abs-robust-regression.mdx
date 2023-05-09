@@ -1,0 +1,62 @@
+---
+title: Excess mortality - a look at the ABS’s robust regression method
+date: '2023-05-08'
+tags: ['excess-mortality', 'serfling', 'robust-regression', 'abs', 'R']
+draft: false
+summary: 'A deep dive into the ABS’s modified Serfling model for estimating excess mortality'
+authors: ['darrenwong', 'vincentdoan']
+---
+
+<TOCInline toc={props.toc} indentDepth={2} />
+<br/>
+
+NEED TO UPDATE THE FOOTNOTES TO CITE PROPERLY
+
+# Introduction
+
+As the COVID-19 pandemic continues to leave its mark on global public health, it is critical to understand the full extent of its repercussions. 
+
+Relying solely on the count of deaths officially attributed to COVID-19 may not reveal the full picture. This metric may be misleading due to potential inaccuracies in cause of death reporting and it fails to consider deaths indirectly associated with the pandemic, stemming from the state of crisis and strained healthcare system capacity.[^1]
+
+A more comprehensive approach to capturing the pandemic’s impact is by estimating excess mortality. This measure aims to encompass all deaths associated with the pandemic, providing a more holistic estimate of mortality attributable to COVID-19.
+
+In this post, we will examine how the Australian Bureau of Statistics (ABS) has tackled the estimation of Australia's excess mortality attributable to COVID-19. We will place particular emphasis on the robust regression procedure they employ, a technique that doesn't seem to be widely adopted in this field. By exploring how the estimation results change with varying hyperparameters, we will attempt to identify a set of parameters that best suit our objectives.
+
+It's important to note that this post is not intended as a critique of the ABS's methodology; rather, it serves as an exploratory look into how their approach works.
+
+# Excess mortality estimation
+
+Excess mortality is commonly measured as the number of deaths occurring beyond what would normally be expected within a specific target time frame. To calculate this, we fit a model over a number of years preceding the target period (these years are also known as the reference period). We then use this model to predict the expected number of deaths in the target time frame. Excess mortality is then calculated as the difference between observed and expected deaths over the target timeframe. 
+
+For studies looking at the effects of COVID-19, the target time frame is usually the 2020 calendar year. The model used to estimate expected mortality in that timeframe is usually trained on mortality over the 5 years preceding the target (ie. a 5 year reference period)[^2].
+
+The choice of model to capture the predictive information present in the reference period is not as universally agreed upon. As a predictive modelling problem, mortality over the target period has been predicted using anything from simple linear regression[^3] to Poisson generalised linear models[^4] to gradient-boosted trees[^5]. The ABS chose to use a modification of the Serfling model, a method borrowed from modelling of excess mortality due to influenza. 
+
+The classic Serfling model is a linear regression with a term to account for long-term trend and added harmonic terms to account for seasonality.[^6] The ABS adds a second order term which aims to capture any non-linear trend in the time series. [^7] Together, weekly mortality at time $t$ ($Y_t$) is estimated using:
+
+$$
+Y_t = \alpha + \beta t + \kappa t^2 + \gamma \cos \left(\frac{2 \pi t}{52.18}\right) + \delta \sin \left(\frac{2 \pi t}{52.18}\right) + \epsilon_t
+$$
+
+Where:
+- $\alpha$ is the intercept term 
+- $\beta t$ represents the linear time trend
+- $\kappa t^2$ represents the non-linear (second order) time trend
+- $\gamma$, $\delta$ are coefficients for the harmonic terms 
+- $\epsilon_t$ is the error term at time $t$
+
+Using this model, the ABS predicted mortality in 2020 (using 2015-19 as the reference period) and 2021 (using 2016-20 as the reference period). The results of this are shown below with the two separate predicted periods shaded:
+
+> [ABS observed vs expected here]
+
+Similar to Serfling’s original methodology, the ABS also predicted mortality by finding the difference between the observed mortality and the 95% prediction intervals from their method (instead of using the point estimate of predicted mortality). However, for the purposes of this study, we’ll calculate excess mortality as observed - expected. This method yields [XXX] excess deaths in 2020, and [YYY] excess deaths in 2021.
+
+Readers might observe that selecting 2016-20 as the reference period for training the model could introduce bias, as 2020 was an exceptional year due to the COVID-19 pandemic. We will delve deeper into this issue and explore how the ABS addresses it in the following section.
+
+[^1]: https://ourworldindata.org/excess-mortality-covid
+[^2]: https://onlinelibrary.wiley.com/doi/10.1111/padr.12475
+[^3]: https://elifesciences.org/articles/69336
+[^4]: Since deaths are counts they may be modelled with a Poisson distribution. However, deaths often have high variance (particularly in times of pandemic) which violates the Poisson assumption that the mean = the variance. In these cases, the Poisson distribution can be corrected for this ‘over-dispersion’, commonly by using a Negative Binomial distribution instead. (https://www.nature.com/articles/s41586-022-05522-2 for distributional stuff, https://www.euromomo.eu/how-it-works/methods for Poisson GLM)
+[^5]: The Economist
+[^6]: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1915276/
+[^7]: https://www.abs.gov.au/articles/measuring-australias-excess-mortality-during-covid-19-pandemic
