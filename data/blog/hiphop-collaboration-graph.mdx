@@ -17,7 +17,7 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
 # 1 Introduction
 
 As a Hip-hop fan (and other genres of music) it is obvious that certain artists are more alike than others.
-I was interested to see if a network of Hip-hop artists based on their collaborations with others would be able highlight some interesting insights.
+I was interested to see if a network of Hip-hop artists based on their collaborations with others would be able to highlight some interesting insights.
 
 The things I needed to solve this problem were:
 
@@ -55,14 +55,14 @@ artist_list = [
 ]
 ```
 
-## 3 Analysing and Visualizing the data
+# 3 Analysing and Visualizing the data
 
 After quickly trying some network and charting packages in Python, and then trying a PowerBI markplace viz with minimal success, I remembered a desktop appliction I used years ago that could render beautiful network graphs.
 So I started working with Gephi [https://gephi.org/users/download/](https://gephi.org/users/download/).
 
 ![](/static/images/hiphop-graph-gephi-screenshot.png)
 
-## 4 Analysis
+# 4 Analysis
 
 Here is the first look of the network graph with labels.
 The size of the nodes (and labels) is the number of edges in the graph (the number of collaboration artists).
@@ -74,24 +74,24 @@ The color is:
 
 ![](/static/images/hiphop-graph-label.png)
 
-### 4.1 Most collaborations
+## 4.1 Most collaborations
 
 ![](/static/images/hiphop-graph-snoop.png)
 
 The winner of this title goes to Snoop Dogg.
 
-### 4.1 Clusters
+## 4.1 Clusters
 
 ![](/static/images/hiphop-graph-clusters.png)
 
 The east coast and west coast artists are clustered well together based on their collaborations (as expected).
 
-### 4.2 Key collaborations between clusters
+## 4.2 Key collaborations between clusters
 
 ![](/static/images/hiphop-graph-drdre-50cent.png)
 
 It seems from the network graph that Dr Dre (from the west coast) signing 50 Cent (from the east coast) to his label became a key collaboration connection between the clusters.
 
-## 5 Wrap up
+# 5 Wrap up
 
 I think there is great insights that can be gained from collaborations between artists that confirm some suspicions of fans and highlight some unknown insights.
