@@ -3,7 +3,7 @@ title: Hip-hop collaboration network graph
 date: '2023-05-08'
 tags: ['analysis', 'eda', 'network', 'graph', 'python']
 draft: false
-summary: 'Looking into relationships between Hip-hop artists be analysing the network graph of their collaborations'
+summary: 'Looking into relationships between Hip-hop artists by analysing the network graph of their collaborations'
 authors: ['christophermortimer']
 ---
 
@@ -12,7 +12,7 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
 <TOCInline toc={props.toc} indentDepth={2} />
 <br />
 
-![](/static/images/hiphop-graph-no-label-avatar.png)
+![](/static/images/hiphop-graph/hiphop-graph-no-label-avatar.png)
 
 # 1 Introduction
 
@@ -40,7 +40,7 @@ To get started, since it is 2023, I started with a prompt to ChatGPT that was so
 > Write me a Python script that calls that Music Brainz API (documentaiton here https://musicbrainz.org/doc/MusicBrainz_API/Examples) that searches for an artist and returns the artists ID.
 
 Of course it oblidged politely:
-![](/static/images/hiphop-graph-chatgpt.png)
+![](/static/images/hiphop-graph/hiphop-graph-chatgpt.png)
 
 Then, with a bit of refactoring and a few more prompts to ChatGPT, I ended up with a script that could loop through a list of my favourite artists and produce a CSV file of the collaboration graph.
 The analysis was a bit of a throw back to the 1990's of Hip-hop and I wanted a few East coast and West coast rappers in the list to see if the network analysis clusters them well.
@@ -60,7 +60,7 @@ artist_list = [
 After quickly trying some network and charting packages in Python, and then trying a PowerBI markplace viz with minimal success, I remembered a desktop appliction I used years ago that could render beautiful network graphs.
 So I started working with Gephi [https://gephi.org/users/download/](https://gephi.org/users/download/).
 
-![](/static/images/hiphop-graph-gephi-screenshot.png)
+![](/static/images/hiphop-graph/hiphop-graph-gephi-screenshot.png)
 
 # 4 Analysis
 
@@ -72,23 +72,23 @@ The color is:
 - Green: New york
 - Blue: Chicago
 
-![](/static/images/hiphop-graph-label.png)
+![](/static/images/hiphop-graph/hiphop-graph-label.png)
 
 ## 4.1 Most collaborations
 
-![](/static/images/hiphop-graph-snoop.png)
+![](/static/images/hiphop-graph/hiphop-graph-snoop.png)
 
 The winner of this title goes to Snoop Dogg.
 
 ## 4.1 Clusters
 
-![](/static/images/hiphop-graph-clusters.png)
+![](/static/images/hiphop-graph/hiphop-graph-clusters.png)
 
 The east coast and west coast artists are clustered well together based on their collaborations (as expected).
 
 ## 4.2 Key collaborations between clusters
 
-![](/static/images/hiphop-graph-drdre-50cent.png)
+![](/static/images/hiphop-graph/hiphop-graph-drdre-50cent.png)
 
 It seems from the network graph that Dr Dre (from the west coast) signing 50 Cent (from the east coast) to his label became a key collaboration connection between the clusters.
 
