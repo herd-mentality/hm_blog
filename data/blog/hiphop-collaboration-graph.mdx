@@ -1,0 +1,97 @@
+---
+title: Hip-hop collaboration network graph
+date: '2023-05-08'
+tags: ['analysis', 'eda', 'network', 'graph', 'python']
+draft: false
+summary: 'Looking into relationships between Hip-hop artists be analysing the network graph of their collaborations'
+authors: ['christophermortimer']
+---
+
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
+
+<TOCInline toc={props.toc} indentDepth={2} />
+<br />
+
+![](/static/images/hiphop-graph-no-label-avatar.png)
+
+# 1 Introduction
+
+As a Hip-hop fan (and other genres of music) it is obvious that certain artists are more alike than others.
+I was interested to see if a network of Hip-hop artists based on their collaborations with others would be able to highlight some interesting insights.
+
+The things I needed to solve this problem were:
+
+- Data on artists, their tracks (songs) and the artists featuring on the tracks
+- Network graph analysis and visualisation software
+
+This was done on a Windows 10 machine with:
+
+- Python 3
+- Node.js 16
+- Gephi
+
+# 2 Getting the data
+
+To have a look at the source code for getting the collaboration data, have a look at the following Github repo [https://github.com/mortie23/musicbrainz-get](https://github.com/mortie23/musicbrainz-get).
+I looked for existing dataset but counldn't find one, but found a fantastic free API from MusicBrainz [https://musicbrainz.org/doc/MusicBrainz_API/Examples](https://musicbrainz.org/doc/MusicBrainz_API/Examples).
+
+To get started, since it is 2023, I started with a prompt to ChatGPT that was something like this:
+
+> Write me a Python script that calls that Music Brainz API (documentaiton here https://musicbrainz.org/doc/MusicBrainz_API/Examples) that searches for an artist and returns the artists ID.
+
+Of course it oblidged politely:
+![](/static/images/hiphop-graph-chatgpt.png)
+
+Then, with a bit of refactoring and a few more prompts to ChatGPT, I ended up with a script that could loop through a list of my favourite artists and produce a CSV file of the collaboration graph.
+The analysis was a bit of a throw back to the 1990's of Hip-hop and I wanted a few East coast and West coast rappers in the list to see if the network analysis clusters them well.
+
+```py
+# %%
+artist_list = [
+    "Jay-Z",
+    "Nas",
+    "Wu-Tang Clan",
+    ...
+]
+```
+
+# 3 Analysing and Visualizing the data
+
+After quickly trying some network and charting packages in Python, and then trying a PowerBI markplace viz with minimal success, I remembered a desktop appliction I used years ago that could render beautiful network graphs.
+So I started working with Gephi [https://gephi.org/users/download/](https://gephi.org/users/download/).
+
+![](/static/images/hiphop-graph-gephi-screenshot.png)
+
+# 4 Analysis
+
+Here is the first look of the network graph with labels.
+The size of the nodes (and labels) is the number of edges in the graph (the number of collaboration artists).
+The color is:
+
+- Orange: Calfornia
+- Green: New york
+- Blue: Chicago
+
+![](/static/images/hiphop-graph-label.png)
+
+## 4.1 Most collaborations
+
+![](/static/images/hiphop-graph-snoop.png)
+
+The winner of this title goes to Snoop Dogg.
+
+## 4.1 Clusters
+
+![](/static/images/hiphop-graph-clusters.png)
+
+The east coast and west coast artists are clustered well together based on their collaborations (as expected).
+
+## 4.2 Key collaborations between clusters
+
+![](/static/images/hiphop-graph-drdre-50cent.png)
+
+It seems from the network graph that Dr Dre (from the west coast) signing 50 Cent (from the east coast) to his label became a key collaboration connection between the clusters.
+
+# 5 Wrap up
+
+I think there is great insights that can be gained from collaborations between artists that confirm some suspicions of fans and highlight some unknown insights.
