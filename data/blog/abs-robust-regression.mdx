@@ -147,6 +147,45 @@ See below a visualisation of the weights calculated as a function of how many sc
 
 Robust regression can be implemented in R using the `rlm()` function from the `MASS` package. If we want to use all SAS defaults under the M estimation method, we end up with this function call:
 
+<details>
+  <summary>Data ingestion & train/test set split</summary>
+
+    ```r
+    # Ingest data from ABS
+    abs_deaths <- file.path(
+        getwd(), 
+        'input', 
+        'Comparison of all cause baseline and COVID-19 period deaths against regression, January 2016 - February 2022 (a)(b)(c)(d)(e)(f).csv'
+    ) %>% 
+    read_csv(skip = 1, show_col_types = FALSE) %>% 
+    separate_wider_delim(`95% bounds`, '|', names = c('95%_lower', '95%_higher')) %>% 
+    mutate(
+    across(starts_with('95%'), as.numeric),
+    `Week starting date` = dmy(`Week starting date`),
+    week_number = 1:n()
+    ) %>% 
+    filter(!is.na(`Week starting date`)) %>% 
+    clean_names()
+
+    # Glimpse table
+    abs_deaths %>% glimpse()
+    #> Rows: 321
+    #> Columns: 7
+    #> $ week_starting_date <date> 2016-01-04, 2016-01-11, 2016-01-18…
+    #> $ x95_percent_lower  <dbl> 2216, 2207, 2200, 2198, 2199, 2204,…
+    #> $ x95_percent_higher <dbl> 2624, 2614, 2608, 2606, 2607, 2611,…
+    #> $ expected           <dbl> 2420, 2410, 2404, 2402, 2403, 2408,…
+    #> $ observed           <dbl> 2454, 2521, 2485, 2329, 2497, 2356,…
+    #> $ observed_w_o_covid <dbl> 2454, 2521, 2485, 2329, 2497, 2356,…
+    #> $ week_number        <int> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, …
+
+    # Splitting into train/test sets
+    cutoff_date <- ymd('2021-01-01')
+    train_set   <- abs_deaths %>% filter(week_starting_date >= cutoff_date %m-% years(5) & week_starting_date < cutoff_date)
+    test_set    <- abs_deaths %>% filter(week_starting_date >= cutoff_date & week_starting_date < cutoff_date %m+% years(1))
+    ```
+</details>
+
 ```R
 model <- MASS::rlm(
   observed ~ week_number +                 # ABS-modified Serfling formula
@@ -160,13 +199,123 @@ model <- MASS::rlm(
   c         = 4.685                        # Outlier threshold, SAS default for bisquare
 )
 ```
-The ABS does not provide weekly deaths data in 2015, so we’ll train this model over 2016-20 to predict 2021. We can see immediately that including the t^2 term causes our version of the model to diverge from the ABS model from 2020 onwards. Removing the t^2 brings our model closer into alignment with the ABS’s model, so we’ll continue with this version for now.
+The ABS does not provide weekly deaths data in 2015, so we’ll train this model over 2016-20 to predict 2021; data are sourced from [the first table under this heading](https://www.abs.gov.au/articles/measuring-australias-excess-mortality-during-covid-19-pandemic#weekly-all-cause-mortality-australia). We can see immediately that including the t^2 term causes our version of the model to diverge from the ABS model from 2020 onwards. Removing the t^2 brings our model closer into alignment with the ABS’s model, so we’ll continue with this version for now.
 
 ![](/static/images/abs-robust-reg/abs_plot_w_wo_t2.jpg)
 
 There are still differences between our model and the ABS’s, the peaks and troughs in their model are higher and lower than ours respectively. This suggests that the ABS’s line of best fit is placing higher weight on outlier values, hence they are using either a higher outlier threshold or a weighting function that does not remove outliers entirely.
 
 By grid searching across different outlier thresholds, we can try to get as close to the ABS’s parameters as we can by minimising the RMSE between our model’s predictions and the ABS’s predictions. [^10] The parameters for `MASS::rlm()` that get us closest to their figures are below.
+
+<details>
+    <summary>Grid search code</summary>
+
+    ```R
+    # Parameter setup
+    step_size   <- 0.05
+    param_range <- 0.7
+    scale.ests  <- c("MAD", "Huber")
+    formulae    <- c(
+        paste0(
+            'observed ~ week_number + ',
+            'I(sin(2 * pi * week_number / 52.18)) + ',
+            'I(cos(2 * pi * week_number / 52.18))'
+        ),
+        paste0(
+            'observed ~ week_number + ',
+            'I(week_number^2) + ',
+            'I(sin(2 * pi * week_number / 52.18)) + ',
+            'I(cos(2 * pi * week_number / 52.18))'
+        )
+    )
+
+    # List all parameter sets we want to search over
+    possible_parameters <- bind_rows(
+        # Bisquare
+        crossing(
+            c = seq(4.685 * (1 - param_range), 4.685 * (1 + param_range), step_size),
+            scale.est = scale.ests,
+            formula = formulae,
+            psi = 'psi.bisquare'
+        ),
+        # Huber
+        crossing(
+            k = seq(1.345 * (1 - param_range), 1.345 * (1 + param_range), step_size),
+            scale.est = scale.ests,
+            formula = formulae,
+            psi = 'psi.huber'
+        )
+    )
+
+    # Open multiprocessing session
+    future::plan(multisession, workers = 8)
+
+    # Map over each parameter set, train a model, and calculate RMSE
+    possible_parameters_and_sse <- possible_parameters %>% 
+    future_pmap_dfr(
+        function(formula, psi, scale.est, c, k) {
+            
+            model_rlm <- if (psi == 'psi.bisquare') {
+                
+                predict_year_rlm(
+                year_to_predict    = 2021, 
+                full_time_series   = abs_deaths, 
+                date_col           = 'week_starting_date', 
+                values_col         = 'observed', 
+                num_years_baseline = 5,
+                formula            = formula,
+                verbose            = FALSE,
+                method             = 'M',
+                scale.est          = scale.est,
+                psi                = 'psi.bisquare',
+                c                  = c
+                )
+                
+            } else if (psi == 'psi.huber') {
+                
+                predict_year_rlm(
+                year_to_predict    = 2021, 
+                full_time_series   = abs_deaths, 
+                date_col           = 'week_starting_date', 
+                values_col         = 'observed', 
+                num_years_baseline = 5,
+                formula            = formula,
+                verbose            = FALSE,
+                method             = 'M',
+                scale.est          = scale.est,
+                psi                = 'psi.huber',
+                k                  = k
+                )
+                
+            }
+            
+            delta <- model_rlm$results %>% mutate(
+                delta = (observed - predicted)^2
+            )
+            
+            tibble(
+                scale.est = scale.est,
+                psi       = psi,
+                formula   = formula,
+                c         = c,
+                k         = k,
+                rmse      = sqrt(mean(delta$delta)),
+                converged = if ('converged' %in% names(model_rlm)) model_rlm$converged else FALSE
+            )
+            
+        }
+    )
+
+    future::plan(sequential)
+
+    # How does this look compared to the ABS's model?
+    abs_closest_candidate <- possible_parameters_and_sse %>% 
+        filter(psi == 'psi.bisquare') %>% 
+        filter(rmse == min(rmse), converged) %>% 
+        filter(row_number() == 1)
+    ```
+
+</details>
 
 | Parameter   | Value |
 | :--         | --:   |
@@ -185,6 +334,90 @@ For the final section of this post, let’s have a look at what happens to the o
 # Varying the outlier threshold, `c`
 
 Given that `c` directly defines which points are considered outliers, it's reasonable to assume that our algorithm would be highly sensitive to changes in this hyperparameter's value. This is particularly the case for the bisquare function, which effectively disregards outliers in its weighting. The results displayed below demonstrate this, beginning with a threshold that encompasses all values and progressively shifting toward a threshold that begins to exclude outliers. For clarity, we'll utilise the ABS' original Serfling formula here (including the $t^2$ term), as the differences in forecasts are more pronounced with this approach.
+
+<details>
+    <summary>`gganimate` code</summary>
+
+    ```R
+    varying_c <- seq(2.5, 15.5, 1) %>% 
+        purrr::map_dfr(
+            function(x) {
+                
+                model <- MASS::rlm(
+                    observed ~ week_number + 
+                    I(week_number^2) +
+                    I(sin(2 * pi * week_number / 52.18)) + 
+                    I(cos(2 * pi * week_number / 52.18)), 
+                    data = train_set,
+                    method = 'M',  
+                    scale.est = 'MAD',
+                    psi = 'psi.bisquare',
+                    c = x
+                )
+                
+                train_set %>% 
+                    mutate(
+                    expected = predict(model, train_set),
+                    series = 'Historical'
+                    ) %>% 
+                    bind_cols(
+                        tibble(
+                            c = x,
+                            weights = model$w
+                        )
+                    ) %>% 
+                    bind_rows(
+                    test_set %>% 
+                        mutate(
+                            expected = predict(model, test_set), 
+                            series = 'Forecast',
+                            c = x, 
+                            weights = 1
+                        )
+                    )
+                
+            }
+        )
+
+    animation_gif <- varying_c %>%
+    ggplot(aes(x = week_starting_date, y = observed)) +
+    geom_point(aes(alpha = weights)) +
+    geom_line(aes(y = expected, colour = series), show.legend = FALSE) +
+    scale_y_continuous(labels = scales::comma) +
+    scale_colour_manual(values = c('Historical' = '#14B8A6', 'Forecast' = '#EC4899')) +
+    annotate(
+        'rect', 
+        xmin = cutoff_date, 
+        xmax = max(abs_deaths$week_starting_date), 
+        ymin = -Inf, ymax = Inf, 
+        alpha = 0.2, fill = '#FA9F42'
+    ) +
+    # Defined in libs-utils.R
+    abs_mortality_post_theme +
+    theme(text = element_text(size = 40), legend.position = 'bottom') +
+    labs(
+        x        = 'Week starting date',
+        y        = 'Mortality counts',
+        title    = 'Robust Regression',
+        subtitle = 'Varying the outlier threshold, c',
+        caption  = 'Forecast year 2021 highlighted, c = {formatC(frame_time, format = "f", digits = 2)}',
+        alpha    = 'Weights'
+    ) +
+    transition_time(c, rev(range(varying_c$c))) +
+    enter_fade() +
+    exit_fade()
+
+    anim_save(
+        file.path(getwd(), 'plots', "robust_regression_varying_c.gif"), 
+        animate(
+            animation_gif,
+            width = plot_dim$width, height = plot_dim$height,
+            # Duration of GIF is then nframes / fps
+            fps = 10, nframes = 10 * 5
+        )
+    )
+    ```
+</details>
 
 ![](/static/images/abs-robust-reg/robust_regression_varying_c.gif)
 
