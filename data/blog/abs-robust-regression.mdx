@@ -1,6 +1,6 @@
 ---
 title: Excess mortality - a look at the ABS’s robust regression method
-date: '2023-05-08'
+date: '2023-05-18'
 tags: ['excess-mortality', 'robust-regression', 'serfling', 'R']
 draft: false
 summary: 'A deep dive into the ABS’s modified Serfling model for estimating excess mortality'
@@ -61,7 +61,7 @@ When training a model for 2021, we face the challenge of incorporating 2020 into
 
 There doesn’t appear to be much consensus on how to handle this across the top studies; various approaches have been used:
 
-1. Karlinsky & Kobak (2021) replicate the 2020 baseline they projected from a baseline trained on 2015-19 to 2021[^4]
+1. Karlinsky & Kobak (2021) replicate the 2020 baseline they projected from a baseline trained on 2015-19 to 2021[^3]
 2. The Actuaries Institute (2022) removes all COVID-19 deaths from their model training entirely, and use 2016-20 to project mortality in 2021[^8]
 3. The UK Office for National Statistics (2023) uses the last five full years, excluding 2020. For 2021, they use 2015-19 and for 2022, they use 2016-19 & 2021[^9]
 
