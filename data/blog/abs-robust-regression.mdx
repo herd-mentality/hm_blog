@@ -1,10 +1,10 @@
 ---
 title: Excess mortality - a look at the ABS’s robust regression method
 date: '2023-05-08'
-tags: ['excess-mortality', 'serfling', 'robust-regression', 'abs', 'R']
+tags: ['excess-mortality', 'robust-regression', 'serfling', 'R']
 draft: false
 summary: 'A deep dive into the ABS’s modified Serfling model for estimating excess mortality'
-authors: ['darrenwong', 'vincentdoan']
+authors: ['darrenwong', 'vincentdoan', 'brandonhao']
 ---
 
 <TOCInline toc={props.toc} indentDepth={2} />
@@ -257,34 +257,35 @@ By grid searching across different outlier thresholds, we can try to get as clos
             
             model_rlm <- if (psi == 'psi.bisquare') {
                 
+                # Function defined in libs-utils.R
                 predict_year_rlm(
-                year_to_predict    = 2021, 
-                full_time_series   = abs_deaths, 
-                date_col           = 'week_starting_date', 
-                values_col         = 'observed', 
-                num_years_baseline = 5,
-                formula            = formula,
-                verbose            = FALSE,
-                method             = 'M',
-                scale.est          = scale.est,
-                psi                = 'psi.bisquare',
-                c                  = c
+                    year_to_predict    = 2021, 
+                    full_time_series   = abs_deaths, 
+                    date_col           = 'week_starting_date', 
+                    values_col         = 'observed', 
+                    num_years_baseline = 5,
+                    formula            = formula,
+                    verbose            = FALSE,
+                    method             = 'M',
+                    scale.est          = scale.est,
+                    psi                = 'psi.bisquare',
+                    c                  = c
                 )
                 
             } else if (psi == 'psi.huber') {
                 
                 predict_year_rlm(
-                year_to_predict    = 2021, 
-                full_time_series   = abs_deaths, 
-                date_col           = 'week_starting_date', 
-                values_col         = 'observed', 
-                num_years_baseline = 5,
-                formula            = formula,
-                verbose            = FALSE,
-                method             = 'M',
-                scale.est          = scale.est,
-                psi                = 'psi.huber',
-                k                  = k
+                    year_to_predict    = 2021, 
+                    full_time_series   = abs_deaths, 
+                    date_col           = 'week_starting_date', 
+                    values_col         = 'observed', 
+                    num_years_baseline = 5,
+                    formula            = formula,
+                    verbose            = FALSE,
+                    method             = 'M',
+                    scale.est          = scale.est,
+                    psi                = 'psi.huber',
+                    k                  = k
                 )
                 
             }
@@ -331,7 +332,7 @@ For reference, the excess mortality we calculate from this model in 2021 is 5,48
 
 For the final section of this post, let’s have a look at what happens to the outputs of the model when we vary the outlier threshold.
 
-# Varying the outlier threshold, `c`
+# Varying the outlier threshold, c
 
 Given that `c` directly defines which points are considered outliers, it's reasonable to assume that our algorithm would be highly sensitive to changes in this hyperparameter's value. This is particularly the case for the bisquare function, which effectively disregards outliers in its weighting. The results displayed below demonstrate this, beginning with a threshold that encompasses all values and progressively shifting toward a threshold that begins to exclude outliers. For clarity, we'll utilise the ABS' original Serfling formula here (including the $t^2$ term), as the differences in forecasts are more pronounced with this approach.
 
