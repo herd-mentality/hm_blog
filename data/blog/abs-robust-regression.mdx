@@ -45,7 +45,7 @@ Where:
 
 Using this model, the ABS predicted mortality in 2020 (using 2015-19 as the reference period) and 2021 (using 2016-20 as the reference period). The results of the 2021 prediction are shown below with the target time period shaded:
 
-> [ABS observed vs expected here]
+![](/static/images/abs-robust-reg/abs_initial_plot.jpg)
 
 Similar to Serfling’s original methodology, the ABS also predicted mortality by finding the difference between the observed mortality and the 95% prediction intervals from their method (instead of using the point estimate of predicted mortality). However, for the purposes of this study, we’ll calculate excess mortality as observed - expected. Using this method over the ABS’s numbers yields -2,131 excess deaths (less deaths than expected) in 2020, and 5,061 excess deaths in 2021. This roughly lines up with the start of strict lockdowns in response to COVID-19’s spread in 2020, and the occurrence of outbreaks of the Delta variant in 2021.
 
@@ -137,7 +137,7 @@ Giving a weight of 0 to outliers makes this weighting function particularly inse
 
 See below a visualisation of the weights calculated as a function of how many scaled residuals each point is away from the expected value within each re-weighting iteration.
 
-> SAS Tukey vs. Huber
+> SAS Tukey vs. Huber here
 
 # Implementation in R
 
@@ -158,25 +158,25 @@ model <- MASS::rlm(
 ```
 The ABS does not provide weekly deaths data in 2015, so we’ll train this model over 2016-20 to predict 2021. We can see immediately that including the t^2 term causes our version of the model to diverge from the ABS model from 2020 onwards. Removing the t^2 brings our model closer into alignment with the ABS’s model, so we’ll continue with this version for now.
 
-> plot with t^2 term + without t^2 term
+![](/static/images/abs-robust-reg/abs_plot_w_wo_t2.jpg)
 
 There are still differences between our model and the ABS’s, the peaks and troughs in their model are higher and lower than ours respectively. This suggests that the ABS’s line of best fit is placing higher weight on outlier values, hence they are using either a higher outlier threshold or a weighting function that does not remove outliers entirely.
 
 By grid searching across different outlier thresholds, we can try to get as close to the ABS’s parameters as we can by minimising the RMSE between our model’s predictions and the ABS’s predictions. [^10] The parameters that get us closest to their figures are below.
 
-Table of final params here
+> Table of final params here
 
-Final graph here
+> Final graph here
 
 For reference, the excess mortality we calculate from this model in 2021 is 5,487 (summing the diff across the year) compared against the 5,061 from the ABS using the same method.
 
 For the final section of this post, let’s have a look at what happens to the outputs of the model when we vary the outlier threshold.
 
-# Varying the outlier threshold, $c$
+# Varying the outlier threshold, `c`
 
 Given that `c` directly defines which points are considered outliers, it's reasonable to assume that our algorithm would be highly sensitive to changes in this hyperparameter's value. This is particularly the case for the bisquare function, which effectively disregards outliers in its weighting. The results displayed below demonstrate this, beginning with a threshold that encompasses all values and progressively shifting toward a threshold that begins to exclude outliers. For clarity, we'll utilise the ABS' original Serfling formula here (including the $t^2$ term), as the differences in forecasts are more pronounced with this approach.
 
-gif here
+![](/static/images/abs-robust-reg/robust_regression_varying_c.gif)
 
 # Conclusion
 
