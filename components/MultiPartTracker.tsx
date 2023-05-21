@@ -16,9 +16,9 @@ const MultiPartTracker = ({ path, allPosts }: TrackerProps) => {
   const filteredBlogs = allPosts
     .filter((post) => post.draft !== true && post.path.includes(full_nested_path))
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-  console.log(filteredBlogs)
+
   return (
-    <div className="mt-2 max-h-[130px] overflow-y-scroll rounded-2xl border-2 border-gray-500 p-2">
+    <div className="mt-2 max-h-[130px] overflow-y-scroll rounded-2xl border-2 border-gray-300 p-2 dark:border-gray-500">
       <ol className="">
         {filteredBlogs.map((post, index) => (
           <li key={index}>
