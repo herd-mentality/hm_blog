@@ -1,9 +1,6 @@
-// import { useState, ReacftNode } from 'react'
 import { CoreContent } from 'pliny/utils/contentlayer'
-import type { Blog, Authors } from 'contentlayer/generated'
-// import Link from './Link'
-// import { allCoreContent } from 'pliny/utils/contentlayer'
-// import { allBlogs } from 'contentlayer/generated'
+import type { Blog } from 'contentlayer/generated'
+import Link from './Link'
 
 interface TrackerProps {
   path?: string
@@ -19,12 +16,30 @@ const MultiPartTracker = ({ path, allPosts }: TrackerProps) => {
   const filteredBlogs = allPosts
     .filter((post) => post.draft !== true && post.path.includes(full_nested_path))
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-
+  console.log(filteredBlogs)
   return (
-    <div className="p-2">
+    <div className="mt-2 max-h-[130px] overflow-y-scroll p-2">
       <ol className="">
         {filteredBlogs.map((post, index) => (
-          <li key={index}>{post.title}</li>
+          <li key={index}>
+            <div className="flex items-center">
+              <div className="mr-[0.5rem] w-6 flex-shrink-0 text-center">{index + 1}</div>
+              <div className="posts-in-series min-w-0">
+                <p className="word-wrap relative h-11 overflow-hidden whitespace-normal text-sm font-medium">
+                  {post.path === path ? (
+                    <span className="text-gray-500">{post.title}</span>
+                  ) : (
+                    <Link
+                      href={'/' + post.path}
+                      aria-label={`Click through to the article ${post.title}`}
+                    >
+                      {post.title}
+                    </Link>
+                  )}
+                </p>
+              </div>
+            </div>
+          </li>
         ))}
       </ol>
     </div>

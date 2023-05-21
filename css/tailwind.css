@@ -55,3 +55,15 @@ details summary {
 details {
   @apply dark:bg-neutral-600 !important
 }
+
+/* Posts in Series component */
+.posts-in-series p::after {
+  content: "";
+  position: absolute;
+  text-align: right;
+  bottom: 0;
+  right: 0;
+  width: 20%;
+  height: 1.45em;
+  @apply bg-gradient-to-r from-transparent dark:to-gray-900 to-white; /* Instead of an ellipsis cut-off, fade to bg colour */
+}
