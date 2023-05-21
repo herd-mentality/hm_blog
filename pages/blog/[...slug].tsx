@@ -30,7 +30,7 @@ export const getStaticProps = async ({ params }) => {
     const authorResults = allAuthors.find((p) => p.slug === author)
     return coreContent(authorResults)
   })
-  const allPosts = allCoreContent(allBlogs)
+  const allPosts = allCoreContent(allBlogs) // For multi-post tracker if needed
 
   return {
     props: {

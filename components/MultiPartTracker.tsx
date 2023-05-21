@@ -18,14 +18,16 @@ const MultiPartTracker = ({ path, allPosts }: TrackerProps) => {
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
   console.log(filteredBlogs)
   return (
-    <div className="mt-2 max-h-[130px] overflow-y-scroll p-2">
+    <div className="mt-2 max-h-[130px] overflow-y-scroll rounded-2xl border-2 border-gray-500 p-2">
       <ol className="">
         {filteredBlogs.map((post, index) => (
           <li key={index}>
             <div className="flex items-center">
-              <div className="mr-[0.5rem] w-6 flex-shrink-0 text-center">{index + 1}</div>
+              <div className="mr-[0.5rem] w-6 flex-shrink-0 text-center text-gray-500">
+                {index + 1}
+              </div>
               <div className="posts-in-series min-w-0">
-                <p className="word-wrap relative h-11 overflow-hidden whitespace-normal text-sm font-medium">
+                <p className="relative my-1 h-11 overflow-hidden whitespace-normal text-sm font-medium">
                   {post.path === path ? (
                     <span className="text-gray-500">{post.title}</span>
                   ) : (
