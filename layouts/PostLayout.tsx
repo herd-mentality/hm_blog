@@ -10,6 +10,7 @@ import Image from '@/components/Image'
 import Tag from '@/components/Tag'
 import siteMetadata from '@/data/siteMetadata'
 import ScrollTopAndComment from '@/components/ScrollTopAndComment'
+import MultiPartTracker from '@/components/MultiPartTracker'
 
 const editUrl = (path) => `${siteMetadata.siteRepo}/blob/master/data/${path}`
 const discussUrl = (path) =>
@@ -27,13 +28,29 @@ interface LayoutProps {
   authorDetails: CoreContent<Authors>[]
   next?: { path: string; title: string }
   prev?: { path: string; title: string }
+  allPosts: CoreContent<Blog>[]
   children: ReactNode
 }
 
-export default function PostLayout({ content, authorDetails, next, prev, children }: LayoutProps) {
+export default function PostLayout({
+  content,
+  authorDetails,
+  next,
+  prev,
+  children,
+  allPosts,
+}: LayoutProps) {
   const { filePath, path, slug, date, title, tags, readingTime } = content
   const basePath = path.split('/')[0]
   const [loadComments, setLoadComments] = useState(false)
+
+  const split_path = path.split('/')
+  const nested_group = split_path.slice(1, split_path.length - 1)
+
+  // If nested group, show the component. If not, then show nothing.
+  // Since nests of depth > 1 are allowed, just do nested_group.join('/') (regardless of length of nested_group) and report that name
+  // Would also be good to query the data - need to find where the nested data go
+  // Looks like we can filter the json from generated/Blog/_index.json for those with a path that matches the nested route?
 
   return (
     <SectionContainer>
@@ -131,7 +148,15 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
               )}
             </div>
             <footer>
-              <div className="divide-gray-200 text-sm font-medium leading-5 dark:divide-gray-700 xl:col-start-1 xl:row-start-2 xl:divide-y">
+              <div className="divide-gray-200 text-sm font-medium leading-5 dark:divide-gray-700 xl:col-start-1 xl:row-start-1 xl:divide-y">
+                {nested_group.length > 0 && (
+                  <div className="py-4 xl:py-8">
+                    <h2 className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Posts in series
+                    </h2>
+                    <MultiPartTracker path={path} allPosts={allPosts} />
+                  </div>
+                )}
                 {tags && (
                   <div className="py-4 xl:py-8">
                     <h2 className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">

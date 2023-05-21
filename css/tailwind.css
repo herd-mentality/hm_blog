@@ -55,3 +55,34 @@ details summary {
 details {
   @apply dark:bg-neutral-600 !important
 }
+
+/* Posts in Series component */
+/* .posts-in-series p::after {
+  content: "";
+  position: absolute;
+  text-align: right;
+  bottom: 0;
+  right: 0;
+  width: 20%;
+  height: 1.45em;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  @apply bg-gradient-to-r from-transparent dark:to-gray-900 to-white;
+} */
+
+/* Ellipsis method has a chance of breaking on non-supporting browsers (mainly IE
+   at this stage, but is more reliable than the fade-out method */
+.posts-in-series a, .posts-in-series span {
+  text-overflow: ellipsis;
+  word-break: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: pre-wrap;
+}
+
+/* Giscus comments */
+#comments-container iframe, .giscus-frame, .giscus {
+  width: 100% !important;
+}
