@@ -10,6 +10,7 @@ import Image from '@/components/Image'
 import Tag from '@/components/Tag'
 import siteMetadata from '@/data/siteMetadata'
 import ScrollTopAndComment from '@/components/ScrollTopAndComment'
+import MultiPartTracker from '@/components/MultiPartTracker'
 
 const editUrl = (path) => `${siteMetadata.siteRepo}/blob/master/data/${path}`
 const discussUrl = (path) =>
@@ -38,7 +39,6 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
   const split_path = path.split('/')
   const nested_group = split_path.slice(1, split_path.length - 1)
 
-  nested_group.length > 0 ? 'nested group' : 'not a nested group'
   // If nested group, show the component. If not, then show nothing.
   // Since nests of depth > 1 are allowed, just do nested_group.join('/') (regardless of length of nested_group) and report that name
   // Would also be good to query the data - need to find where the nested data go
@@ -117,6 +117,7 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
                   ))}
                 </ul>
               </dd>
+              <dd>{nested_group.length > 0 ? 'nested group' : 'not a nested group'}</dd>
             </dl>
             <div className="divide-y divide-gray-200 dark:divide-gray-700 xl:col-span-3 xl:row-span-2 xl:pb-0">
               <div className="prose max-w-none pt-10 pb-8 dark:prose-dark">{children}</div>
