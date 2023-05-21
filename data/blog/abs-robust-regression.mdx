@@ -1,0 +1,448 @@
+---
+title: Excess mortality - a look at the ABS’s robust regression method
+date: '2023-05-18'
+tags: ['excess-mortality', 'robust-regression', 'serfling', 'R']
+draft: false
+summary: 'A deep dive into the ABS’s modified Serfling model for estimating excess mortality'
+authors: ['darrenwong', 'vincentdoan', 'brandonhao']
+---
+
+<TOCInline toc={props.toc} indentDepth={2} />
+<br/>
+
+![](/static/images/abs-robust-reg/robust_regression_varying_c.gif)
+
+<p style={{ fontStyle: 'italic', textAlign: 'center' }}>The effects of varying the outlier threshold on robust regression fit and forecast</p>
+
+# Introduction
+
+As the COVID-19 pandemic continues to leave its mark on global public health, it is critical to understand the full extent of its repercussions. 
+
+However, relying solely on the count of deaths officially attributed to COVID-19 may not reveal the full picture. This metric may be misleading due to potential inaccuracies in cause of death reporting and it fails to consider deaths indirectly associated with the pandemic, stemming from the state of crisis and strained healthcare system capacity.[^1]
+
+A more comprehensive approach to capturing the pandemic’s impact is by estimating *excess mortality*. This measure aims to encompass all deaths associated with the pandemic, providing a more holistic estimate of mortality attributable to COVID-19.
+
+In this post, we will examine how the Australian Bureau of Statistics (ABS) has tackled the estimation of Australia's excess mortality attributable to COVID-19. We will place particular emphasis on the robust regression procedure they employ, a technique that doesn't seem to be widely adopted in this field. We’ll also explore how the estimation results change with varying hyperparameters as well.
+
+It's important to note that this post is not intended as a critique of the ABS's methodology; rather, it serves as an exploratory look into how their approach works. Note also that any errors in this post are solely my own.
+
+See the R code used to generate the plots and analysis underlying this article [here](https://github.com/herd-mentality/abs_excess_mortality/blob/main/initial_fit.R).
+
+# Excess mortality estimation
+
+Excess mortality is measured as the number of deaths occurring beyond what would normally be expected within a specific target time frame. To calculate this, we fit a model over a number of years preceding the target period (these years are also known as the reference period). We then use this model to predict the expected number of deaths in the target time frame. Excess mortality is then calculated as the difference between observed and expected deaths over the target timeframe. 
+
+For studies looking at the effects of COVID-19, the target time frame is usually the 2020 calendar year. The model used to estimate expected mortality in that timeframe is usually trained on mortality over the 5 years preceding the target (ie. a 5 year reference period)[^2].
+
+The choice of model to capture the predictive information present in the reference period is not as universally agreed upon. As a predictive modelling problem, mortality over the target period has been predicted using anything from simple linear regression[^3] to Poisson generalised linear models[^4] to gradient-boosted trees[^5]. The ABS chose to use a modification of the *Serfling model*, a method borrowed from modelling of excess mortality due to influenza. 
+
+The classic Serfling model is a linear regression with a term to account for long-term trend and added harmonic terms to account for seasonality.[^6] The ABS adds a second order term which aims to capture any non-linear trend in the time series. [^7] Together, weekly mortality at time $t$ ($Y_t$) is estimated using:
+
+$$
+Y_t = \alpha + \beta t + \kappa t^2 + \gamma \cos \left(\frac{2 \pi t}{52.18}\right) + \delta \sin \left(\frac{2 \pi t}{52.18}\right) + \epsilon_t
+$$
+
+Where:
+- $\alpha$ is the intercept term 
+- $\beta t$ represents the linear time trend
+- $\kappa t^2$ represents the non-linear (second order) time trend
+- $\gamma$, $\delta$ are coefficients for the harmonic terms 
+- $\epsilon_t$ is the error term at time $t$
+
+Using this model, the ABS predicted mortality in 2020 (using 2015-19 as the reference period) and 2021 (using 2016-20 as the reference period). The results of the 2021 prediction are shown below with the target time period shaded:
+
+![](/static/images/abs-robust-reg/abs_initial_plot.jpg)
+
+Similar to Serfling’s original methodology, the ABS also predicted mortality by finding the difference between the observed mortality and the 95% prediction intervals from their method (instead of using the point estimate of predicted mortality). However, for the purposes of this study, we’ll calculate excess mortality as observed - expected. Using this method over the ABS’s numbers yields -2,131 excess deaths (less deaths than expected) in 2020, and 5,061 excess deaths in 2021. This roughly lines up with the start of strict lockdowns in response to COVID-19’s spread in 2020, and the occurrence of outbreaks of the Delta variant in 2021.
+
+Readers might observe that selecting 2016-20 as the reference period for training the model could introduce bias, as 2020 was an exceptional year due to the COVID-19 pandemic. We will delve deeper into this issue and explore how the ABS addresses it in the following section.
+
+# The case for a more robust method
+
+In the context of regression, leverage and influence are key concepts to consider when evaluating the impact of potential outliers. Briefly, a point with high *leverage* is one that lies far from the average of the predictor variable. A high leverage point consequently has a high potential to *influence* coefficients on the regression line, especially if this point sits far from the average of data points on in the response direction. For a more detailed explanation, see [here](https://omaymas.github.io/InfluenceAnalysis/).
+
+When training a model for 2021, we face the challenge of incorporating 2020 into our training period. Since it sits at one extreme of our training set in the x-direction, 2020 has high leverage. If deaths in 2020 are higher or lower than the average historical mortality trend, then this would exert undue influence and skew any regression line trained on this data.
+
+There doesn’t appear to be much consensus on how to handle this across the top studies; various approaches have been used:
+
+1. Karlinsky & Kobak (2021) replicate the 2020 baseline they projected from a baseline trained on 2015-19 to 2021[^3]
+2. The Actuaries Institute (2022) removes all COVID-19 deaths from their model training entirely, and use 2016-20 to project mortality in 2021[^8]
+3. The UK Office for National Statistics (2023) uses the last five full years, excluding 2020. For 2021, they use 2015-19 and for 2022, they use 2016-19 & 2021[^9]
+
+Each of these approaches has its merits. However, removing epidemic periods (as also recommended by Serfling in his original paper[^6]) can be subjective and challenging to defend in future analyses. Deciding which periods to remove may introduce bias, and determining the exact impact of these removals can be difficult.
+
+The ABS use an approach that means they do not need to manually remove epidemic periods. Instead, their regression method places less weight on extreme values in the y-direction, making their method robust to outliers. Through the remainder of this post, we’ll talk through ABS’s robust regression method, discussing how it works and looking at how we can implement it in R.
+
+# Robust regression
+
+*Robust regression* refers to techniques used to reduce the sensitivity of ordinary regression analysis to outliers. In the [methodology section](https://www.abs.gov.au/articles/measuring-australias-excess-mortality-during-covid-19-pandemic#:~:text=ABS%20adaptation%20of%20the%20model) of their excess mortality article, the ABS state that they use the `PROC ROBUSTREG` function of the SAS/STAT statistical software. They mention that they use the ‘M estimation’ method; however there is no mention of the other hyperparameters that are used for training so we will assume that they use the SAS/STAT defaults for these other values for now. With that in mind, let’s dive into how the ABS’s method works under the hood.
+
+## Methodology overview
+
+The M estimation method for `PROC ROBUSTREG` iteratively refits least squares on residuals that are re-scaled then re-weighted each iteration. This is referred to as iteratively reweighted least squares (IRLS) and it aims to down-weight the effect of outliers in the fitting process. We’ll step through the algorithm at a high level, then look at the components in more detail in the next sub-section.
+
+The core algorithm looks like this:
+
+1. An initial ordinary least squares regression is fit over the training data. This initial fit gives us initialising values for the regression coefficients.
+2. Using these coefficients, compute residuals for each data point.
+3. Scale/standardise these residuals using a *scale parameter* which measures the spread of the residuals.
+4. Compute weights for each observation by passing their scaled residual into the chosen *weight function*. This weight function will determine whether each scaled residual is an outlier by comparing it against an **outlier threshold** which is a hyperparameter set by the user.
+5. Perform weighted least squares regression on the original training set, weighted with the results from (4).
+6. Check for convergence by comparing how much the new regression coefficients have changed from the last iteration. If there is no convergence, then go back to (2) and repeat.
+
+It is important to standardise the residuals each time so that we can compare residuals against the outlier threshold no matter the original scale of the data. Further, the choice of weighting function and outlier threshold is important, since this determines 1. Which scaled residuals are marked as outliers, and 2. How aggressively these outliers are down-weighted.
+
+If you want to see more about `PROC ROBUSTREG` and its default arguments, expand the block below or [read the docs here](https://documentation.sas.com/doc/en/pgmsascdc/9.4_3.3/statug/statug_rreg_syntax01.htm) - otherwise, skip to the next sub-section where we’ll talk through how the default scale estimation and weighting functions work!
+
+<details>
+	<summary>`PROC ROBUSTREG` arguments</summary>
+
+    We’ll briefly describe the most important arguments to `PROC ROBUSTREG` below:
+
+    `METHOD=M<(options)>`<br/>
+    This argument specifies the estimation method and further options to tweak how that method is applied. When specifying METHOD=M (the default option), we are asking the procedure to use iteratively reweighted least squares to fit the regression line.
+
+    `SCALE=MED` (sub-option for METHOD=M)<br/>
+    This argument specifies the scaling method applied to residuals in each iteration of the training process. SCALE=MED specifies the use of the *median absolute deviation* to scale residuals, this provides a robust measure of the spread of the data.
+
+    `WEIGHTFUNCTION=BISQUARE<(c=4.685)>` (sub-option for METHOD=M)<br/>
+    This argument specifies the function used to weight residuals within each iteration of the training process. `WEIGHTFUNCTION=BISQUARE` specifies the Tukey bisquare weighting function, with a default outlier threshold ($c$) of 4.685.
+</details>
+
+## Scale estimator
+
+The scale estimator is used to gauge the spread of the residuals in each iteration of the fitting process. Residuals are then divided by this estimate to standardise them to a common scale. This allows us to consistently compare residuals regardless of the original scale of the data. 
+
+It follows that the robust regression procedure is likely sensitive to the kind of function used to estimate this spread, as this determines how the residuals are standardised and subsequently how the observations are weighted.
+
+By default when using the M estimator method, `PROC ROBUSTREG` will choose to use the median absolute deviation to estimate the spread of residuals. This method is particularly robust to outliers since it uses the median instead of the mean as a measure of central tendency. Median absolute deviation is calculated as:
+
+$$
+\text{MAD} = \text{median}(|e_i - \text{median}(e)|)
+$$
+
+Where $e_i$ are the residuals, i.e., the differences between the observed values and the predicted values, and $|e_i - \text{median}(e)|$ is the absolute difference between each residual and the median of the residuals.
+
+## Weighting function
+
+The weighting function is used to assign weights to each observation in the weighted least squares fitting process, based on whether their scaled residual is greater than the outlier threshold. The outlier threshold, $c$, is set prior to training the model and hence is a hyperparameter that may be tuned (more on this later). This is the mechanism through which robust regression makes itself less sensitive to outliers.
+
+The results of robust regression are sensitive to the weighting function and outlier threshold used since they directly affect how much importance is assigned to potential outlying data points.
+
+By default when using the M estimator method, `PROC ROBUSTREG` will choose to use the Tukey bisquare weighting function with an outlier threshold of 4.685. Briefly, this function will assign a weight of 0 to scaled residuals that exceed the outlier threshold. For residuals that are under this threshold, the bisquare function will assign a weight between 0 and 1 inclusive; the weight will be higher the smaller the residual is. Mathematically, this is represented as:
+
+$$
+w(u_i) = 
+\begin{cases} 
+\left(1 - \left(u_i/c\right)^2\right)^2 & \text{if } |x_i| \leq c \\
+0 & \text{if } |u_i| > c 
+\end{cases}
+$$
+
+Giving a weight of 0 to outliers makes this weighting function particularly insensitive to outliers, whereas other weighting function options provide a more nuanced approach. SAS includes 10 weighting functions whereas the R package `MASS` has two: Tukey’s bisquare and Huber’s proposal 2 (which provides a more progressive weighting for outlying points).
+
+See below a visualisation of the weights calculated as a function of how many scaled residuals each point is away from the expected value within each re-weighting iteration. These images are sourced from [SAS's documentation](https://documentation.sas.com/doc/en/pgmsascdc/9.4_3.3/statug/statug_rreg_details01.htm#:~:text=the%20convergence%20criteria.-,Weight%20Functions,-You%20can%20specify).
+
+| Tukey's bisquare | Huber |
+| :-: | :-: |
+| ![](/static/images/abs-robust-reg/images_bisquare.png) | ![](/static/images/abs-robust-reg/images_huber.png) |
+
+# Implementation in R
+
+Robust regression can be implemented in R using the `rlm()` function from the `MASS` package. If we want to use all SAS defaults under the M estimation method, we end up with this function call:
+
+<details>
+  <summary>Data ingestion & train/test set split</summary>
+
+    ```r
+    # Ingest data from ABS
+    abs_deaths <- file.path(
+        getwd(), 
+        'input', 
+        'Comparison of all cause baseline and COVID-19 period deaths against regression, January 2016 - February 2022 (a)(b)(c)(d)(e)(f).csv'
+    ) %>% 
+    read_csv(skip = 1, show_col_types = FALSE) %>% 
+    separate_wider_delim(`95% bounds`, '|', names = c('95%_lower', '95%_higher')) %>% 
+    mutate(
+    across(starts_with('95%'), as.numeric),
+    `Week starting date` = dmy(`Week starting date`),
+    week_number = 1:n()
+    ) %>% 
+    filter(!is.na(`Week starting date`)) %>% 
+    clean_names()
+
+    # Glimpse table
+    abs_deaths %>% glimpse()
+    #> Rows: 321
+    #> Columns: 7
+    #> $ week_starting_date <date> 2016-01-04, 2016-01-11, 2016-01-18…
+    #> $ x95_percent_lower  <dbl> 2216, 2207, 2200, 2198, 2199, 2204,…
+    #> $ x95_percent_higher <dbl> 2624, 2614, 2608, 2606, 2607, 2611,…
+    #> $ expected           <dbl> 2420, 2410, 2404, 2402, 2403, 2408,…
+    #> $ observed           <dbl> 2454, 2521, 2485, 2329, 2497, 2356,…
+    #> $ observed_w_o_covid <dbl> 2454, 2521, 2485, 2329, 2497, 2356,…
+    #> $ week_number        <int> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, …
+
+    # Splitting into train/test sets
+    cutoff_date <- ymd('2021-01-01')
+    train_set   <- abs_deaths %>% filter(week_starting_date >= cutoff_date %m-% years(5) & week_starting_date < cutoff_date)
+    test_set    <- abs_deaths %>% filter(week_starting_date >= cutoff_date & week_starting_date < cutoff_date %m+% years(1))
+    ```
+</details>
+
+```R
+model <- MASS::rlm(
+  observed ~ week_number +                 # ABS-modified Serfling formula
+    I(week_number^2) + 
+    I(sin(2 * pi * week_number / 52.18)) + 
+    I(cos(2 * pi * week_number / 52.18)), 
+  data      = train_set,
+  method    = 'M',                         # M estimation
+  scale.est = 'MAD',                       # Scale function, median absolute deviation
+  psi       = 'psi.bisquare',              # Weight function, Tukey's bisquare   
+  c         = 4.685                        # Outlier threshold, SAS default for bisquare
+)
+```
+The ABS does not provide weekly deaths data in 2015, so we’ll train this model over 2016-20 to predict 2021; data are sourced from [the first table under this heading](https://www.abs.gov.au/articles/measuring-australias-excess-mortality-during-covid-19-pandemic#weekly-all-cause-mortality-australia). We can see immediately that including the t^2 term causes our version of the model to diverge from the ABS model from 2020 onwards. Removing the t^2 brings our model closer into alignment with the ABS’s model, so we’ll continue with this version for now.
+
+![](/static/images/abs-robust-reg/abs_plot_w_wo_t2.jpg)
+
+There are still differences between our model and the ABS’s, the peaks and troughs in their model are higher and lower than ours respectively. This suggests that the ABS’s line of best fit is placing higher weight on outlier values, hence they are using either a higher outlier threshold or a weighting function that does not remove outliers entirely.
+
+By grid searching across different outlier thresholds, we can try to get as close to the ABS’s parameters as we can by minimising the RMSE between our model’s predictions and the ABS’s predictions. [^10] The parameters for `MASS::rlm()` that get us closest to their figures are below.
+
+<details>
+    <summary>Grid search code</summary>
+
+    ```R
+    # Parameter setup
+    step_size   <- 0.05
+    param_range <- 0.7
+    scale.ests  <- c("MAD", "Huber")
+    formulae    <- c(
+        paste0(
+            'observed ~ week_number + ',
+            'I(sin(2 * pi * week_number / 52.18)) + ',
+            'I(cos(2 * pi * week_number / 52.18))'
+        ),
+        paste0(
+            'observed ~ week_number + ',
+            'I(week_number^2) + ',
+            'I(sin(2 * pi * week_number / 52.18)) + ',
+            'I(cos(2 * pi * week_number / 52.18))'
+        )
+    )
+
+    # List all parameter sets we want to search over
+    possible_parameters <- bind_rows(
+        # Bisquare
+        crossing(
+            c = seq(4.685 * (1 - param_range), 4.685 * (1 + param_range), step_size),
+            scale.est = scale.ests,
+            formula = formulae,
+            psi = 'psi.bisquare'
+        ),
+        # Huber
+        crossing(
+            k = seq(1.345 * (1 - param_range), 1.345 * (1 + param_range), step_size),
+            scale.est = scale.ests,
+            formula = formulae,
+            psi = 'psi.huber'
+        )
+    )
+
+    # Open multiprocessing session
+    future::plan(multisession, workers = 8)
+
+    # Map over each parameter set, train a model, and calculate RMSE
+    possible_parameters_and_sse <- possible_parameters %>% 
+    future_pmap_dfr(
+        function(formula, psi, scale.est, c, k) {
+            
+            model_rlm <- if (psi == 'psi.bisquare') {
+                
+                # Function defined in libs-utils.R
+                predict_year_rlm(
+                    year_to_predict    = 2021, 
+                    full_time_series   = abs_deaths, 
+                    date_col           = 'week_starting_date', 
+                    values_col         = 'observed', 
+                    num_years_baseline = 5,
+                    formula            = formula,
+                    verbose            = FALSE,
+                    method             = 'M',
+                    scale.est          = scale.est,
+                    psi                = 'psi.bisquare',
+                    c                  = c
+                )
+                
+            } else if (psi == 'psi.huber') {
+                
+                predict_year_rlm(
+                    year_to_predict    = 2021, 
+                    full_time_series   = abs_deaths, 
+                    date_col           = 'week_starting_date', 
+                    values_col         = 'observed', 
+                    num_years_baseline = 5,
+                    formula            = formula,
+                    verbose            = FALSE,
+                    method             = 'M',
+                    scale.est          = scale.est,
+                    psi                = 'psi.huber',
+                    k                  = k
+                )
+                
+            }
+            
+            delta <- model_rlm$results %>% mutate(
+                delta = (observed - predicted)^2
+            )
+            
+            tibble(
+                scale.est = scale.est,
+                psi       = psi,
+                formula   = formula,
+                c         = c,
+                k         = k,
+                rmse      = sqrt(mean(delta$delta)),
+                converged = if ('converged' %in% names(model_rlm)) model_rlm$converged else FALSE
+            )
+            
+        }
+    )
+
+    future::plan(sequential)
+
+    # How does this look compared to the ABS's model?
+    abs_closest_candidate <- possible_parameters_and_sse %>% 
+        filter(psi == 'psi.bisquare') %>% 
+        filter(rmse == min(rmse), converged) %>% 
+        filter(row_number() == 1)
+    ```
+
+</details>
+
+| Parameter   | Value |
+| :--         | --:   |
+| Scale estimator (`scale.est`) | Huber |
+| Weight function (`psi`)       | psi.bisquare |
+| `formula`   | observed ~ week_number + I(sin(2 * pi * week_number / 52.18)) + I(cos(2 * pi * week_number / 52.18)) |
+| Outlier threshold (`c`)         | 2.356 |
+| RMSE        | 116.205 |
+
+![](/static/images/abs-robust-reg/abs_closest_candidate.jpg)
+
+For reference, the excess mortality we calculate from this model in 2021 is 5,487 (summing the diff across the year) compared against the 5,061 from the ABS using the same method.
+
+For the final section of this post, let’s have a look at what happens to the outputs of the model when we vary the outlier threshold.
+
+# Varying the outlier threshold, c
+
+Given that `c` directly defines which points are considered outliers, it's reasonable to assume that our algorithm would be highly sensitive to changes in this hyperparameter's value. This is particularly the case for the bisquare function, which effectively disregards outliers in its weighting. The results displayed below demonstrate this, beginning with a threshold that encompasses all values and progressively shifting toward a threshold that begins to exclude outliers. For clarity, we'll utilise the ABS' original Serfling formula here (including the $t^2$ term), as the differences in forecasts are more pronounced with this approach.
+
+<details>
+    <summary>`gganimate` code</summary>
+
+    ```R
+    varying_c <- seq(2.5, 15.5, 1) %>% 
+        purrr::map_dfr(
+            function(x) {
+                
+                model <- MASS::rlm(
+                    observed ~ week_number + 
+                    I(week_number^2) +
+                    I(sin(2 * pi * week_number / 52.18)) + 
+                    I(cos(2 * pi * week_number / 52.18)), 
+                    data = train_set,
+                    method = 'M',  
+                    scale.est = 'MAD',
+                    psi = 'psi.bisquare',
+                    c = x
+                )
+                
+                train_set %>% 
+                    mutate(
+                    expected = predict(model, train_set),
+                    series = 'Historical'
+                    ) %>% 
+                    bind_cols(
+                        tibble(
+                            c = x,
+                            weights = model$w
+                        )
+                    ) %>% 
+                    bind_rows(
+                    test_set %>% 
+                        mutate(
+                            expected = predict(model, test_set), 
+                            series = 'Forecast',
+                            c = x, 
+                            weights = 1
+                        )
+                    )
+                
+            }
+        )
+
+    animation_gif <- varying_c %>%
+    ggplot(aes(x = week_starting_date, y = observed)) +
+    geom_point(aes(alpha = weights)) +
+    geom_line(aes(y = expected, colour = series), show.legend = FALSE) +
+    scale_y_continuous(labels = scales::comma) +
+    scale_colour_manual(values = c('Historical' = '#14B8A6', 'Forecast' = '#EC4899')) +
+    annotate(
+        'rect', 
+        xmin = cutoff_date, 
+        xmax = max(abs_deaths$week_starting_date), 
+        ymin = -Inf, ymax = Inf, 
+        alpha = 0.2, fill = '#FA9F42'
+    ) +
+    # Defined in libs-utils.R
+    abs_mortality_post_theme +
+    theme(text = element_text(size = 40), legend.position = 'bottom') +
+    labs(
+        x        = 'Week starting date',
+        y        = 'Mortality counts',
+        title    = 'Robust Regression',
+        subtitle = 'Varying the outlier threshold, c',
+        caption  = 'Forecast year 2021 highlighted, c = {formatC(frame_time, format = "f", digits = 2)}',
+        alpha    = 'Weights'
+    ) +
+    transition_time(c, rev(range(varying_c$c))) +
+    enter_fade() +
+    exit_fade()
+
+    anim_save(
+        file.path(getwd(), 'plots', "robust_regression_varying_c.gif"), 
+        animate(
+            animation_gif,
+            width = plot_dim$width, height = plot_dim$height,
+            # Duration of GIF is then nframes / fps
+            fps = 10, nframes = 10 * 5
+        )
+    )
+    ```
+</details>
+
+![](/static/images/abs-robust-reg/robust_regression_varying_c.gif)
+
+We notice the forecast trending upwards as fewer outliers are incorporated in the training. Most outliers reflect higher death counts and their inclusion lifts the peak of the parabolic trend fitted by the $t^2$ term. This, in turn, exaggerates the parabolic trend, causing points at the extremes of the x-axis to move downwards in response.
+
+# Conclusion
+
+Wrapping up, the Australian Bureau of Statistics' method for estimating excess mortality during the pandemic helps to provide a detailed picture of COVID-19's full impact. Their robust regression approach provides a way of not needing to manually remove periods of high/extraordinary mortality from the training baseline. But, as we've seen, the method has its intricacies, and changes to certain elements can noticeably shift the results. 
+
+I hope this deep-dive into the ABS' method of estimating excess mortality has been enlightening and prompts further discussions on the topic!
+
+
+
+[^1]: [Giattino et al. 2020, Our World in Data, *Excess mortality during the Coronavirus pandemic (COVID-19)*](https://ourworldindata.org/excess-mortality-covid)
+[^2]: [Nepomuceno 2022, *Sensitivity Analysis of Excess Mortality due to the COVID-19 Pandemic*](https://onlinelibrary.wiley.com/doi/10.1111/padr.12475)
+[^3]: [Karlinsky & Kobak 2021, *Tracking excess mortality across countries during the COVID-19 pandemic with the World Mortality Dataset*](https://elifesciences.org/articles/69336)
+[^4]: Since deaths are counts they may be modelled with a Poisson distribution. However, deaths often have high variance (particularly in times of pandemic) which violates the Poisson assumption that the mean = the variance. In these cases, the Poisson distribution can be corrected for this ‘over-dispersion’, commonly by using a Negative Binomial distribution instead. ([Msemburi et al. 2022](https://www.nature.com/articles/s41586-022-05522-2), [EUROMOMO nd.](https://www.euromomo.eu/how-it-works/methods))
+[^5]: [The Economist 2021, *Tracking COVID-19 excess deaths across countries*](https://www.economist.com/graphic-detail/coronavirus-excess-deaths-tracker)
+[^6]: [Serfling 1963, *Methods for current statistical analysis of excess pneumonia-influenza deaths*](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1915276/)
+[^7]: [Australian Bureau of Statistics 2022, *Measuring Australia’s excess mortality during the COVID-19 pandemic*](https://www.abs.gov.au/articles/measuring-australias-excess-mortality-during-covid-19-pandemic)
+[^8]: [Actuaries Institute 2022, *COVID-19: Total excess mortality for first two months of 2022 estimated at 15%*](https://www.actuaries.digital/2022/06/08/covid-19-total-excess-mortality-for-first-two-months-of-2022-estimated-at-15/)
+[^9]: [UK Office for National Statistics 2023, *Monthly m ortlaity analysis, England and Wales: December 2022*](https://www.ons.gov.uk/peoplepopulationandcommunity/birthsdeathsandmarriages/deaths/bulletins/monthlymortalityanalysisenglandandwales/december2022)
+[^10]: We can get slightly closer with Huber’s weighting function but we’ll stick with Tukey’s bisquare function in this post for brevity.
