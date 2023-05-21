@@ -5,6 +5,7 @@ import { sortedBlogPost, coreContent } from 'pliny/utils/contentlayer'
 import { InferGetStaticPropsType } from 'next'
 import { allBlogs, allAuthors } from 'contentlayer/generated'
 import type { Blog } from 'contentlayer/generated'
+import { allCoreContent } from 'pliny/utils/contentlayer'
 
 const DEFAULT_LAYOUT = 'PostLayout'
 
@@ -29,6 +30,7 @@ export const getStaticProps = async ({ params }) => {
     const authorResults = allAuthors.find((p) => p.slug === author)
     return coreContent(authorResults)
   })
+  const allPosts = allCoreContent(allBlogs)
 
   return {
     props: {
@@ -36,6 +38,7 @@ export const getStaticProps = async ({ params }) => {
       authorDetails,
       prev,
       next,
+      allPosts,
     },
   }
 }
@@ -45,6 +48,7 @@ export default function BlogPostPage({
   authorDetails,
   prev,
   next,
+  allPosts,
 }: InferGetStaticPropsType<typeof getStaticProps>) {
   return (
     <>
@@ -66,6 +70,7 @@ export default function BlogPostPage({
           authorDetails={authorDetails}
           prev={prev}
           next={next}
+          allPosts={allPosts}
         />
       )}
     </>
