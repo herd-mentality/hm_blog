@@ -81,3 +81,8 @@ details {
   -webkit-line-clamp: 2;
   white-space: pre-wrap;
 }
+
+/* Giscus comments */
+#comments-container iframe, .giscus-frame, .giscus {
+  width: 100% !important;
+}
