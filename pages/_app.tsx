@@ -12,7 +12,7 @@ import siteMetadata from '@/data/siteMetadata'
 // import { Analytics } from 'pliny/analytics'
 import { SearchProvider } from 'pliny/search'
 import LayoutWrapper from '@/components/LayoutWrapper'
-import Script from 'next/script'
+// import Script from 'next/script'
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
@@ -20,7 +20,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <Head>
         <meta content="width=device-width, initial-scale=1" name="viewport" />
       </Head>
-      <Script
+      {/* <Script
         strategy="afterInteractive"
         src={
           'https://www.googletagmanager.com/gtag/js?id=' +
@@ -43,7 +43,7 @@ export default function App({ Component, pageProps }: AppProps) {
             });
           `,
         }}
-      />
+      /> */}
       {/* <Analytics analyticsConfig={siteMetadata.analytics} /> */}
       <LayoutWrapper>
         <SearchProvider searchConfig={siteMetadata.search}>
