@@ -19,12 +19,3 @@ const Highlight = ({ text }: Props) => {
 }
 
 export { Caption, Highlight }
-
-{
-  /* <p className="mono tracking-tighter" style={{ fontStyle: 'italic' }}>
-<span className="inline-block bg-gradient-to-r from-blue-600 via-green-500 to-indigo-400 bg-clip-text text-transparent">
-  {'//&nbsp;&nbsp;&nbsp;&nbsp;'}
-</span>
-<span>{text}</span>
-</p> */
-}
