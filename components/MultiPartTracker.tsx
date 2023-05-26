@@ -23,7 +23,7 @@ const MultiPartTracker = ({ path, allPosts }: TrackerProps) => {
         {filteredBlogs.map((post, index) => (
           <li key={index}>
             <div className="flex items-center">
-              <div className="mr-[0.5rem] w-6 flex-shrink-0 text-center text-gray-500">
+              <div className="mono mr-[0.5rem] w-6 flex-shrink-0 text-center text-gray-500">
                 {index + 1}
               </div>
               <div className="posts-in-series min-w-0">
