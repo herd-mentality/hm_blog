@@ -61,7 +61,7 @@ const AutoLinkedHeading: React.FC<AutoLinkedHeadingProps> = ({
 export const MDXComponents: ComponentMap = {
   Image,
   TOCInline,
-  // Caption,
+  // Caption, // Do this to expose a component globally
   a: CustomLink,
   h1: (props) => <AutoLinkedHeading tag="h1" {...props} />,
   h2: (props) => <AutoLinkedHeading tag="h2" {...props} />,
