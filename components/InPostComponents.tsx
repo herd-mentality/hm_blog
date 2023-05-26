@@ -4,8 +4,8 @@ interface Props {
 
 const Caption = ({ text }: Props) => {
   return (
-    <div className="mono flex flex-row items-start italic tracking-tighter">
-      <span className="main-gradient inline-block bg-clip-text font-bold text-transparent">
+    <div className="mono flex flex-row items-start tracking-tighter">
+      <span className="main-gradient inline-block bg-clip-text font-bold italic text-transparent">
         {'//'}&nbsp;&nbsp;&nbsp;&nbsp;
       </span>
       <span>{text}</span>
