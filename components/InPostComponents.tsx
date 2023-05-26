@@ -4,15 +4,27 @@ interface Props {
 
 const Caption = ({ text }: Props) => {
   return (
-    <p className="mono tracking-tighter" style={{ fontStyle: 'italic', textAlign: 'center' }}>
-      {text}
-    </p>
+    <div className="mono flex flex-row items-start italic tracking-tighter">
+      <span className="main-gradient inline-block bg-clip-text font-bold text-transparent">
+        {'//'}&nbsp;&nbsp;&nbsp;&nbsp;
+      </span>
+      <span>{text}</span>
+    </div>
   )
 }
 
 // Repurposed from https://katiekodes.com/link-underline-grow-tailwind-css/
 const Highlight = ({ text }: Props) => {
-  return <span className="highlight">{text}</span>
+  return <span className="highlight main-gradient">{text}</span>
 }
 
 export { Caption, Highlight }
+
+{
+  /* <p className="mono tracking-tighter" style={{ fontStyle: 'italic' }}>
+<span className="inline-block bg-gradient-to-r from-blue-600 via-green-500 to-indigo-400 bg-clip-text text-transparent">
+  {'//&nbsp;&nbsp;&nbsp;&nbsp;'}
+</span>
+<span>{text}</span>
+</p> */
+}
