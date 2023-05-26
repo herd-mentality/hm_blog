@@ -36,6 +36,14 @@
   @apply text-primary-500 duration-300
 }
 
+.mono {
+  font-family: 'DM Mono', sans-serif;
+}
+
+.light {
+  font-weight: lighter;
+}
+
 .tag-link:hover {
   @apply text-primary-600 dark:text-primary-400
 }
