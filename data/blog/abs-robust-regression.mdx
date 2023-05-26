@@ -7,18 +7,20 @@ summary: 'A deep dive into the ABS’s modified Serfling model for estimating ex
 authors: ['darrenwong', 'vincentdoan', 'brandonhao']
 ---
 
+import { Caption, Highlight } from './components/InPostComponents.tsx'
+
 <TOCInline toc={props.toc} indentDepth={2} />
 <br/>
 
 ![](/static/images/abs-robust-reg/robust_regression_varying_c.gif)
 
-<p className="mono tracking-tighter" style={{ fontStyle: 'italic', textAlign: 'center' }}>The effects of varying the outlier threshold on robust regression fit and forecast</p>
+<Caption text="The effects of varying the outlier threshold on robust regression fit and forecast"/>
 
 # Introduction
 
-As the COVID-19 pandemic continues to leave its mark on global public health, it is critical to understand the full extent of its repercussions. 
+As the COVID-19 pandemic continues to leave its mark on global public health, it is critical to understand the full extent of its repercussions.
 
-However, relying solely on the count of deaths officially attributed to COVID-19 may not reveal the full picture. This metric may be misleading due to potential inaccuracies in cause of death reporting and it fails to consider deaths indirectly associated with the pandemic, stemming from the state of crisis and strained healthcare system capacity.[^1]
+However, <Highlight text="relying solely on the count of deaths officially attributed to COVID-19 may not reveal the full picture"/>. This metric may be misleading due to potential inaccuracies in cause of death reporting and it fails to consider deaths indirectly associated with the pandemic, stemming from the state of crisis and strained healthcare system capacity.[^1]
 
 A more comprehensive approach to capturing the pandemic’s impact is by estimating *excess mortality*. This measure aims to encompass all deaths associated with the pandemic, providing a more holistic estimate of mortality attributable to COVID-19.
 
@@ -71,7 +73,7 @@ There doesn’t appear to be much consensus on how to handle this across the top
 
 Each of these approaches has its merits. However, removing epidemic periods (as also recommended by Serfling in his original paper[^6]) can be subjective and challenging to defend in future analyses. Deciding which periods to remove may introduce bias, and determining the exact impact of these removals can be difficult.
 
-The ABS use an approach that means they do not need to manually remove epidemic periods. Instead, their regression method places less weight on extreme values in the y-direction, making their method robust to outliers. Through the remainder of this post, we’ll talk through ABS’s robust regression method, discussing how it works and looking at how we can implement it in R.
+The ABS use an approach that means they do not need to manually remove epidemic periods. Instead, <Highlight text="their regression method places less weight on extreme values in the y-direction, making their method robust to outliers"/>. Through the remainder of this post, we’ll talk through ABS’s robust regression method, discussing how it works and looking at how we can implement it in R.
 
 # Robust regression
 
