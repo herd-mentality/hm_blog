@@ -8,7 +8,8 @@ This blog is a fork of [Tailwind Nextjs Starter Blog](https://github.com/timlrx/
 * Favicons generated from PNG downloaded from IconScout using [favicon.io](https://favicon.io/favicon-converter/)
 
 Ongoing development tracked [here](https://trello.com/b/UPRSuYgq/blog-development)
-<img width="281" alt="image" src="https://github.com/herd-mentality/hm_blog/assets/74039081/33bd1030-f68c-40cb-b52f-c429dd4e6eb8">
+
+<img width="281" alt="image" src="https://github.com/herd-mentality/hm_blog/assets/74039081/33bd1030-f68c-40cb-b52f-c429dd4e6eb8"><br/>
 <img width="285" alt="image" src="https://github.com/herd-mentality/hm_blog/assets/74039081/85dd306f-c5cb-47f3-8427-54a7436726cf">
 
 --------------------------------
