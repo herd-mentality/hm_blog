@@ -111,7 +111,7 @@ export default function PostLayout({
                                     return author.github.replace('https://github.com/', 'gh@')
                                     break
                                   case 'personal':
-                                    return author.name.match(/^\w+/g)[0] + "'s blog"
+                                    return author.name.match(/^\w+/g)[0] + "'s site"
                                     break
                                   default:
                                     return ''

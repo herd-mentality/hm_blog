@@ -8,7 +8,7 @@ const siteMetadata = {
   description: 'See the latest posts from the Herd',
   language: 'en-us',
   theme: 'system', // system, dark or light
-  siteUrl: 'https://herdmentality.xyz',
+  siteUrl: 'https://www.herdmentality.xyz',
   siteRepo: 'https://github.com/herd-mentality/hm_blog',
   siteLogo: '/static/images/logo.png',
   image: '/static/images/avatar.png',
