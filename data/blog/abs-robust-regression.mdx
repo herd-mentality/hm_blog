@@ -12,6 +12,8 @@ import { Caption, Highlight } from './components/InPostComponents.tsx'
 <TOCInline toc={props.toc} indentDepth={2} />
 <br/>
 
+> *Note* - Some parts of this article have been amended on 2023-06-15
+
 ![](/static/images/abs-robust-reg/robust_regression_varying_c.gif)
 
 <Caption text="The effects of varying the outlier threshold on robust regression fit and forecast"/>
@@ -73,7 +75,7 @@ There doesn’t appear to be much consensus on how to handle this across the top
 
 Each of these approaches has its merits. However, removing epidemic periods (as also recommended by Serfling in his original paper[^6]) can be subjective and challenging to defend in future analyses. Deciding which periods to remove may introduce bias, and determining the exact impact of these removals can be difficult.
 
-The ABS use an approach that means they do not need to manually remove epidemic periods. Instead, <Highlight text="their regression method places less weight on extreme values in the y-direction, making their method robust to outliers"/>. Through the remainder of this post, we’ll talk through ABS’s robust regression method, discussing how it works and looking at how we can implement it in R.
+The ABS use an approach that means they do not need to manually remove epidemic periods. Instead, <Highlight text="their regression method places less weight on extreme values in the y-direction, making their method robust to outliers"/>. Through the remainder of this post, we’ll talk through ABS’s robust regression method, discussing how it works and attempting to get as close as possible to their implementation using R.
 
 # Robust regression
 
@@ -109,6 +111,9 @@ If you want to see more about `PROC ROBUSTREG` and its default arguments, expand
 
     `WEIGHTFUNCTION=BISQUARE<(c=4.685)>` (sub-option for METHOD=M)<br/>
     This argument specifies the function used to weight residuals within each iteration of the training process. `WEIGHTFUNCTION=BISQUARE` specifies the Tukey bisquare weighting function, with a default outlier threshold ($c$) of 4.685.
+
+    `CONVERGENCE=COEF<(EPS=1E-8)>` (added to this article 2023-06-15)<br/>
+    Specifies the criteria for convergence, as well as the precision of the criteria (using the `EPS` option).
 </details>
 
 ## Scale estimator
@@ -203,6 +208,11 @@ model <- MASS::rlm(
   scale.est = 'MAD',                       # Scale function, median absolute deviation
   psi       = 'psi.bisquare',              # Weight function, Tukey's bisquare   
   c         = 4.685                        # Outlier threshold, SAS default for bisquare
+
+  # The following args have been added 2023-06-15, their addition does not seem to 
+  # change outputs materially - hence outputs have not been updated for now
+  # test.vec = 'coef',                     # Test for convergence using coefficients...
+  # acc = 1e-8                             # ... with a precision of 1e-8 (as per SAS defaults)
 )
 ```
 The ABS does not provide weekly deaths data in 2015, so we’ll train this model over 2016-20 to predict 2021; data are sourced from [the first table under this heading](https://www.abs.gov.au/articles/measuring-australias-excess-mortality-during-covid-19-pandemic#weekly-all-cause-mortality-australia). We can see immediately that including the t^2 term causes our version of the model to diverge from the ABS model from 2020 onwards. Removing the t^2 brings our model closer into alignment with the ABS’s model, so we’ll continue with this version for now.
@@ -210,6 +220,8 @@ The ABS does not provide weekly deaths data in 2015, so we’ll train this model
 ![](/static/images/abs-robust-reg/abs_plot_w_wo_t2.jpg)
 
 There are still differences between our model and the ABS’s, the peaks and troughs in their model are higher and lower than ours respectively. This suggests that the ABS’s line of best fit is placing higher weight on outlier values, hence they are using either a higher outlier threshold or a weighting function that does not remove outliers entirely.
+
+> **2023-06-15**: The authors have since been able to replicate the ABS's figures using SAS/STAT which suggests that the implementation of RLM in `MASS` may differ slightly.
 
 By grid searching across different outlier thresholds, we can try to get as close to the ABS’s parameters as we can by minimising the RMSE between our model’s predictions and the ABS’s predictions. [^10] The parameters for `MASS::rlm()` that get us closest to their figures are below.
 
