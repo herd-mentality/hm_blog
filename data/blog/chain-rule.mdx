@@ -1,0 +1,38 @@
+---
+title: Chain rule
+date: '2023-09-03'
+tags: ['calculus', 'maths', 'graph', 'R']
+draft: true
+summary: 'Brief summary of chain rule'
+authors: ['vincentdoan']
+---
+
+The chain rule is a fundamental concept in calculus that deals with the derivative of a composition of functions. If you have a function nested inside another function, the chain rule allows you to find the derivative of the whole composition.
+
+Given two functions, $u(x)$ and $v(u)$, and you want to find the derivative of their composition, i.e., $v(u(x))$, the chain rule states:
+$$\frac{d[v(u(x))]}{dx} = \frac{dv}{du} \cdot \frac{du}{dx}$$
+
+Here's a breakdown of how it works:
+
+1. Differentiate the outer function $v$ with respect to its variable $u$ (treating $u$ as the variable). This gives $\frac{dv}{du}$.
+2. Differentiate the inner function $u$ with respect to $x$. This gives $\frac{du}{dx}$.
+3. Multiply these two derivatives together.
+
+To illustrate, consider the function:
+$$y = \sin(3x^2 + 4x)$$
+
+Here, $u(x) = 3x^2 + 4x$ is the inner function, and $v(u) = \sin(u)$ is the outer function.
+
+1. Differentiating $v(u) = \sin(u)$ with respect to $u$ gives:
+$$\frac{dv}{du} = \cos(u)$$
+
+2. Differentiating $u(x) = 3x^2 + 4x$ with respect to $x$ gives:
+$$\frac{du}{dx} = 6x + 4$$
+
+3. Using the chain rule, the derivative of $y$ with respect to $x$ is:
+$$\frac{dy}{dx} = \cos(3x^2 + 4x) \cdot (6x + 4)$$
+
+In essence, the chain rule allows us to "peel off" layers of a function and differentiate each layer step by step, multiplying the results as we go. It's a powerful tool when dealing with nested or composite functions.
+
+
+
