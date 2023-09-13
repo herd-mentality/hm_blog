@@ -1,0 +1,262 @@
+---
+title: Web-scraping Canberran house prices
+date: '2023-09-14'
+tags: ['r', 'web-scraping', 'front-end']
+draft: false
+summary: 'Web-scraping the prices of properties sold in Canberra (politely) from AllHomes and Domain'
+authors: ['darrenwong']
+---
+
+import { Caption, Highlight } from './components/InPostComponents.tsx'
+
+<TOCInline toc={props.toc} indentDepth={2} />
+<br/>
+
+# Introduction
+
+I’ve recently been looking at the Canberran housing market with the intention of getting a property. With this in mind, I thought it would be a good idea to start to get a feel for pricing by looking at some data. Since there doesn’t seem to be a property pricing dataset easily and freely available to us, it seems I’ll need to get the information myself - this is the main focus of this post.
+
+We can get prices of houses sold recently by web scraping the ‘Sold’ pages of the most popular real estate aggregator websites with R. Note that we’re only interested in the ‘Sold’ page since this gives us a better idea of what people were willing to pay for the place, and not be biased by potentially aspirational prices posted on yet-to-sell listings.
+
+In this article, I'll explain how I created web scrapers for [AllHomes](https://www.allhomes.com.au/) and [Domain](https://www.domain.com.au/) using R packages like [`rvest`](https://rvest.tidyverse.org/) and [`polite`](https://dmi3kno.github.io/polite/). In future articles, I'll discuss how I'm storing this data in a locally hosted PostgreSQL database and implementing Slowly Changing Dimensions (Type 2). Additionally, I'll share any further analysis I conduct on this data.
+
+Please keep in mind that I'm currently updating the code, so the snippets I share here may not perfectly match what's on the GitHub repository. However, the underlying principles remain the same. You can find the code [here](https://github.com/wongd-hub/cbr-house-prices).
+
+# Getting the HTML with polite
+
+In the past, I would have simply used `rvest` and `xml2` to perform web scraping with `read_html()`, but I’ve recently discovered `polite`. `polite` sits cleanly on top of `rvest` and  and promotes responsible web scraping practices. 
+
+It does this by reading the target site’s [robots.txt](​​https://developers.google.com/search/docs/crawling-indexing/robots/intro) which outlines the site's scraping guidelines and serves as a way to request permission for scraping. The package also enforces rate limits when scraping the target site, so as to minimise the impact of the web scraping process as well as your chances of getting blocked.
+
+`polite` has three main functions which will form the basis for our procurement of raw HTML from the sites we want to scrape:
+- `bow()` introduces the scraping agent to the target website and asks for permission to scrape; this returns a scraping session object
+- `scrape()` performs the scrape using this scraping session and retrieves data from the host server - whilst enforcing rate limiting
+- When you want to move to a new path, you can `nod()` to agree a new path for your scraping session, then run `scrape()` again, etc.
+
+In the snippet below, I’m `bow()`-ing initially to the base URL, then `nod()`-ding to each separate page of search results within the while-loop. You’ll also see me searching for the page navigation buttons at the end of each iteration - we use this information to tell us which route to jump to in the next iteration.
+
+```r
+allhomes_scraper <- function(
+  baseurl      = "https://www.allhomes.com.au", 
+  start_page   = NULL, 
+  n_pages      = Inf, 
+  # [...]
+) {
+
+# [...]
+
+  # Politely introduce scraper to AllHomes website
+  allhomes_session <- bow(baseurl, force = T)
+
+  # Iterators
+  start_page <- coalesce(start_page, 1)
+  page_sublink <- glue('/sold/search?page={start_page}&region=canberra-act')
+  iterator <- 1
+
+  # Loop across pages until there are no more
+  while (!is.na(page_sublink) & iterator <= n_pages) {
+
+    # Agree a change in route with the server, then scrape
+    search_page_html <- nod(allhomes_session, page_sublink, verbose = T) %>% 
+        scrape()
+
+    # Information extraction is done here [...]
+
+    # Get next route ----
+    log_info('[AH]     Getting next route')
+    
+    pagination_buttons <- search_page_html %>% html_nodes('a[data-testid=paginator-navigation-button]')
+    
+    page_sublink <- if (length(pagination_buttons) == 1 & start_page == 1 & iterator == 1) {
+      
+      # This is the first page, go to the next page
+      pagination_buttons[[1]] %>% html_attr('href')
+      
+    } else if (length(pagination_buttons) == 2) {
+      
+      # A normal page; the second button will be the next page
+      pagination_buttons[[2]] %>% html_attr('href')
+      
+    } else {
+      
+      log_info('[AH]       No next page, ending scrape')
+      NA
+      
+    }
+
+    Iterator <- iterator + 1
+
+}
+```
+
+# Extracting information with rvest
+## HTML & CSS
+
+With the HTML describing the web page now stored in the R environment, we can proceed to extract the information we need. Without getting into too much detail, modern HTML organizes content into various containers known as [tags or elements](https://www.w3schools.com/TAGS/default.asp). Control is then exercised over these containers to determine where everything is placed and organised on the web page.
+
+Developers can give these containers certain attributes to allow them to be targeted for styling and more fine-grained positioning using Cascading Style Sheets (CSS). The most common attributes to use are `class`-es (meant to be applied over multiple elements) and `id`-s (mainly for targeting specific individual elements). Developers can also use the [`data-*`](https://developer.mozilla.org/en-US/docs/Learn/HTML/Howto/Use_data_attributes) attribute (e.g. `data-text`) to add data/information to HTML elements.
+
+```html
+<div id="some-id" class="some-class">Content here</div>
+<p class="some-other-class" data-content="intro">Lorem ipsum</p>
+```
+
+CSS then allows us to select elements based on their type and attributes with a high level of precision using *CSS selectors*; this allows us to be precise in how we style those elements when building websites. They allow us to target specific singular elements (using their `id` attribute) and groups of similar elements (using a `class` attribute). Examples of this are:
+- `#some-element` to select the element with the id `some-element`
+- `.multiple-elements` to select all elements with the class `multiple-elements`
+- `div[data-test=hello-world]` to select all `<div>`s with `data-test` attribute of `hello-world`
+
+We can also use CSS to target elements based on where they sit in relation to other elements. This is particularly useful when we find that the attributes on a web page do not hold any semantic value (e.g. hashed class names due to CSS-in-JS libraries), and we need to find the information using the structure of the web-page instead.  For example:
+- `div p` selects all `<p>` elements that sit *anywhere* inside any `<div>` element, whereas `div > p` finds all `<p>` elements that sit inside the first level of any `<div>`
+- `.some-class > div:nth-of-type(3)` selects the third `<div>` tag inside the first level of any element with class `some-class`
+
+We’ll look at use cases for both of these approaches in this article.
+
+## Using HTML attributes to extract information
+
+We can use the same CSS selector approach when selecting elements to be extracted during web scraping. We combine this with `rvest::html_nodes()` which returns the nodes/tags that match the CSS selectors provided. We’ll go through some examples in this and the next sub-section.
+
+In the case that the website has elements with `class`-es/`id`-s/`data-*` attributes that have discernible meaning to them, we can generally use those to robustly target and extract information from those elements.
+
+For example, the popular real estate aggregator site Domain uses specific class names for containers that hold information we want to scrape (such as house price, number of bathrooms, etc.)
+
+> Note that you can view any website’s HTML and CSS by opening up your browser’s DevTools (Chrome Devtools: ⌥ + ⌘ + I or Ctrl + Shift + I)
+
+The HTML looks like the image below. We can see that the following elements map to certain classes.
+
+![](/static/images/cbr-house-prices/Domainsnapshot.png)
+
+<Caption text="Note how the highlighted element, price, sits in a <div> with `data-testid’ of `listing-card-price-wrapper`. This is also the case for `address-line1` and `address-line2`."/>
+
+| Element               | Defining attribute                                  |
+|-----------------------|----------------------------------------------------|
+| Individual result card| `data-testid = listing-card-wrapper[-premiumplus/-elite]` |
+| Price                 | `data-testid = listing-card-price-wrapper`         |
+| Address line 1        | `data-testid = address-line1`                     |
+| Address line 2        | `data-testid = address-line2`                     |
+| Beds/baths/parking    | `data-testid = property-features-feature`         |
+
+In order to access these elements, I’ve set up a *base query* which pulls out our individual search results, then several *sub-queries* which pull specific bits of information from each search result.
+
+```r
+# Our base query gets us our house results and navigates internally to where
+# the information is. This navigation was built by inspecting the structure
+# of each card in Chrome DevTools
+base_query <- "div[data-testid^=listing-card-wrapper]"
+
+# From the base query, we add these extra selectors on to pull out
+# easy-to-access relevant information
+sub_queries <- list(
+    price         = 
+    " p[data-testid=listing-card-price]",
+    address       = 
+    " span[data-testid=address-line1]",
+    locality      = 
+    " span[data-testid=address-line2] > span:nth-of-type(1)",
+    state         = 
+    " span[data-testid=address-line2] > span:nth-of-type(2)",
+    postcode      = 
+    " span[data-testid=address-line2] > span:nth-of-type(3)",
+    abode_type    =
+    "div[data-testid=listing-card-features-wrapper] > div:nth-of-type(2)"
+)
+```
+
+We can then loop over each of these subqueries to return a row of attributes for one property, then bind them all together
+
+```r
+# Getting HTML for individual search results
+relevant_html <- search_page_html %>%
+    html_nodes(base_query)
+
+# Looping over the sub-queries
+names(sub_queries) %>%
+    map_dfc(~{
+
+        relevant_html %>%
+        html_nodes(sub_queries[[.x]]) %>%
+        html_text() %>%
+        # Trim any hanging whitespace
+        trimws() 
+              
+    }) %>%
+    set_names(names(sub_queries)) %>%
+    # Manipulating the price string to pull relevant information
+    mutate(
+        price    = str_extract(price, '(?<=\\$)[0-9,]+') %>%
+        str_remove_all(',') %>%
+        as.numeric(),
+        address  = str_remove(address, ',\\s$'),
+        locality = str_to_title(locality),
+        source   = 'domain'
+    )
+
+#>  # A tibble: 10 × 7
+#>       price address   locality  state postcode abode_type              source
+#>       <dbl> <chr>     <chr>     <chr> <chr>    <chr>                   <chr> 
+#>   1  600000 5/10 x x  Suburb    ACT   26XX     Townhouse               domain
+#>   2  500000 1/17 x x  Suburb    ACT   26XX     Townhouse               domain
+#>   3  500000 15/10 x x Suburb    ACT   26XX     Townhouse               domain
+#>   4  500000 2/10 x x  Suburb    ACT   26XX     Apartment / Unit / Flat domain
+#>   5  900000 39 x x    Suburb    ACT   26XX     House                   domain
+#>   6  700000 16 x x    Suburb    ACT   26XX     House                   domain
+#>   7  600000 2/68 x x  Suburb    ACT   26XX     Townhouse               domain
+#>   8  900000 2 x x     Suburb    ACT   26XX     House                   domain
+#>   9 1000000 6 x x     Suburb    ACT   26XX     House                   domain
+#>  10  700000 6 x x     Suburb    ACT   26XX     Townhouse               domain
+```
+
+This is simplified for illustration but in practice it is likely more robust to loop over each individual search result since missing values from each of the sub-queries will cause issues in the `map_dfc()`/`bind_cols()` step.
+
+## Using HTML structure to extract information
+
+There are some cases where a site has CSS class names that are hashed or otherwise nonsensical. This often happens in the case of CSS-in-JS or any kind of scoped styling and also makes it slightly more difficult to scrape things. We can see this happening in the Domain example (class names `css-9hd67m`, `css-bhcn0k`), but since certain elements had meaningful `data-testid`s, we could still target our desired elements. 
+
+However, sites such as AllHomes appear to have hashed classes, but no defining attributes for elements that contain key pieces of information. In this case, we need to turn to how the HTML is structured in order to extract the information we seek. This is possible because each individual search result is structured the same as the others.
+
+![](/static/images/cbr-house-prices/AllHomessnapshot.png)
+
+<Caption text="All CSS classes are hashed here, note how the container that holds the price does not have any other defining attributes."/>
+
+The screenshot above shows the structure of a single search result. From this, we can start to determine where we need to traverse in the HTML structure to get information like price and address. For example, we can see that to get to the price element from the top level of the results card, we need to:
+
+- Go to the first div within the result card (class `css-1km0qf0`)
+- Go to the second div within that div (`css-zwlfat`)
+- Go to the second div within that div (`css-uc5ga5`)
+- Go the first div within that div (`css-12v5duy`)
+- Go the first div within that div (`css-n085mf`)
+- Go the first div within that div (`css-abwyzf`) - this is where the price information lies
+
+Chrome’s (or any modern browser’s) DevTools are particularly helpful here as when you mouse over HTML elements, the corresponding element on the web-page is highlighted. This makes it easier for us to understand where the elements we care about sit in relation to our reference points (in this case, the top level of each search result). This also makes it easy for us to verify that the same relationship exists in the other search results as well.
+
+As before, we set up an initial base query that gets us to the container of each search result. Note the similarity between the base query and instructions in the example above with the exception of the last instruction (which is contained in a sub-query). Luckily (or unluckily), price is the only major piece of information we need to target this way; all other aspects appear to have meaningful `itemprop` attributes.
+
+```r
+# Note that AllHomes has ads and other information interleaved with their
+# search results. This means that we aren’t able to simply pick the element
+# that contains all search results and treat every child element as a search
+# result. Instead, we determine which CSS class appears most frequently and
+# assign that to `house_card_class`. More details in the GitHub repository.
+base_query <- glue("
+    div[id='__domain_group/APP_ROOT'] 
+    div.{house_card_class} >
+    div:nth-of-type(1) > 
+    div:nth-of-type(2) > 
+    div:nth-of-type(2) > 
+    div:nth-of-type(1) > 
+    div:nth-of-type(1) 
+")
+
+# From the base query, we add these extra selectors on to pull out relevant
+# information
+sub_queries <- list(
+    price         = 
+    "> div:nth-of-type(1)",
+    …
+    # All other elements had meaningful `itemprop` attributes
+)
+```
+
+# Conclusion
+
+With the data now scraped and organized into tables, our focus naturally turns to data storage for future analysis. In the upcoming blog posts, I'll detail the process of setting up a PostgreSQL instance for securely housing this data. I'll also explore the concept of [Type 2 Slowly Changing Dimensions](https://www.sqlshack.com/implementing-slowly-changing-dimensions-scds-in-data-warehouses/). While it might seem like overkill for a property-level dataset where we don't expect attributes to change often, it provides valuable insights into data management practices that can be adapted to various scenarios.
