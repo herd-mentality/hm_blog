@@ -1,0 +1,170 @@
+---
+title: Connecting Nifi to Teradata
+date: '2023-09-13'
+tags: ['data-engineering', 'database', 'etl']
+draft: false
+summary: ''
+authors: ['christophermortimer']
+---
+
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
+
+<TOCInline toc={props.toc} indentDepth={2} />
+<br />
+
+![](/static/images/nifi-teradata/nifi-td.png)
+
+# 1 Introduction, Connecting Nifi to Teradata
+
+For this demo I will be using a Windows PC including:
+
+- Docker desktop
+- PowerShell Core 7.3.6
+- VMWare Workstation Player 16
+- Teradata Express VM
+
+# 2 Installing Nifi
+
+The easiest way I found to get an instance of Nifi running is using Docker.
+
+To get Docker working on Windows there is a little bit of extra setup required. Firstly install Docker desktop using the following installation.
+
+[https://docs.docker.com/desktop/install/windows-install/](https://docs.docker.com/desktop/install/windows-install/)
+
+Also, getting WSL2 setup is required for better performance.
+
+![](/static/images/nifi-teradata/nifitd-docker-desktop-wsl.png)
+
+[https://hub.docker.com/r/apache/nifi](https://hub.docker.com/r/apache/nifi)
+
+In your PowerShell terminal, pull the image.
+
+```ps1
+docker pull apache/nifi
+```
+
+To run the Docker image (as a container), use the follow command, or run using the Docker desktop application.
+
+![](/static/images/nifi-teradata/nifitd-docker-container.png)
+
+```ps1
+docker run --name nifi -p 8443:8443 -d apache/nifi:latest
+```
+
+Running the container will generate a username and password.
+
+```ps1
+docker logs nifi | Select-String -Pattern "Generated"
+```
+
+```log
+Generated Username [<username>]
+Generated Password [<password>]
+```
+
+Browse to the service in your browser of choice and login with the Generated credentials.
+
+[https://localhost:8443/nifi/](https://localhost:8443/nifi/)
+
+![](/static/images/nifi-teradata/nifitd-login.png)
+
+# 3 Setting up Teradata VM
+
+This is something for another time, and if you are reading this you probably have a large enterprise Teradata instance you want to connect to.
+
+For this demo, the important thing is the IP address of the VM is _192.168.190.128_, you will probably have a hostname for your Teradata instance.
+
+![](/static/images/nifi-teradata/nifitd-td-vmware.png)
+
+# 4 Adding the Teradata JDBC driver to the Docker container
+
+We need to copy the Teradata JDBC driver to the Docker container and then restart it. Firstly download the JDBC driver and change to the directory in PowerShell.
+
+You'll need to sign up/login to download the driver and then extract it from the Zip archive.
+
+[https://downloads.teradata.com/download/connectivity/jdbc-driver](https://downloads.teradata.com/download/connectivity/jdbc-driver)
+
+![](/static/images/nifi-teradata/nifitd-teradata-jdbc-driver-download.png)
+
+![](/static/images/nifi-teradata/nifitd-teradata-jdbc-driver-jar.png)
+
+Then list the containers running.
+
+```ps1
+docker ps
+```
+
+Get the **CONTAINER ID** from the output.
+
+```log
+CONTAINER ID IMAGE              PORTS                  NAMES
+81b55e074d9a apache/nifi:latest 0.0.0.0:8443->8443/tcp nifi
+```
+
+Replace the **CONTAINER ID** in the following command to copy the driver from your local Windows host to the Docker container.
+
+```ps1
+docker cp .\terajdbc4.jar 81b55e074d9a:/opt/nifi/nifi-current/lib
+```
+
+# 5 Setting up the FlowFile
+
+Drag a new Processor onto the workbench.
+
+[https://localhost:8443/nifi/](https://localhost:8443/nifi/)
+
+![](/static/images/nifi-teradata/nifitd-drag-new.png)
+
+We will select the ExecuteSQL type.
+
+![](/static/images/nifi-teradata/nifitd-add-processor.png)
+
+Now, lets configure this new Processor.
+
+![](/static/images/nifi-teradata/nifitd-processor-configure.png)
+
+Browse to the Properties tab, and add the SQL to select from a table in your Teradata instance. In this case my demo selects from a previous loaded table from another blog post.
+
+```sql
+select * from PRD_ADS_PYTHON_NFL_DB.GAME
+```
+
+Then click the Arrow to configure the **Database Connection Pooling Service**.
+
+![](/static/images/nifi-teradata/nifitd-processor-configure-props.png)
+
+Now, we have a list of Database connections. We need to add or configure one for our Teradata instance (in this case the VM).
+
+![](/static/images/nifi-teradata/nifitd-db-pooling-cog.png)
+
+![](/static/images/nifi-teradata/nifitd-db-connection-props.png)
+
+```ini
+Name=TeradataVM-Connection-Test
+Id=87974be0-018a-1000-26db-a45f03ce9a88
+Type=DBCPConnectionPool 1.23.2
+Bundle=org.apache.nifi - nifi-dbcp-service-nar
+SupportsControllerService=DBCPService 1.23.2 from org.apache.nifi - nifi-standard-services-api-nar
+BulletinLevel=WARN
+```
+
+```ini
+DatabaseConnectionURL=jdbc:teradata://192.168.190.128/dbc
+DatabaseDriverClassName=com.teradata.jdbc.TeraDriver
+```
+
+Then click enable, and if everything is good, you should get an enabled connection.
+
+Now you can run the Flow. I have added a PutFile Processor as well and connected them.
+
+![](/static/images/nifi-teradata/nifitd-flow-run.png)
+
+Right clicking on the List queue we can see the queue of resulting SQL queries.
+
+![](/static/images/nifi-teradata/nifitd-list-que.png)
+
+![](/static/images/nifi-teradata/nifitd-view-queue.png)
+
+We can see the successful query of the Teradata data in Nifi.
+
+![](/static/images/nifi-teradata/nifitd-td-data.png)
