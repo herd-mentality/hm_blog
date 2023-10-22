@@ -7,9 +7,6 @@ summary: 'Buidling the AR and MA parts of ARIMA model mathematically'
 authors: ['vincentdoan']
 ---
 
-<TOCInline toc={props.toc} indentDepth={2} />
-<br/>
-
 # Introduction
 ARIMA models, standing for Auto-Regressive Integrated Moving Average, is a useful model for predicting time series data with a complex nature. Unlike basic regression models, which may struggle to capture complexity with just a few variables (usually due to autocorrelation, trend and seasonality), ARIMA excels in treating autocorrelation, trend and seasonality through a built-in differencing function (the "Integrated" part of ARIMA); thus, it removes the need for specifying explanatory variables and extra transformation. It is widely used in modelling across many disciplines, including finance, weather predictions, and even anticipating website traffic. 
 # Define the model
@@ -57,9 +54,11 @@ The selection of the AR part for the ARIMA model involves determining the number
 
 Now, equivalently, $(X_t)$ can also be expressed as a combination of previous error terms. This is described in the Moving Average part of the ARIMA model:
 
+
 $$X_t = \epsilon_t + \theta_1\epsilon_{t-1} + \theta_2\epsilon_{t-2} + ... + \theta_q \epsilon_{t-q}$$
 $$X_t = \epsilon_t + \theta_1 L \epsilon_{t} + \theta_2 L^2\epsilon_{t} + ... + \theta_q L^q \epsilon_{t}$$
 $$X_t = \epsilon_t + (\sum_{i=1}^{q} \theta_q L^q)\epsilon_{t} \hspace{1cm} (2)$$
+
 
 where:
 - $\theta_i$ are the parameters/ coefficients of the linear combination of the error terms
@@ -76,14 +75,23 @@ Note that the concept of moving average here can be misleading, as "moving avera
 > - $q$ is the order of this moving average. 
 
 Since both (1) and (2) describe $X_t$, we express $X_t$ with both at the same time:
+
+
 $$X_t = (\sum_{i=1}^{p} \alpha_i L^i)X_{t} + \epsilon_t + (\sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$$
 
+
 This is often expressed as: 
-$X_t - (\sum_{i=1}^{p} \alpha_i L^i)X_{t} = \epsilon_t + (\sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$
-$(1 - \sum_{i=1}^{p} \alpha_i L^i)X_{t} = (1 + \sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$
+
+
+$$X_t - (\sum_{i=1}^{p} \alpha_i L^i)X_{t} = \epsilon_t + (\sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$$
+$$(1 - \sum_{i=1}^{p} \alpha_i L^i)X_{t} = (1 + \sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$$
+
 
 We say that, given time series data $X_t$ where $t$ is an integer index and the $X_t$ are real numbers, an $ARIMA(p,q)$ model is given by: 
-$(1 - \sum_{i=1}^{p} \alpha_i L^i)X_{t} = (1 + \sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$
+
+
+$$(1 - \sum_{i=1}^{p} \alpha_i L^i)X_{t} = (1 + \sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$$
+
 
 >Combining the AR and MA parts, the model $ARIMA(p,q)$ is given as: 
 >$$(1 - \sum_{i=1}^{p} \alpha_i L^i)X_{t} = (1 + \sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$$
@@ -93,7 +101,6 @@ $(1 - \sum_{i=1}^{p} \alpha_i L^i)X_{t} = (1 + \sum_{i=1}^{q} \theta_q L^q)\epsi
 > - $\theta_i$ are the parameters or coefficients of the error terms (MA part)
 > - $q$ is the order of the MA part
 > - $\epsilon_t$ are the error terms at time $t$. 
-
 
 
 **Why do we need both an AR and an MA component?**
