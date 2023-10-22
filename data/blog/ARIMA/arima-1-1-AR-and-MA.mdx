@@ -1,5 +1,5 @@
 ---
-title: ARIMA Modelling In-depth Dive: 1.1 AR and MA 
+title: ARIMA Modelling In-depth Dive: 1 - AR and MA 
 date: '2023-10-29'
 tags: ['ARIMA', 'linear-regression', 'modelling', 'time-series', 'maths', 'in-depth']
 draft: false
@@ -103,3 +103,5 @@ Both AR and MA components capture different types of structures in the data:
 
 So the AR part deals with long term changes, and the MA part deals with short term changes. However, the basis for these models only work if you have a stationary time series ie. the mean, variance and autocorrelation structure are assumed to remain the same over time. 
 If your time series is not stationary, the assumptions for these models break down, making your prediction invalid. This is where the **I** (Integrated) component of ARIMA comes in. This component is used to remove non-stationarity out of your time series.  We will be talking about the I component in the next post of this series. 
+
+
