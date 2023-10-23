@@ -1,5 +1,5 @@
 ---
-title: ARIMA Modelling In-depth Dive: 1 - AR and MA 
+title: ARIMA Modelling In-depth Dive 1 - Auto-Regressive (AR) and Moving Average (MA)
 date: '2023-10-29'
 tags: ['ARIMA', 'linear-regression', 'modelling', 'time-series', 'maths', 'in-depth']
 draft: false
@@ -32,7 +32,75 @@ $$X_t = \alpha_1 LX_{t} + \alpha_2 L^2X_{t} ... + \alpha_{p} L^{p}X_{t}$$
 $$X_t = (\sum_{i=1}^{p} \alpha_i L^i)X_{t} \hspace{1cm} (1)$$
 
 
+Notice how the expression ends at $p$. This $p$ is be the last index representing the last lagged value to describe $X_t$. In practice, this is not desirable (see info box). 
 
+>**Do we actually need to use all the lagged values to describe an observation?**
+>No. Doing so would result in many problems that we do not want: 
+> - **Simplicity and parsimony**: models with fewer parameters are simpler and easier to understand, and also less prone to overfitting. By limiting the number of lags, we can create a model that captures the most important patterns without overfitting. 
+> - **Diminishing returns**: in many time series, the most recent observations are more relevant for forecasting than the older ones. The influence of past values often diminishes as we go further back in time. Therefore, including too many lags might not significantly improve the forecast and can even degrade the model's performance. 
+> - **Computational Efficiency:** Using fewer lags means estimating fewer parameters, which makes the model estimation process faster and more stable.
+
+The selection of the AR part for the ARIMA model involves determining the number of time lags to be included in the linear combination, which is based on the minimum number of lagged terms required to describe each observation for the whole series. In other words, the goal is to find a model with the smallest value of $p$ where the time series is sufficiently described. Hence, we call $p$ the order of the Auto-Regressive model. 
+
+> **The Auto-Regressive (AR) part of ARIMA:** 
+> $$X_t = (\sum_{i=1}^{p} \alpha_i L^i)X_{t} \hspace{1cm} (1)$$
+> where:
+> - $\alpha_i$ are the parameters or coefficients of such regression. 
+> - $p$ is the order of this Auto-Regressive 
+
+>For example, when we say the AR part has an order of two, it means every observation $X_t$ can be described by the two observations before it, and can be expressed as: 
+>$X_t = \alpha_1 LX_{t} + \alpha_2 L^2X_{t}$
+
+
+Now, equivalently, $(X_t)$ can also be expressed as a combination of previous error terms. This is described in the Moving Average part of the ARIMA model:
+
+
+$$X_t = \epsilon_t + \theta_1\epsilon_{t-1} + \theta_2\epsilon_{t-2} + ... + \theta_q \epsilon_{t-q}$$
+$$X_t = \epsilon_t + \theta_1 L \epsilon_{t} + \theta_2 L^2\epsilon_{t} + ... + \theta_q L^q \epsilon_{t}$$
+$$X_t = \epsilon_t + (\sum_{i=1}^{q} \theta_q L^q)\epsilon_{t} \hspace{1cm} (2)$$
+
+
+where:
+- $\theta_i$ are the parameters/ coefficients of the linear combination of the error terms
+- $\epsilon_t$ are the error terms at time $t$
+- $q$ is the order of this moving average. 
+
+Note that the concept of moving average here can be misleading, as "moving average" in this context simply refers to the moving window of the previous errors, it does not take an average of anything. 
+
+> **The Moving Average (MA) part of the ARIMA model:**
+> $$X_t = \epsilon_t + (\sum_{i=1}^{q} \theta_q L^q)\epsilon_{t} \hspace{1cm} (2)$$
+> where:
+> - $\theta_i$ are the parameters/ coefficients of the linear combination of the error terms
+> - $\epsilon_t$ are the error terms at time $t$
+> - $q$ is the order of this moving average. 
+
+Since both (1) and (2) describe $X_t$, we express $X_t$ with both at the same time:
+
+
+$$X_t = (\sum_{i=1}^{p} \alpha_i L^i)X_{t} + \epsilon_t + (\sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$$
+
+
+This is often expressed as: 
+
+
+$$X_t - (\sum_{i=1}^{p} \alpha_i L^i)X_{t} = \epsilon_t + (\sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$$
+$$(1 - \sum_{i=1}^{p} \alpha_i L^i)X_{t} = (1 + \sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$$
+
+
+We say that, given time series data $X_t$ where $t$ is an integer index and the $X_t$ are real numbers, an $ARIMA(p,q)$ model is given by: 
+
+
+$$(1 - \sum_{i=1}^{p} \alpha_i L^i)X_{t} = (1 + \sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$$
+
+
+>Combining the AR and MA parts, the model $ARIMA(p,q)$ is given as: 
+>$$(1 - \sum_{i=1}^{p} \alpha_i L^i)X_{t} = (1 + \sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$$
+>where:
+> - $\alpha_i$ are the parameters or coefficients of the lagged values (AR part)
+> - $p$ is the order of the AR part
+> - $\theta_i$ are the parameters or coefficients of the error terms (MA part)
+> - $q$ is the order of the MA part
+> - $\epsilon_t$ are the error terms at time $t$. 
 
 
 **Why do we need both an AR and an MA component?**
