@@ -34,7 +34,7 @@ $$X_t = (\sum_{i=1}^{p} \alpha_i L^i)X_{t} \hspace{1cm} (1)$$
 
 Notice how the expression ends at $p$. This $p$ is be the last index representing the last lagged value to describe $X_t$. In practice, this is not desirable (see info box). 
 
-### **Do we actually need to use all the lagged values to describe an observation?** 
+### Do we actually need to use all the lagged values to describe an observation?
 No. Doing so would result in many problems that we do not want: 
     - **Simplicity and parsimony**: models with fewer parameters are simpler and easier to understand, and also less prone to overfitting. By limiting the number of lags, we can create a model that captures the most important patterns without overfitting. 
     - **Diminishing returns**: in many time series, the most recent observations are more relevant for forecasting than the older ones. The influence of past values often diminishes as we go further back in time. Therefore, including too many lags might not significantly improve the forecast and can even degrade the model's performance. 
@@ -42,7 +42,7 @@ No. Doing so would result in many problems that we do not want:
 
 The selection of the AR part for the ARIMA model involves determining the number of time lags to be included in the linear combination, which is based on the minimum number of lagged terms required to describe each observation for the whole series. In other words, the goal is to find a model with the smallest value of $p$ where the time series is sufficiently described. Hence, we call $p$ the order of the Auto-Regressive model. 
 
-## **The Auto-Regressive (AR) part of ARIMA:** 
+## The Auto-Regressive (AR) part of ARIMA:
 
 
 $$X_t = (\sum_{i=1}^{p} \alpha_i L^i)X_{t} \hspace{1cm} (1)$$
@@ -73,7 +73,7 @@ where:
 
 Note that the concept of moving average here can be misleading, as "moving average" in this context simply refers to the moving window of the previous errors, it does not take an average of anything. 
 
-## **The Moving Average (MA) part of the ARIMA model:**
+## The Moving Average (MA) part of the ARIMA model:
 
 
 $$X_t = \epsilon_t + (\sum_{i=1}^{q} \theta_q L^q)\epsilon_{t} \hspace{1cm} (2)$$
@@ -103,7 +103,7 @@ We say that, given time series data $X_t$ where $t$ is an integer index and the 
 $$(1 - \sum_{i=1}^{p} \alpha_i L^i)X_{t} = (1 + \sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$$
 
 
-Combining the AR and MA parts, the model $ARIMA(p,q)$ is given as: 
+## Combining the AR and MA parts, the model $ARIMA(p,q)$ is given as: 
 
 
 $$(1 - \sum_{i=1}^{p} \alpha_i L^i)X_{t} = (1 + \sum_{i=1}^{q} \theta_q L^q)\epsilon_{t}$$
@@ -117,7 +117,7 @@ where:
     - $\epsilon_t$ are the error terms at time $t$. 
 
 
-**Why do we need both an AR and an MA component?**
+### Why do we need both an AR and an MA component?
 Both AR and MA components capture different types of structures in the data:
     - **AR (Auto-Regressive)** captures the momentum and drift in the data. Eg. If the temperature has been rising over the last few days, it's likely to continue rising. The AR component will capture this momentum.
     - **MA (Moving Average)** captures sudden shocks or changes in the series. Eg. If there's an unexpected drop in temperature today (maybe due to a sudden rainstorm), the MA component will help the model quickly adjust to these shocks.
