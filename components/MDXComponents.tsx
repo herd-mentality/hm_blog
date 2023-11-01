@@ -5,10 +5,11 @@ import { TOCInline } from 'pliny/ui/TOCInline'
 import { Pre } from 'pliny/ui/Pre'
 import { BlogNewsletterForm } from 'pliny/ui/NewsletterForm'
 import { useRouter } from 'next/router'
+// import { LazyPlot } from './LazyPlotly'
 
 import Image from './Image'
 import CustomLink from './Link'
-// import { Caption } from './InPostComponents'
+import { Caption, Highlight } from './InPostComponents'
 
 export const Wrapper = ({ layout, content, ...rest }: MDXLayout) => {
   const Layout = require(`../layouts/${layout}`).default
@@ -61,7 +62,8 @@ const AutoLinkedHeading: React.FC<AutoLinkedHeadingProps> = ({
 export const MDXComponents: ComponentMap = {
   Image,
   TOCInline,
-  // Caption, // Do this to expose a component globally
+  Caption, // Do this to expose a component globally
+  Highlight,
   a: CustomLink,
   h1: (props) => <AutoLinkedHeading tag="h1" {...props} />,
   h2: (props) => <AutoLinkedHeading tag="h2" {...props} />,
@@ -72,4 +74,5 @@ export const MDXComponents: ComponentMap = {
   pre: Pre,
   wrapper: Wrapper,
   BlogNewsletterForm,
+  // lazyPlot: LazyPlot,
 }
