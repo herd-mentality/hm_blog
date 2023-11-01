@@ -7,15 +7,10 @@ summary: 'Building the AR and MA parts of ARIMA model mathematically'
 authors: ['vincentdoan']
 ---
 
-import fpProps from './components/plotly/fpProps.tsx'
-import LazyPlot from './components/LazyPlotly.tsx'
-
 # Introduction
 ARIMA models, standing for Auto-Regressive Integrated Moving Average, is a useful model for predicting time series data with a complex nature. Unlike basic regression models, which may struggle to capture complexity with just a few variables (usually due to autocorrelation, trend and seasonality), ARIMA excels in treating autocorrelation, trend and seasonality through a built-in differencing function (the "Integrated" part of ARIMA); thus, it removes the need for specifying explanatory variables and extra transformation. It is widely used in modelling across many disciplines, including finance, weather predictions, and even anticipating website traffic. 
 # Define the model
 Let's build the ARIMA model from scratch. As introduced, the ARIMA model is made of three parts: an auto-regressive part, an integrated part and a moving average part. 
-
-<LazyPlot {...fpProps} />
 
 For example, given some time series with 100 observations. 
 

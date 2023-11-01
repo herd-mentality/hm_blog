@@ -20,6 +20,9 @@ const fpProps = {
     name: key,
     marker: { color: colors[index] },
   })),
+  // layout: {
+  //   title: 'hello world',
+  // },
 }
 
 export default fpProps
