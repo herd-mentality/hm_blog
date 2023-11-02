@@ -1,0 +1,451 @@
+---
+title  : Creating external tables in Google BigQuery using R
+date   : '2023-11-01'
+tags   : ['etl', 'google-cloud-platform', 'data-engineering', 'R']
+draft  : false
+summary: 'How to use `bigrquery` and `googleCloudStorageR` to create external tables in Google BigQuery'
+authors: ['darrenwong']
+---
+
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import { Caption, Highlight } from './components/InPostComponents.tsx';
+
+# Introduction
+
+Google Cloud Platform (GCP) is a broad suite of cloud computing services. The two main services we’ll be touching on today are:
+
+- **BigQuery**, Google’s fully managed and serverless enterprise data warehouse
+- **Cloud Storage**, Google’s file storage web service offering
+
+This article walks through how to create an external table in BigQuery from a file stored on Cloud Storage - all through R. This involves creating a service account so that we can authenticate automatically with GCP, uploading the table to Cloud Storage (using `googleCloudStorageR`), then creating a view/external table on top of that file in BigQuery (using `bigrquery`). We won’t go into how to create native tables since this is fairly trivial with the usage of `bigrquery`.
+
+Why would we want an external table instead of a native table? External tables are essentially views on top of files that are stored in Cloud Storage. Whereas native tables are stored on the BigQuery platform itself. <Highlight text="The consequence of this is that external tables are generally cheaper to store over the long term native tables, however native tables have the benefit of higher performance and availability"/>.
+
+Before we begin, here are the versions of everything I’m using:
+
+<table>
+    <thead>
+        <tr>
+            <th>Software</th>
+            <th>Version</th>
+            <th>Install</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>**OS**</td>
+            <td>Red Hat Enterprise Linux 7.9 (Maipo)</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>**R**</td>
+            <td>4.0.0</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td colspan="3">*R Packages*</td>
+        </tr>
+        <tr>
+            <td>&nbsp;&nbsp;`DBI`</td>
+            <td>1.1.3</td>
+            <td>`renv::install('DBI@1.1.3')`</td>
+        </tr>
+        <tr>
+            <td>&nbsp;&nbsp;`dbplyr`</td>
+            <td>2.2.1</td>
+            <td>`renv::install('dbplyr@2.2.1')`</td>
+        </tr>
+        <tr>
+            <td>&nbsp;&nbsp;`bigrquery`</td>
+            <td>1.4.2</td>
+            <td>`renv::install('bigrquery@1.4.2')`</td>
+        </tr>
+        <tr>
+            <td>&nbsp;&nbsp;`googleCloudStorageR`</td>
+            <td>0.7.0</td>
+            <td>`renv::install('googleCloudStorageR@0.7.0')`</td>
+        </tr>
+    </tbody>
+</table>
+
+Documentation for `bigrquery` and `googleCloudStorageR` are available [here](https://bigrquery.r-dbi.org/) and [here](https://code.markedmondson.me/googleCloudStorageR/).
+
+# Creating a service account
+
+To interact with GCP we’ll first need a way to authenticate with the platform. To do this programmatically/automatically, we will need to create a service account with the appropriate roles/permissions. We’ll then use that account’s details to authenticate with the platform whenever we want to interact with it.
+
+I’ll assume that you already have a GCP project set up, however if you don’t I’d recommend following [Google’s documentation here](https://developers.google.com/workspace/guides/create-project).
+
+
+1. Log in to [Google Cloud Console](https://console.cloud.google.com/)
+2. Use the hamburger menu in the top left and navigate to **IAM & Admin** > **Service accounts**
+
+    a. Click **+ Create a service account**, provide a name for the account, a unique ID, and a description, then continue to the second step
+
+    b. This is where you’ll select roles (i.e. permissions) for the service account. Select `BigQuery Admin` (read/write access to BigQuery), `Storage Admin` (read/write access to Cloud Storage), and `Service Account User` (to run operations as the service account) for your service account
+
+    c. Skip the third step for now (Grant users access to this service account) and click **Done**
+
+![](/static/images/bq-ext-tbls/image1.png)
+
+3. To download the JSON key for your service account, once done with the previous step navigate again to **IAM & Admin** > **Service accounts** 
+
+    a. Click the three dots (**Actions**) to the right of the service account you just created > **Manage keys**
+
+    b. **Add Key** > **Create new key** > **JSON** > **Create**, and save the JSON key to a secrets folder somewhere on your disk. Ensure that you do not commit the details from this JSON to any repository
+
+![](/static/images/bq-ext-tbls/image2.png)
+
+<Caption text="Note that I've named my service account 'dataflow-runner'"/>
+
+We’re now ready to use this key to authenticate to GCP from R.
+
+# Uploading a file to Google Cloud Storage
+## Setup
+
+First we’ll need to install the required packages and load them.
+
+<details>
+    <summary>Installing and loading packages</summary>
+
+    ```R
+    renv::install('DBI@1.1.3')
+    renv::install('dbplyr@2.2.1')
+    renv::install('bigrquery@1.4.2')
+    renv::install('googleCloudStorageR@0.7.0')
+
+    # Load libraries ----
+    invisible({
+    
+    # Packages to load are found in the character vector below
+    packages <- c("tidyverse", "logger", "DBI", "bigrquery", "dbplyr", "googleCloudStorageR")
+    
+    if(!all(packages %in% rownames(installed.packages()))) {
+        
+        to_install <- packages[!(packages %in% rownames(installed.packages()))]
+        lapply(to_install, install.packages, character.only = TRUE)
+        rm(to_install)
+        
+    }
+    
+    lapply(packages, library, character.only = TRUE)
+    rm(packages)
+    
+    })
+    ```
+</details>
+
+## Authenticating with GCS
+We’ll load the JSON downloaded in the previous section and use that to authenticate with Google Cloud Storage (GCS). We can optionally set the default bucket for the session.
+
+```R
+# Authenticate using the JSON key
+gcs_auth(json = "~/.secrets/test-project-svc-acct.json")
+
+# Set the default bucket for this session. Can also pass this as an arg to each of the following functions
+gcs_global_bucket('ds-edw-raw-f9819bf2')
+```
+
+## Basic GCS operations
+Some basic GCS operations that googleCloudStorageR allows us to do. Visit the documentation [reference page](https://code.markedmondson.me/googleCloudStorageR/reference/index.html) for more details.
+
+<Tabs>
+  <TabList>
+    <Tab>Listing items in a bucket</Tab>
+    <Tab>Extract data from a bucket</Tab>
+  </TabList>
+
+  <TabPanel>
+
+    ```R
+    # Can get metadata from items as well
+    gcs_list_objects(detail = 'full')
+    ```
+
+  </TabPanel>
+  <TabPanel>
+
+    ```R
+    # Can pull directly into memory with no saveToDisk arg, but may not have enough
+    # mem for larger objects. gCSR will convert the file into an R object for you otherwise.
+    gcs_get_object('emojis.csv')
+    ```
+
+  </TabPanel>
+</Tabs>
+<br/>
+
+## Uploading a file to a bucket
+
+We’ll now look into uploading a file to a bucket with `googleCloudStorageR::gcs_upload()`. Note that we can upload files up to 5TB in size. If the file is under 5mb a simple upload will be used (otherwise, a resumable upload is used).
+
+We can upload objects directly from memory or from a file on the disk.
+
+```R
+gcs_upload(mtcars) # or pass a filepath
+```
+
+Some notes on the optional arguments to this function:
+- You can override the default usage of `write.csv()` by providing a custom saving function to the `object_function` argument of the function above
+- You can set bucket level access permissions with the argument `defaultAcl = “bucketLevel”`
+- You can upload metadata with the object by using `gcs_metadata_object()` and passing the results of that into the `object_metadata` argument of the function above
+
+# Creating an external table with BigQuery
+## Authenticating with BQ and connecting to the DB
+
+Authentication with BigQuery (BQ) is performed in a similar manner to GCS, with the added step of using `DBI::dbConnect()` to connect to our BigQuery dataset.
+
+If you haven’t created a dataset yet, `bigrquery` [provides ways to do this as well](https://bigrquery.r-dbi.org/reference/api-dataset.html). Briefly, to create a new dataset we can run the following:
+
+```R
+test_dataset <- bq_dataset(project = 'your-project-name', dataset = 'ds_edw')
+
+# Check if this dataset already exists, if not, create it
+If (!bq_dataset_exists(test_dataset)) {
+ 
+  bq_dataset_create(test_dataset, location = 'australia-southeast1')
+
+}
+```
+
+We can now authenticate and connect to this dataset.
+
+```R
+# Authenticate using service account JSON
+bq_auth(path = "~/.secrets/test-project-svc-acct.json")
+
+cn_info <- list(
+  project = 'your-project-name',
+  dataset = 'ds_edw',
+  billing = 'your-project-name'
+)
+
+# Connect up to DB using DBI
+bq_conn <- dbConnect(
+  bigrquery::bigquery(),
+  project = cn_info$project,
+  dataset = cn_info$dataset,
+  billing = cn_info$billing
+)
+```
+
+## Basic BQ operations
+
+Some basic BQ operations that `bigrquery` provides methods for. Visit the documentation [reference page](https://bigrquery.r-dbi.org/reference/index.html) for more details.
+
+<Tabs>
+  <TabList>
+    <Tab>Listing datasets in a project</Tab>
+    <Tab>Listing tables in a dataset</Tab>
+  </TabList>
+
+  <TabPanel>
+
+    ```R
+    bq_project_datasets('your-project-name') 
+    #> <bq_dataset> your-project-name.ds_edw 
+    ```
+
+  </TabPanel>
+  <TabPanel>
+
+    ```R
+    dbListTables(bq_conn)
+    #> [1] "emoji-frequency"        "payment_type"           "taxi_trips"             "vendor"                
+    #> [5] "vw_lookerstudio_report"
+    ```
+
+  </TabPanel>
+</Tabs>
+<br/>
+
+## Generating an external table using BQ DDLs
+
+From here, we’ll create an external table over the file we uploaded to Cloud Storage in the previous sections using BigQuery Data Definition Language (DDL). To do this, we’ll pass the Cloud Storage URI of our uploaded file as well as our desired table name to a BigQuery DDL. We can optionally also pass a schema in. We’ll break this down over the following sections.
+
+### Pulling a GCS URI
+
+While we can list all tables in a bucket along with their details using `gcs_list_objects(detail = ‘full’)`, I haven’t yet seen a way to pull the URI for each of the items in the table (I may have missed it in the documentation). For now, I’ve defined a convenience function that returns URIs for files in a bucket that match a certain regex pattern:
+
+<details>
+    <summary>Get GCS URIs</summary>
+
+    ```R
+    #' Get GCS URI/s
+    #'
+    #' Pull the URI of a file that matches the same name/pattern. Uses
+    #' `str_detect()` regex logic to match multiple files.
+    #'
+    #' @param pattern Regex pattern to filter files with
+    #' @param bucket Bucket name, if `NULL`, defaults to default bucket
+    #' @param incl_dir_name Bool, whether to include the sub-directory names that
+    #'   match the `pattern` as well
+    #' @param exact Bool, whether to only exactly match the pattern as opposed to
+    #'   using `str_detect`
+    #' @param format Bool, whether to format as a string to pass to an SQL statement
+    gcs_uris <- function(
+    pattern       = '.*', 
+    bucket        = NULL, 
+    incl_dir_name = FALSE, 
+    exact         = FALSE, 
+    format        = FALSE
+    ) {
+    
+        if (is.null(bucket)) bucket <- gcs_get_global_bucket()
+        
+        # Unfortunately this doesn't list the actual gsutils URI, so we'll create that
+        # from the filtered list.
+        files_info <- gcs_list_objects(bucket, detail = 'full')
+        
+        uris <- files_info %>% 
+            {
+                if (incl_dir_name) {
+                    if (!exact) filter(., str_detect(name, pattern)) else filter(., name == pattern)
+                } else {
+                    if (!exact) filter(., str_detect(basename(name), pattern)) else filter(., basename(name) == pattern)
+                }
+            } %>% 
+            transmute(gsutils_uri = str_glue('gs://{bucket}/{name}')) %>% 
+            pull(gsutils_uri)
+        
+        if (format) paste0("'", paste(uris, collapse = "', '"), "'") else uris
+    
+    }
+    ```
+</details>
+
+We can then use this to find the URI of the table file we uploaded earlier:
+
+```R
+gcs_uri  <- gcs_uris('mtcars', exact = T, format = T)
+```
+
+### Creating an external table with auto-schema detection
+
+Armed with the GCS URI for the file we want to build a view upon, we can run our DDL with `dbExecute()`. See more details about how this DDL is built by viewing [Google's documentation](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_external_table_statement).
+
+```R
+table_id <- 'mtcars_ext'
+
+ext_tbl_sql <- str_glue(
+  "
+    CREATE EXTERNAL TABLE IF NOT EXISTS `{cn_info$project}.{cn_info$dataset}.{table_id}`                      
+  
+    OPTIONS (
+      FORMAT = 'CSV',
+      URIs = [{gcs_uri}]
+    )
+  "
+)
+
+dbExecute(bq_conn, ext_tbl_sql)
+```
+
+And our table now exists! We now can query it using the methods that `DBI`/`bigrquery` provides. 
+
+### Creating an external table while specifying a schema
+If you want to exercise more control over the table build process, you can also manually pass in a schema for your table. This must be in the format:
+
+```sql
+(
+  col_name TYPE,
+  mpg FLOAT64,
+  …
+)
+```
+
+You can then run the following DDL to create your external table with your pre-defined schema:
+
+```R
+new_table_id <- 'mtcars_ext_schema_defined'
+schema <- bq_generate_schema(df = mtcars) # see following block for function defn
+
+ext_tbl_sql_schema <- str_glue(
+  "
+    CREATE OR REPLACE EXTERNAL TABLE `{cn_info$project}.{cn_info$dataset}.{new_table_id}`                      
+  
+    {schema}
+  
+    OPTIONS (
+      FORMAT = 'CSV',
+      URIs = [{gcs_uri}]
+    )
+  "
+)
+
+dbExecute(bq_conn, ext_tbl_sql_schema)
+```
+
+I’ve defined a function to handle the automatic creation and/or formatting of a schema leveraging `bigrquery::as_bq_fields()`:
+
+<details>
+    <summary>Generate/format a schema</summary>
+
+    ```R
+    #' Generate a schema
+    #'
+    #' This utilises [bigrquery::as_bq_fields()] to auto-generate a schema for the
+    #' table you pass in, otherwise, pass in a dataframe with a column of colnames
+    #' and a column of data types.
+    #'
+    #' @param schema_override A data-frame with column `cols` and `types` containing
+    #'   column names and data types respectively
+    #' @param df A data-frame to auto-generate a schema for 
+    #' 
+    #' @examples 
+    #' bq_generate_schema(
+    #'   schema_override = tribble(
+    #'     ~cols, ~types,
+    #'      mpg', 'float',
+    #'      cyl', 'float'
+    #'   )
+    #' )
+    bq_generate_schema <- function(schema_override = NULL, df = NULL) {
+    
+        schema <- if (is.null(schema_override) & !is.null(df)) {
+            
+            # as_bq_fields does not return datatypes that can be used directly in a
+            # BQ DDL, convert them here
+            type_mapping <- list(
+            float    = 'FLOAT64',
+            integer  = 'INT64',
+            string   = 'STRING',
+            boolean  = 'BOOL',
+            date     = 'DATE',
+            time     = 'TIME',
+            datetime = 'DATETIME',
+            bytes    = 'BYTES'
+            )
+            
+            
+            bigrquery::as_bq_fields(df) %>% 
+                lapply(function(field) {
+                    field$type <- type_mapping[[tolower(field$type)]]
+                    field
+                }) %>% 
+                sapply(function(x) paste(x[[1]], x[[2]]))
+            
+        } else if (is.null(df) & !is.null(schema_override)) {
+            
+            schema_override %>% 
+                transmute(schema = paste(cols, toupper(types))) %>% 
+                pull(schema)
+            
+        }
+        
+        schema %>% 
+            paste(collapse = ',\n  ') %>% 
+            paste0('(\n  ', ., '\n)')
+        
+    }
+    ```
+</details>
+<br/>
+
+# Conclusion
+
+Remember to disconnect from the DB when you’re done.
+
+```R
+dbDisconnect(bq_conn)
+```
