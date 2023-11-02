@@ -401,43 +401,48 @@ I’ve defined a function to handle the automatic creation and/or formatting of 
     #'   )
     #' )
     bq_generate_schema <- function(schema_override = NULL, df = NULL) {
-    
-        schema <- if (is.null(schema_override) & !is.null(df)) {
-            
-            # as_bq_fields does not return datatypes that can be used directly in a
-            # BQ DDL, convert them here
-            type_mapping <- list(
-            float    = 'FLOAT64',
-            integer  = 'INT64',
-            string   = 'STRING',
-            boolean  = 'BOOL',
-            date     = 'DATE',
-            time     = 'TIME',
-            datetime = 'DATETIME',
-            bytes    = 'BYTES'
-            )
-            
-            
-            bigrquery::as_bq_fields(df) %>% 
-                lapply(function(field) {
-                    field$type <- type_mapping[[tolower(field$type)]]
-                    field
-                }) %>% 
-                sapply(function(x) paste(x[[1]], x[[2]]))
-            
-        } else if (is.null(df) & !is.null(schema_override)) {
-            
-            schema_override %>% 
-                transmute(schema = paste(cols, toupper(types))) %>% 
-                pull(schema)
-            
-        }
+      
+      type_mapping <- list(
+        float    = 'FLOAT64',
+        integer  = 'INT64',
+        string   = 'STRING',
+        boolean  = 'BOOL',
+        date     = 'DATE',
+        time     = 'TIME',
+        datetime = 'DATETIME',
+        bytes    = 'BYTES'
+      )
+      
+      schema <- if (is.null(schema_override) & !is.null(df)) {
         
-        schema %>% 
-            paste(collapse = ',\n  ') %>% 
-            paste0('(\n  ', ., '\n)')
+        # as_bq_fields does not return datatypes that can be used directly in a
+        # BQ DDL, convert them here
         
-    }
+        bigrquery::as_bq_fields(df) %>% 
+          lapply(function(field) {
+            field$type <- type_mapping[[tolower(field$type)]]
+            field
+          }) %>% 
+          sapply(function(x) paste(x[[1]], x[[2]]))
+        
+      } else if (is.null(df) & !is.null(schema_override)) {
+        
+        schema_override %>% 
+          left_join(
+            unlist(type_mapping) %>% stack(),
+            by = c('types' = 'ind')
+          ) %>% 
+          mutate(values = coalesce(values, types)) %>% 
+          transmute(schema = paste(cols, values)) %>% 
+          pull(schema)
+        
+      }
+      
+      schema %>% 
+        paste(collapse = ',\n  ') %>% 
+        paste0('(\n  ', ., '\n)')
+      
+    } 
     ```
 </details>
 <br/>
