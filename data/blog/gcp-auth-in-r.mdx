@@ -1,0 +1,295 @@
+---
+title  : Authenticating with Google Cloud Platform from R
+date   : '2023-12-02'
+tags   : ['google-cloud-platform', 'data-engineering', 'R']
+draft  : false
+summary: 'Using `gargle` and Application Default Credentials to authenticate with GCP from R'
+authors: ['darrenwong']
+---
+
+# Introduction
+
+We’ve seen in a [previous post](https://www.herdmentality.xyz/blog/bq-ext-tbl-in-r) how to authenticate with Google Cloud Platform (GCP) using service account credentials. There are a few other ways to authenticate with the platform: 
+
+- Through an interactive authentication process each time (calling `bigrquery::bq_auth()`/`googleCloudStorageR::gcs_auth()`/similar); 
+- Caching the authentication token you get from your first interactive authentication process and re-using it each time you authenticate; or,
+- Through Google’s Application Default Credentials. 
+
+We’ll focus on the last two here since they are most useful for running non-interactive/automated workflows if you’re unable to get a service account.
+
+I’ll be using the same OS and package versions as in [Creating external tables in Google BigQuery using R](https://www.herdmentality.xyz/blog/bq-ext-tbl-in-r).
+
+# Using cached credentials with gargle
+
+This method makes use of the `gargle` R package to fetch an authentication token with the correct [OAuth 2.0](https://aaronparecki.com/oauth-2-simplified/) scopes. This requires you to run the interactive process at least once, and you may need to run it again when your token expires.
+
+- First, load `gargle`, then run `gargle::token_fetch()` with the scopes you’d like access to. Since I’ll mainly be working with BigQuery and Cloud Storage, I’ll pass in the scopes relevant to those services. [See the full list of GCP OAuth 2.0 scopes here](https://developers.google.com/identity/protocols/oauth2/scopes#bigquery).
+    - In the back-end, `gargle::token_fetch()` will run a list of credential functions (checking for existing OAuth 2.0 tokens, service/external account credentials, Application Default Credentials etc.) in sequence to first check if you have any existing authentication tokens. If it does not find any, it will run `gargle::credentials_user_oauth2()` which will kick off the process you’re about to see here. For more information on this, [see this article](https://gargle.r-lib.org/articles/how-gargle-gets-tokens.html).
+
+```r
+library(gargle)
+
+scopes <- c(
+  "https://www.googleapis.com/auth/bigquery",
+  "https://www.googleapis.com/auth/cloud-platform"
+)
+
+token <- gargle::token_fetch(scopes = scopes)
+```
+
+- This will launch a process in your browser where you allow Tidyverse API Packages access to your account. Choose the account you want to use.
+
+![](/static/images/gcs-auth-r/image1.png)
+
+- At this stage the page will either return `”Authentication complete. Please close this page and return to R.”`, or will provide you with an authorization code you can then copy and paste back into your R console. Once this is complete, the interactive process is done.
+- You can then start using your `bigrquery`/`googleCloudStorageR` functions as normal, although they may prompt you as to whether you’d like to use an existing token for authentication.
+    - To exercise more control over when this happens, we can call `bigrquery::bq_auth()` and `googleCloudStorageR::gcs_auth()` early in the process and pass our token object to them:
+
+```r
+bigrquery::bq_auth(token = token)
+googleCloudStorageR::gcs_auth(token = token)
+```
+
+Once you’ve completed these steps, you’ve successfully cached an authentication token and `gargle` will now look for and load this token whenever you call a function that authenticates with GCP. 
+
+Note, however, that the first authentication call of the session will usually result in a manual prompt, asking if you want to run a fresh interactive process or to use an already cached result. If we know that we won’t want to log into any other accounts, we can automate this by finding our cached credentials and explicitly passing them to `gargle::token_fetch()`. We’ll do this in the last few sections of this article.
+
+If this is a project only you are working on, we can do this even more simply by passing an email to our auth functions, e.g. `gargle::token_fetch(email = ‘...’)`; `bigrquery::bq_auth(email = ‘...’)`. Otherwise we’ll need a programmatic way to determine the user’s email address, which is only feasible if all user’s email addresses follow a similar pattern. More on this later on in the article.
+
+# Application Default Credentials
+
+Relying on a cached OAuth 2.0 token over the long term that may expire or invalidate may not be the best practice approach to authenticating with GCP. A better option (bar appropriately scoped service accounts) may be to utilise Google [Application Default Credentials (ADCs)](https://cloud.google.com/docs/authentication/application-default-credentials). 
+
+Google’s authentication libraries commonly use Application Default Credentials (ADCs) as a best practice strategy to automatically find and manage credentials. In short, you save your ADCs to a [specific location on your disk](https://cloud.google.com/docs/authentication/application-default-credentials#personal), then point all authentication processes from R to that location. [Further documentation is available here](https://cloud.google.com/docs/authentication/provide-credentials-adc).
+
+1. To generate Application Default Credentials, you will need to have the gsutil tool installed. [Follow the instructions to install it here](https://cloud.google.com/storage/docs/gsutil_install). I installed this on MacOS Sonoma 14.1.1 on an M1 chip which involved downloading the available package and running `./google-cloud-sdk/install.sh`
+2. Once the install is finished, load a fresh terminal session and check if gsutil is available by running `gcloud version`
+
+> If gcloud can’t be found, you [may need to reinstall it with different options](https://stackoverflow.com/questions/31037279/gcloud-command-not-found-while-installing-google-cloud-sdk).
+
+3. Run the following command, which will provide you with a link. Copy this link into a browser, follow the prompts, then copy the provided authorisation code back into the terminal and press Enter.
+
+```shell
+gcloud auth application-default login --no-launch-browser
+```
+
+4. If this process completed correctly, you should see something like the following:
+
+
+```
+Credentials saved to file: [~/.config/gcloud/application_default_credentials.json]
+```
+
+5. With your ADCs now correctly generated and saved, we can simply point `gargle` to it.
+
+```r
+ddc_path <- “~/.config/gcloud/application_default_credentials.json”
+credentials <- gargle::credentials_app_default(scopes = scopes, path = adc_path)
+
+bq_auth(token = credentials)
+gcs_auth(token = credentials)
+```
+
+# Putting it together
+
+I’m creating a library of BigQuery/Cloud Storage-centric functions that will be used by a limited set of users. I want authentication with these platforms to be as simple and hands-off as possible for these users so that they can focus on the work that really matters instead of having to juggle authentication tokens.
+
+With this in mind, I’ve created a function that leverages the power of `gargle::token_fetch()`, but aims to keep things as automated as possible. This means that the function will:
+
+1. First check for ADCs; if valid ADCs are found then it will return this as a token
+2. Next, it will check for cached tokens. If any are found, it will filter for tokens that have the required scopes and have an email address that matches the corporate email domain name.
+    - This could easily be modified to take any token with any email address if this is being run elsewhere.
+    - This is the additional logic that sets this apart from a normal call to `gargle::token_fetch()`. If you don’t need this, it’s likely that `token_fetch(email = ‘...’)` alone will be sufficient.
+3. If a token is found that matches these criteria, it will be returned as a token. Otherwise, `gargle::token_fetch()` is called to kick off a new interactive authentication process; this is the only case where manual intervention is required.
+
+I then call this function in each of my BigQuery and Cloud Storage connection functions to authenticate with each platform.
+
+<details>
+    <summary>GCP authentication functions</summary>
+
+
+    ```r
+    #' Authenticate with GCP
+    #'
+    #' A stand-in for now until we get a service account and can auth via JSON
+    #'
+    #' Uses [gargle::token_fetch()] to generate a token that can be passed to
+    #' [bigrquery::bq_auth()] and [googleCloudStorageR::gcs_auth()]. Will look at
+    #' the cache ([gargle::gargle_oauth_sitrep()]) to see if there are any cached
+    #' tokens and will use the one with the '@health.gov.au' email address by
+    #' default.
+    #'
+    #' @param force Bool, whether to force interactive authentication
+    #' @param adc_path Path override for location of Application Default Credentials
+    #' @param force_cache Bool, force the usage of cached tokens and not ADCs
+    #' @param ... Args to pass to [gargle::token_fetch()]
+    get_token <- function(
+    force       = FALSE, 
+    adc_path    = NULL,
+    force_cache = FALSE,
+    silent      = FALSE,
+    ...
+    ) {
+    
+    scopes <- c(
+        "https://www.googleapis.com/auth/bigquery",
+        "https://www.googleapis.com/auth/cloud-platform"
+    )
+    
+    if (!force_cache & !silent) log_info('Checking {gargle:::credentials_app_default_path()} for Application Default Credentials')
+    
+    # Check 
+    if (file.exists(gargle:::credentials_app_default_path()) & !force_cache) {
+        
+        credentials <- gargle::credentials_app_default(scopes = scopes, path = adc_path)
+        
+        if (!is.null(credentials)) return (credentials)
+        
+    }
+    
+    if (!silent) log_info('No ADCs found, generate in Terminal with `gcloud auth application-default login --no-launch-browser`')
+    if (!silent) log_info('Falling back on cached tokens stored in ~/.cache/gargle (if any)')
+    
+    # If force is true, force creation of another token/authenticating with a
+    # different cached one
+    if (force) {
+        token <- gargle::token_fetch(scopes, ...)
+        return (token)
+    }
+    
+    # First check if any tokens are cached
+    sitrep <- with_gargle_verbosity(
+        'silent', 
+        gargle_oauth_sitrep()
+    ) %>% 
+        as_tibble()
+    
+    valid_cached <- sitrep %>%
+        filter(
+        str_detect(scopes, 'bigquery') & 
+            str_detect(scopes, 'cloud-platform') & 
+            str_detect(email, 'health.gov.au')
+        ) %>% 
+        pull(email)
+    
+    if (length(valid_cached) > 0) {
+        
+        token <- gargle::token_fetch(email = valid_cached[[1]], scopes = scopes, use_oob = TRUE)
+        
+    } else {
+        
+        # Opens up an interactive auth window - follow the instructions on screen
+        # Caches authentication token - unsure when this is invalidated
+        token <- gargle::token_fetch(scopes = scopes, use_oob = TRUE, ...)
+        
+    }
+    
+    # Return
+    token
+    
+    }
+
+    #' Connect to Impala
+    connect_impala <- function(dsn = 'Discovery Impala', ...) {
+    
+    # Set environment variable to access connection details
+    Sys.setenv(ODBCINI = "/etc/odbc.ini")
+    
+    # Instantiate connection
+    suppressWarnings({
+        implyr::src_impala(
+        drv = odbc::odbc(), 
+        dsn = dsn,
+        ...
+        )
+    })
+    
+    }
+
+    #' Connect to BigQuery
+    #'
+    #' @param json Whether to authenticate interactively (`NULL`), or to use a
+    #'   service account JSON
+    #' @param project Project your target BigQuery database sits in
+    #' @param dataset The BQ dataset you want to connect to
+    #' @param billing Project billing (usually same as your `project`)
+    connect_bigquery <- function(
+    json    = NULL,
+    project = 'prj-iedap-poa', 
+    dataset = 'business_poa', 
+    billing = NULL,
+    ...
+    ) {
+    
+    if (is.null(billing)) billing <- project
+    
+    # If JSON path isn't NULL, authenticate with the specified JSON and set
+    # default dataset for session
+    if (!is.null(json)) {
+        bq_auth(path = json)
+        bq_project_datasets(dataset)
+    } else {
+        # Otherwise, use `gargle` to use existing ADCs or generate a token
+        token <- get_token(silent = TRUE)
+        bq_auth(token = token)
+    }
+    
+    # Connect to BQ
+    bq_con <- dbConnect(
+        bigrquery::bigquery(),
+        project = project,
+        dataset = dataset,
+        billing = billing
+    )
+    
+    return (bq_con)
+    
+    }
+
+
+    #' Connect to Cloud Storage
+    #'
+    #' Opens a connection to GCS, returns only details on the connection
+    #'
+    #' @param json Whether to authenticate interactively (`NULL`), or to use a
+    #'   service account JSON
+    #' @param project Project your target Cloud Storage bucket sits in
+    #' @param bucket The bucket you want to connect to
+    connect_cloudstore <- function(
+    json    = NULL,
+    project = 'prj-iedap-poa', 
+    bucket  = 'herd_test', 
+    up_lim  = 2e+9L,
+    ...
+    ) {
+    
+    # If JSON path isn't NULL, authenticate with the specified JSON and set
+    # default dataset for session
+    if (!is.null(json)) {
+        gcs_auth(json_file = json, ...)
+    } else {
+        # Otherwise, use `gargle` to use existing ADCs or generate a token
+        token <- get_token(silent = TRUE)
+        gcs_auth(token = token, ...)
+    }
+    
+    # Set global bucket for session
+    gcs_global_bucket(bucket)
+    
+    # Set max 'simple' upload file size to 2gb (instead of 5mb)
+    gcs_upload_set_limit(upload_limit = up_lim)
+    
+    return (
+        list(
+        project = project,
+        bucket  = bucket,
+        up_lim  = up_lim
+        )
+    )
+    
+    }
+
+    ```
+
+
+</details>
