@@ -1,5 +1,5 @@
 ---
-title  : Web scraping to get an edge in the NBA fantasy league draft
+title  : Web-scraping to get an edge in the NBA fantasy league draft
 date   : '2024-01-19'
 tags   : ['web-scraping', 'nba', 'in-depth', 'R']
 draft  : false
@@ -7,12 +7,19 @@ summary: 'Web-scraping basketball player stats using rvest to analyse fantasy le
 authors: ['blakebowen']
 ---
 
+Note that the GitHub repository for this article [may be found here](https://github.com/blake-bowen/nba-fantasy-draft/tree/main).
+
 In this project I will be using the rvest package to scrape the web for basketball player data and using this to explore previous performance in the NBA fantasy league. This should help identify the most consistent players, as well as those who may be undervalued in a fantasy draft.
 
 The website I will be getting data from is the Basketball Reference website. I’m most interested in the game logs, as with these we can estimate each player’s consistency throughout last season, and calculate fantasy scores.
 
 After investigating the pages containing each player game logs, we can see that Basketball Reference uses a player code and year to construct the URL of each page containing yearly stats for each player. This URL follows the general formula:
-`www.basketball-reference.com/players/i/{player_code}/gamelog/{year}`. Using this as a template, I have made the below function that can scrape the gamelog table for a given player code and year.
+
+```
+www.basketball-reference.com/players/i/{player_code}/gamelog/{year}
+``` 
+
+Using this as a template, I have made the below function that can scrape the gamelog table for a given player code and year.
 
 This function utilises the rvest package function `html_elements` to parse the html code and find the table elements, then `html_table` reads this into a table format, which can be converted to a data frame.
 
@@ -392,41 +399,41 @@ split_total_scatter # %>% ggplotly(tooltip = 'text')
 
 ``` r
 sessionInfo()
-```
 
-    ## R version 4.3.1 (2023-06-16)
-    ## Platform: x86_64-apple-darwin20 (64-bit)
-    ## Running under: macOS Ventura 13.2
-    ## 
-    ## Matrix products: default
-    ## BLAS:   /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/lib/libRblas.0.dylib 
-    ## LAPACK: /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
-    ## 
-    ## locale:
-    ## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
-    ## 
-    ## time zone: Australia/Sydney
-    ## tzcode source: internal
-    ## 
-    ## attached base packages:
-    ## [1] stats     graphics  grDevices utils     datasets  methods   base     
-    ## 
-    ## other attached packages:
-    ##  [1] RColorBrewer_1.1-3 plotly_4.10.2      janitor_2.2.0      glue_1.6.2        
-    ##  [5] XML_3.99-0.14      rvest_1.0.3        lubridate_1.9.2    forcats_1.0.0     
-    ##  [9] stringr_1.5.0      dplyr_1.1.2        purrr_1.0.1        readr_2.1.4       
-    ## [13] tidyr_1.3.0        tibble_3.2.1       ggplot2_3.4.2      tidyverse_2.0.0   
-    ## 
-    ## loaded via a namespace (and not attached):
-    ##  [1] utf8_1.2.3        generics_0.1.3    xml2_1.3.5        stringi_1.7.12   
-    ##  [5] hms_1.1.3         digest_0.6.33     magrittr_2.0.3    evaluate_0.21    
-    ##  [9] grid_4.3.1        timechange_0.2.0  fastmap_1.1.1     jsonlite_1.8.7   
-    ## [13] httr_1.4.6        selectr_0.4-2     fansi_1.0.4       viridisLite_0.4.2
-    ## [17] scales_1.2.1      lazyeval_0.2.2    cli_3.6.1         rlang_1.1.1      
-    ## [21] munsell_0.5.0     withr_2.5.0       yaml_2.3.7        tools_4.3.1      
-    ## [25] tzdb_0.4.0        colorspace_2.1-0  curl_5.0.1        vctrs_0.6.3      
-    ## [29] R6_2.5.1          lifecycle_1.0.3   snakecase_0.11.1  htmlwidgets_1.6.2
-    ## [33] pkgconfig_2.0.3   pillar_1.9.0      gtable_0.3.3      data.table_1.14.8
-    ## [37] highr_0.10        xfun_0.39         tidyselect_1.2.0  rstudioapi_0.15.0
-    ## [41] knitr_1.43        farver_2.1.1      htmltools_0.5.5   labeling_0.4.2   
-    ## [45] rmarkdown_2.23    compiler_4.3.1
+## R version 4.3.1 (2023-06-16)
+## Platform: x86_64-apple-darwin20 (64-bit)
+## Running under: macOS Ventura 13.2
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/lib/libRblas.0.dylib 
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## time zone: Australia/Sydney
+## tzcode source: internal
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+##  [1] RColorBrewer_1.1-3 plotly_4.10.2      janitor_2.2.0      glue_1.6.2        
+##  [5] XML_3.99-0.14      rvest_1.0.3        lubridate_1.9.2    forcats_1.0.0     
+##  [9] stringr_1.5.0      dplyr_1.1.2        purrr_1.0.1        readr_2.1.4       
+## [13] tidyr_1.3.0        tibble_3.2.1       ggplot2_3.4.2      tidyverse_2.0.0   
+## 
+## loaded via a namespace (and not attached):
+##  [1] utf8_1.2.3        generics_0.1.3    xml2_1.3.5        stringi_1.7.12   
+##  [5] hms_1.1.3         digest_0.6.33     magrittr_2.0.3    evaluate_0.21    
+##  [9] grid_4.3.1        timechange_0.2.0  fastmap_1.1.1     jsonlite_1.8.7   
+## [13] httr_1.4.6        selectr_0.4-2     fansi_1.0.4       viridisLite_0.4.2
+## [17] scales_1.2.1      lazyeval_0.2.2    cli_3.6.1         rlang_1.1.1      
+## [21] munsell_0.5.0     withr_2.5.0       yaml_2.3.7        tools_4.3.1      
+## [25] tzdb_0.4.0        colorspace_2.1-0  curl_5.0.1        vctrs_0.6.3      
+## [29] R6_2.5.1          lifecycle_1.0.3   snakecase_0.11.1  htmlwidgets_1.6.2
+## [33] pkgconfig_2.0.3   pillar_1.9.0      gtable_0.3.3      data.table_1.14.8
+## [37] highr_0.10        xfun_0.39         tidyselect_1.2.0  rstudioapi_0.15.0
+## [41] knitr_1.43        farver_2.1.1      htmltools_0.5.5   labeling_0.4.2   
+## [45] rmarkdown_2.23    compiler_4.3.1
+```
