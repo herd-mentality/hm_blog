@@ -1,9 +1,9 @@
 ---
 title  : Python Beam and DataFlow to write data to BigQuery with a custom Docker image
 date   : '2024-01-17'
-tags   : ['data-engineering', 'gcp', 'dataflow']
+tags   : ['data-engineering', 'gcp', 'dataflow', 'python']
 draft  : false
-summary: ''
+summary: 'An example of an Apache Beam pipeline written in Python that writes data to BigQuery'
 authors: ['christophermortimer']
 ---
 
@@ -34,7 +34,7 @@ The GCP prerequisites are in the following sections.
 
 ### Project
 
-Firstly the basic GCP project naming convention we will have will include an environment.
+Firstly, the basic GCP project naming convention we'll use will include an environment.
 
 ```
 prj-<org>-<env>-<business-unit>
@@ -318,7 +318,7 @@ Checking the target BigQuery table shows successful rows written to the table (t
 
 ## Notes
 
-I personally found the development and debugging experience for this process very atypical. Nothing seemed to run smoothly and there were many error messages that were very difficult to debug. Lack of community support and lack of stack overflow questions and answers was definitely noticeable compared to other coding frameworks.
+I personally found the development and debugging experience for this process very atypical. Nothing seemed to run smoothly and there were many error messages that were very difficult to debug. Lack of community support and lack of Stack Overflow questions and answers was definitely noticeable compared to other coding frameworks.
 
 One example I had was that I had it all working one day, and the next day it stopped working with the following error message. I found a post that suggested this could be many reasons, and one suggestion was to change the location. I changed the location to a US location and it worked. However this might not be an option for all users.
 
