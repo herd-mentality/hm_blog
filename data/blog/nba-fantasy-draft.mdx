@@ -1,0 +1,439 @@
+---
+title  : Web-scraping to get an edge in the NBA fantasy league draft
+date   : '2024-01-19'
+tags   : ['web-scraping', 'nba', 'in-depth', 'R']
+draft  : false
+summary: 'Web-scraping basketball player stats using rvest to analyse fantasy league performance'
+authors: ['blakebowen']
+---
+
+Note that the GitHub repository for this article [may be found here](https://github.com/blake-bowen/nba-fantasy-draft/tree/main).
+
+In this project I will be using the rvest package to scrape the web for basketball player data and using this to explore previous performance in the NBA fantasy league. This should help identify the most consistent players, as well as those who may be undervalued in a fantasy draft.
+
+The website I will be getting data from is the Basketball Reference website. I’m most interested in the game logs, as with these we can estimate each player’s consistency throughout last season, and calculate fantasy scores.
+
+After investigating the pages containing each player game logs, we can see that Basketball Reference uses a player code and year to construct the URL of each page containing yearly stats for each player. This URL follows the general formula:
+
+```
+www.basketball-reference.com/players/i/{player_code}/gamelog/{year}
+``` 
+
+Using this as a template, I have made the below function that can scrape the gamelog table for a given player code and year.
+
+This function utilises the rvest package function `html_elements` to parse the html code and find the table elements, then `html_table` reads this into a table format, which can be converted to a data frame.
+
+``` r
+# scrape game log table for a player in a given year
+get_gamelog <- function(player_code, year){
+  
+  url <- paste0(glue('https://www.basketball-reference.com/players/i/{player_code}/gamelog/{year}'))
+  # Scrape Player game log
+  gamelog <- url %>%
+    read_html() %>% 
+    html_elements('table') %>%
+    .[8] %>% 
+    html_table() %>% 
+    as.data.frame()
+  
+  return(gamelog)
+
+}
+
+get_gamelog("jokicni01", 2023) %>% 
+  head() %>% 
+  knitr::kable()
+```
+
+| Rk  | G   | Date       | Age    | Tm  | Var.6 | Opp | Var.8   | GS  | MP    | FG  | FGA | FG.  | X3P | X3PA | X3P.  | FT  | FTA | FT.   | ORB | DRB | TRB | AST | STL | BLK | TOV | PF  | PTS | GmSc | X…  |
+|:----|:----|:-----------|:-------|:----|:------|:----|:--------|:----|:------|:----|:----|:-----|:----|:-----|:------|:----|:----|:------|:----|:----|:----|:----|:----|:----|:----|:----|:----|:-----|:----|
+| 1   | 1   | 2022-10-19 | 27-242 | DEN | @     | UTA | L (-21) | 1   | 33:25 | 12  | 17  | .706 | 1   | 3    | .333  | 2   | 2   | 1.000 | 2   | 2   | 4   | 6   | 3   | 0   | 3   | 4   | 27  | 24.5 | -5  |
+| 2   | 2   | 2022-10-21 | 27-244 | DEN | @     | GSW | W (+5)  | 1   | 34:24 | 7   | 13  | .538 | 1   | 2    | .500  | 11  | 11  | 1.000 | 3   | 9   | 12  | 10  | 0   | 0   | 5   | 4   | 26  | 24.9 | -3  |
+| 3   | 3   | 2022-10-22 | 27-245 | DEN |       | OKC | W (+5)  | 1   | 38:41 | 6   | 10  | .600 | 1   | 1    | 1.000 | 6   | 9   | .667  | 1   | 15  | 16  | 13  | 1   | 1   | 3   | 2   | 19  | 25.4 | +18 |
+| 4   | 4   | 2022-10-24 | 27-247 | DEN | @     | POR | L (-25) | 1   | 26:58 | 3   | 4   | .750 | 0   | 0    |       | 3   | 3   | 1.000 | 1   | 8   | 9   | 9   | 0   | 0   | 1   | 5   | 9   | 13.8 | -10 |
+| 5   | 5   | 2022-10-26 | 27-249 | DEN |       | LAL | W (+11) | 1   | 34:48 | 12  | 17  | .706 | 0   | 4    | .000  | 7   | 7   | 1.000 | 1   | 12  | 13  | 9   | 4   | 0   | 3   | 3   | 31  | 34.3 | +28 |
+| 6   | 6   | 2022-10-28 | 27-251 | DEN |       | UTA | W (+16) | 1   | 25:28 | 3   | 10  | .300 | 0   | 4    | .000  | 6   | 8   | .750  | 3   | 7   | 10  | 6   | 1   | 1   | 1   | 1   | 12  | 14.1 | +8  |
+
+I would like to scrape the game logs for all players, or at least the top players from the 2023 season. To do this, we need to get all of the player codes. Thankfully, I was able to find this github repo with a function that could be slightly modified to get a table from Basketball Reference containing all the player codes. This table also has average season stats for each player
+
+I also decided to filter this player list, removing players with average minutes played below 25.
+
+``` r
+# Acknowledgement: code modified from github.com/djblechn-su/nba-player-team-ids/
+
+# Create Function to Scrape Player codes
+scrape_nba_main <- function(yr){
+  # Create URL
+  url <- glue('https://www.basketball-reference.com/leagues/NBA_{yr}_per_game.html')
+  webpage <- read_html(url)
+  
+  # Scrape All Player Links on Page
+  links <- webpage %>%
+    html_nodes(xpath = "//td/a") %>% 
+    html_attr("href")
+  links <- links[grepl("/players", links)]
+  links <- links[!duplicated(links)]
+  
+  # Scrape Player Information
+  player_table <- webpage %>%
+    html_nodes("table") %>%
+    .[1] %>%
+    html_table(fill = TRUE) %>%
+    as.data.frame()
+  player_table <- player_table %>% filter(Player != "Player")
+  player_table <- player_table[!duplicated(player_table[c('Player', 'Age')]),]
+  player_table <- player_table[,c(2,3,4,8)]
+  player_table$Link <- links
+  BBRefID <- strsplit(player_table$Link, '\\/')
+  BBRefID <- sapply(BBRefID, function(x) x[4])
+  BBRefID <- gsub(".html", "", BBRefID)
+  player_table$BBRefID <- BBRefID
+
+  return(player_table)
+}
+
+bbref_player_codes <- scrape_nba_main(2023)
+bbref_player_codes <- bbref_player_codes[!duplicated(bbref_player_codes$BBRefID),]
+bbref_player_codes <- bbref_player_codes[order(bbref_player_codes$BBRefID),]
+
+bbref_player_codes_filtered <- bbref_player_codes %>%
+  mutate(MP = as.numeric(MP)) %>% 
+  filter(MP > 25)
+
+bbref_player_codes_filtered %>%
+  head() %>% 
+  knitr::kable()
+```
+
+| Player                | Pos | Age |   MP | Link                      | BBRefID   |
+|:----------------------|:----|:----|-----:|:--------------------------|:----------|
+| Steven Adams          | C   | 29  | 27.0 | /players/a/adamsst01.html | adamsst01 |
+| Bam Adebayo           | C   | 25  | 34.6 | /players/a/adebaba01.html | adebaba01 |
+| Grayson Allen         | SG  | 27  | 27.4 | /players/a/allengr01.html | allengr01 |
+| Jarrett Allen         | C   | 24  | 32.6 | /players/a/allenja01.html | allenja01 |
+| Kyle Anderson         | PF  | 29  | 28.4 | /players/a/anderky01.html | anderky01 |
+| Giannis Antetokounmpo | PF  | 28  | 32.1 | /players/a/antetgi01.html | antetgi01 |
+
+OK, now that we have all of the basketball reference ID’s its a matter of looping through them to construct the URL for each individual player’s stats, scraping the game log table for each player and combining these into one master table.
+
+``` r
+player_codes <- bbref_player_codes$BBRefID
+year <- 2023
+
+all_game_logs <- list()
+for (i in seq_along(player_codes)) {
+  player_code <- player_codes[i]
+  player_game_log <- get_gamelog(player_code=player_code, year=year) %>% 
+    mutate(player_code = player_code) %>% 
+    filter(Rk != "Rk") %>%  # remove the extra column-name rows 
+    mutate(across(everything(), as.character)) 
+    all_game_logs[[player_code]] <- player_game_log
+  
+  if (i > 1) {
+    Sys.sleep(5) # sleep 5 seconds to prevent the website throttling the webscraper
+    } 
+}
+
+all_game_logs_df <- bind_rows(all_game_logs)
+
+all_game_logs_df %>%
+  head() %>% 
+  knitr::kable()
+```
+
+| Rk  | G   | Date       | Age    | Tm  | Var.6 | Opp | Var.8   | GS  | MP    | FG  | FGA | FG.  | X3P | X3PA | X3P. | FT  | FTA | FT.  | ORB | DRB | TRB | AST | STL | BLK | TOV | PF  | PTS | GmSc | X…  | player_code |
+|:----|:----|:-----------|:-------|:----|:------|:----|:--------|:----|:------|:----|:----|:-----|:----|:-----|:-----|:----|:----|:-----|:----|:----|:----|:----|:----|:----|:----|:----|:----|:-----|:----|:------------|
+| 1   | 1   | 2022-10-19 | 23-030 | TOR |       | CLE | W (+3)  | 0   | 17:56 | 4   | 11  | .364 | 1   | 4    | .250 | 1   | 2   | .500 | 1   | 4   | 5   | 0   | 0   | 0   | 0   | 1   | 10  | 5.0  | -4  | achiupr01   |
+| 2   | 2   | 2022-10-21 | 23-032 | TOR | @     | BRK | L (-4)  | 0   | 17:29 | 1   | 6   | .167 | 0   | 1    | .000 | 2   | 3   | .667 | 0   | 6   | 6   | 0   | 0   | 0   | 3   | 2   | 4   | -2.2 | -8  | achiupr01   |
+| 3   | 3   | 2022-10-22 | 23-033 | TOR | @     | MIA | L (-3)  | 0   | 33:32 | 5   | 9   | .556 | 2   | 5    | .400 | 6   | 7   | .857 | 3   | 8   | 11  | 1   | 0   | 0   | 1   | 1   | 18  | 17.1 | +16 | achiupr01   |
+| 4   | 4   | 2022-10-24 | 23-035 | TOR | @     | MIA | W (+8)  | 0   | 33:43 | 5   | 12  | .417 | 0   | 1    | .000 | 0   | 1   | .000 | 4   | 18  | 22  | 2   | 0   | 1   | 0   | 2   | 10  | 12.7 | +10 | achiupr01   |
+| 5   | 5   | 2022-10-26 | 23-037 | TOR |       | PHI | W (+10) | 0   | 21:18 | 3   | 7   | .429 | 1   | 3    | .333 | 0   | 0   |      | 3   | 3   | 6   | 4   | 0   | 0   | 2   | 3   | 7   | 5.9  | +14 | achiupr01   |
+| 6   | 6   | 2022-10-28 | 23-039 | TOR |       | PHI | L (-22) | 0   | 14:57 | 0   | 6   | .000 | 0   | 3    | .000 | 0   | 0   |      | 2   | 1   | 3   | 1   | 0   | 1   | 2   | 1   | 0   | -3.5 | -10 | achiupr01   |
+
+Next, we need to clean the data. Rows corresponding to missed games have a number of different string values, so I replaced those with NA. There were rows that contained column names, which I removed. I joined this table to the player codes table, so now we have player names and minutes played, to make the table a bit easier to read.
+
+I’ve additionally calculated number of double doubles, triple doubles, missed points, and a few other stats that are used to calculate fantasy scores, but not included in the original Basketball Reference table.
+
+``` r
+# these values correspond to when a player did not play in the game
+missing_values <- c("Inactive|Did Not Dress|Did Not Play|Not With Team|Player Suspended")
+
+# add in the player name
+all_game_logs_df <- all_game_logs_df %>% 
+  left_join(bbref_player_codes[c("BBRefID", "Player")],
+            by = c("player_code" = "BBRefID")) %>% 
+  mutate_all(~str_replace_all(., missing_values, NA_character_)) %>% 
+  mutate(across(c(
+    "GS",
+    "FG",
+    "FGA",  
+    "FG.",
+    "X3P",
+    "X3PA",
+    "X3P.",
+    "FT",
+    "FTA",
+    "FT.",
+    "ORB",
+    "DRB",
+    "TRB", 
+    "AST",
+    "BLK",
+    "TOV",
+    "STL",
+    "PTS"),
+    ~as.numeric(.))) %>% 
+  # make columns for triple doubles and double doubles:
+  # DD: (IF: 2/5 OF ASS/BLOCK/STEAL/REB/PTS > 9)
+  # TD: (IF: 3/5 OF ASS/BLOCK/STEAL/REB/PTS > 9)
+  rowwise() %>% 
+  mutate("DD" = if_else(sum(TRB > 9, AST > 9, BLK > 9, STL > 9, PTS > 9) >= 2, 1, 0)) %>%
+  mutate("TD" = if_else(sum(TRB > 9, AST > 9, BLK > 9, STL > 9, PTS > 9) >= 3, 1, 0)) %>% 
+  mutate("QD" = if_else(sum(TRB > 9, AST > 9, BLK > 9, STL > 9, PTS > 9) >= 4, 1, 0)) %>% 
+  # games played - 1 if they played the game or 0 if not
+  ungroup() %>% 
+  mutate(GP = if_else(is.na(GS), 0, 1)) %>% # if game was played, 1 else zero
+  # calculate number missed for field goals, free throws, three pointers
+  mutate(FGM = FGA - FG) %>% 
+  mutate(FTM = FTA - FT) %>% 
+  mutate(X3PM = X3PA - X3P)
+
+all_game_logs_df %>% 
+  head() %>% 
+  knitr::kable()
+```
+
+| Rk  | G   | Date       | Age    | Tm  | Var.6 | Opp | Var.8   |  GS | MP    |  FG | FGA |   FG. | X3P | X3PA |  X3P. |  FT | FTA |   FT. | ORB | DRB | TRB | AST | STL | BLK | TOV | PF  | PTS | GmSc | X…  | player_code | Player           |  DD |  TD |  QD |  GP | FGM | FTM | X3PM |
+|:----|:----|:-----------|:-------|:----|:------|:----|:--------|----:|:------|----:|----:|------:|----:|-----:|------:|----:|----:|------:|----:|----:|----:|----:|----:|----:|----:|:----|----:|:-----|:----|:------------|:-----------------|----:|----:|----:|----:|----:|----:|-----:|
+| 1   | 1   | 2022-10-19 | 23-030 | TOR |       | CLE | W (+3)  |   0 | 17:56 |   4 |  11 | 0.364 |   1 |    4 | 0.250 |   1 |   2 | 0.500 |   1 |   4 |   5 |   0 |   0 |   0 |   0 | 1   |  10 | 5.0  | -4  | achiupr01   | Precious Achiuwa |   0 |   0 |   0 |   1 |   7 |   1 |    3 |
+| 2   | 2   | 2022-10-21 | 23-032 | TOR | @     | BRK | L (-4)  |   0 | 17:29 |   1 |   6 | 0.167 |   0 |    1 | 0.000 |   2 |   3 | 0.667 |   0 |   6 |   6 |   0 |   0 |   0 |   3 | 2   |   4 | -2.2 | -8  | achiupr01   | Precious Achiuwa |   0 |   0 |   0 |   1 |   5 |   1 |    1 |
+| 3   | 3   | 2022-10-22 | 23-033 | TOR | @     | MIA | L (-3)  |   0 | 33:32 |   5 |   9 | 0.556 |   2 |    5 | 0.400 |   6 |   7 | 0.857 |   3 |   8 |  11 |   1 |   0 |   0 |   1 | 1   |  18 | 17.1 | +16 | achiupr01   | Precious Achiuwa |   1 |   0 |   0 |   1 |   4 |   1 |    3 |
+| 4   | 4   | 2022-10-24 | 23-035 | TOR | @     | MIA | W (+8)  |   0 | 33:43 |   5 |  12 | 0.417 |   0 |    1 | 0.000 |   0 |   1 | 0.000 |   4 |  18 |  22 |   2 |   0 |   1 |   0 | 2   |  10 | 12.7 | +10 | achiupr01   | Precious Achiuwa |   1 |   0 |   0 |   1 |   7 |   1 |    1 |
+| 5   | 5   | 2022-10-26 | 23-037 | TOR |       | PHI | W (+10) |   0 | 21:18 |   3 |   7 | 0.429 |   1 |    3 | 0.333 |   0 |   0 |    NA |   3 |   3 |   6 |   4 |   0 |   0 |   2 | 3   |   7 | 5.9  | +14 | achiupr01   | Precious Achiuwa |   0 |   0 |   0 |   1 |   4 |   0 |    2 |
+| 6   | 6   | 2022-10-28 | 23-039 | TOR |       | PHI | L (-22) |   0 | 14:57 |   0 |   6 | 0.000 |   0 |    3 | 0.000 |   0 |   0 |    NA |   2 |   1 |   3 |   1 |   0 |   1 |   2 | 1   |   0 | -3.5 | -10 | achiupr01   | Precious Achiuwa |   0 |   0 |   0 |   1 |   6 |   0 |    3 |
+
+Now we need to calculate “fantasy scores” for each player to see how they would have performed in a fantasy league last year. These are calculated using a formula specific to the fantasy league. Each stat is multiplied by a multiplier and then the weighted statistics are summed to get the fantasy score for a given game.
+
+For each player, I calculated total fantasy score, as well as mean, median and standard deviation for the 2023 season. In order to gauge each player’s raw potential and consistency, these stats were calculated for the whole season (i.e. including missed games as zero’s in the calculations) to gauge each players consistency throughout the season - it’s valuable to have players who actually play a lot of games and score highly throughout the season. To examine player potential, I also calculated the same stats with missed games removed - to see how well they play per-game. This metric should highlight high-performing players, even those who missed a lot of games last year. I also have added in player position and minutes played to this table.
+
+Now we have a table which can definitively rank player performance in 2023, and we can export this to a spreadsheet that will be very useful when making picks during the draft.
+
+``` r
+# the sum of each metric * by a multiplier is used to calc the fantasy score 
+# this is specific to the league 
+multipliers_vector <- c(
+  "GP" = 1,
+  "FG" = 2,
+  "FGM" = -1,
+  "FT" = 1,
+  "FTA" = 0.5,
+  "FTM" = -1,
+  "X3P" = 3.5,
+  "X3PM" = -1.5,
+  "ORB" = 3,
+  "DRB" = 1,
+  "TRB" = 1,
+  "AST" = 4,
+  "STL" = 5,
+  "BLK" = 6,
+  "TOV" = -2.5,
+  "DD" = 10,
+  "TD" = 30,
+  "QD" = 1000,
+  "PTS" = 1)
+
+# calculate the fantasy score per game 
+scores <- all_game_logs_df %>% 
+  select(c(Player, names(multipliers_vector)))
+
+weighted_scores = list()
+for (i in seq_along(multipliers_vector)){
+  name <- names(multipliers_vector[i])
+  weighted_scores[[name]] <- scores[[name]] * multipliers_vector[name]
+}
+weighted_scores_df <- as.data.frame(weighted_scores)
+agg_weighted_scores <- data.frame(
+  player_name = scores$Player,
+  weighted_scores = rowSums(weighted_scores_df, na.rm = T)
+) %>%
+  cbind(weighted_scores_df) %>% 
+  mutate(weighted_scores_with_na = if_else(GP == 1, weighted_scores, NA)) # create another weighted score with NA's if they did not play, this will allow to calculate per-game stats 
+
+final_weighted_scores_summarised <- agg_weighted_scores %>% 
+  select(player_name, weighted_scores, weighted_scores_with_na, GP) %>% 
+  group_by(player_name) %>%
+  summarise(season_total_score = sum(weighted_scores),
+            n_games_played = sum(GP), 
+            season_mean = mean(weighted_scores), # season stats count missed games as zero
+            season_median = median(weighted_scores),
+            season_stdev = sd(weighted_scores), 
+            games_played_mean = mean(weighted_scores_with_na, na.rm = TRUE), # games_played stats do not include missed games in the calculation
+            games_played_median = median(weighted_scores_with_na, na.rm = TRUE),
+            games_played_stdev = sd(weighted_scores_with_na, na.rm = TRUE)) %>%
+  arrange(desc(season_median)) %>% 
+  # add in other player stats from Basketball reference 
+  left_join(bbref_player_codes, by = c("player_name" = "Player")) %>% 
+  select(-Link, -BBRefID)
+
+final_weighted_scores_summarised %>%
+  head() %>% 
+  knitr::kable()
+```
+
+| player_name           | season_total_score | n_games_played | season_mean | season_median | season_stdev | games_played_mean | games_played_median | games_played_stdev | Pos | Age | MP   |
+|:----------------------|-------------------:|---------------:|------------:|--------------:|-------------:|------------------:|--------------------:|-------------------:|:----|:----|:-----|
+| Nikola Jokić          |             9440.5 |             69 |   115.12805 |        121.50 |     62.46504 |         136.81884 |              131.50 |           40.45340 | C   | 27  | 33.7 |
+| Joel Embiid           |             7590.5 |             66 |    92.56707 |        107.25 |     53.22522 |         115.00758 |              115.75 |           30.16168 | C   | 28  | 34.6 |
+| Luka Dončić           |             7788.5 |             66 |    94.98171 |        106.75 |     60.93902 |         118.00758 |              118.00 |           43.22779 | PG  | 23  | 36.2 |
+| Giannis Antetokounmpo |             7238.5 |             63 |    88.27439 |        105.00 |     57.83945 |         114.89683 |              115.00 |           35.53079 | PF  | 28  | 32.1 |
+| Domantas Sabonis      |             8637.5 |             79 |   105.33537 |        103.25 |     35.49361 |         109.33544 |              104.50 |           29.41586 | C   | 26  | 34.6 |
+| Trae Young            |             6894.5 |             73 |    84.07927 |         92.75 |     37.64621 |          94.44521 |               96.00 |           24.53124 | PG  | 24  | 34.8 |
+
+To interactively explore the data, can create some plotly scatter charts to compare the players.
+
+In these plots, the y-axis corresponds to a player’s potential to have high-scoring games, and the x-axis corresponds to their consistency throughout the season.
+
+``` r
+theme_set(theme_bw())
+
+medians_scatter <- final_weighted_scores_summarised %>% 
+  ggplot(aes(x = season_median,
+             y = games_played_median,
+             colour = Pos,
+             text = glue(
+               "
+               Player: {player_name}
+               Position: {Pos}
+               Total score for season: {season_total_score}
+               Median score for season: {season_median}
+               Median score for games played: {games_played_median}
+               "
+             ))) +
+  labs(x = 'Median score for season',
+       y = 'Median score for games played')+
+  geom_point() +
+  scale_color_brewer(palette = 'Set3')
+
+medians_scatter # %>% ggplotly(tooltip = 'text')
+```
+
+![](/static/images/nba-fantasy-draft/plots-1.png)
+
+Player position is also an important factor when drafting a team, as you need to ensure all positions are filled. We can plot each position separately to see more clearly who are better players for their position.
+
+``` r
+split_medians_scatter <- final_weighted_scores_summarised %>% 
+  ggplot(aes(x = season_median,
+             y = games_played_median,
+             colour = Pos,
+             text = glue(
+               "
+               Player: {player_name}
+               Position: {Pos}
+               Total score for season: {season_total_score}
+               Median score for season: {season_median}
+               Median score for games played: {games_played_median}
+               "
+             ))) +
+  labs(x = 'Median score for season',
+       y = 'Median score for games played')+
+  geom_point() +
+  facet_wrap(~Pos) +
+  scale_color_brewer(palette = 'Set3')
+
+split_medians_scatter # %>% ggplotly(tooltip = 'text')
+```
+
+![](/static/images/nba-fantasy-draft/plots-2.png)
+
+Total score for the previous season is also a useful metric to look at. This metric is often what other less data-savvy drafters will be using to evaluate their draft picks. If we plot season total score against median score of games played, this can help identify under-valued players who played less games, but scored highly for the games that they played.
+
+``` r
+total_scatter <- final_weighted_scores_summarised %>% 
+  ggplot(aes(x = season_total_score,
+             y = games_played_median,
+             colour = Pos,
+             text = glue(
+               "
+               Player: {player_name}
+               Position: {Pos}
+               Total score for season: {season_total_score}
+               Median score for season: {season_median}
+               Median score for games played: {games_played_median}
+               "
+             ))) +
+  labs(x = 'Total score for season',
+       y = 'Median score for games played')+
+  geom_point() +
+  scale_color_brewer(palette = 'Set3')
+
+total_scatter # %>% ggplotly(tooltip = 'text')
+```
+
+![](/static/images/nba-fantasy-draft/plots-3.png)
+
+``` r
+split_total_scatter <- final_weighted_scores_summarised %>% 
+  ggplot(aes(x = season_total_score,
+             y = games_played_median,
+             colour = Pos,
+             text = glue(
+               "
+               Player: {player_name}
+               Position: {Pos}
+               Total score for season: {season_total_score}
+               Median score for season: {season_median}
+               Median score for games played: {games_played_median}
+               "
+             ))) +
+  facet_wrap(~Pos) +
+  labs(x = 'Total score for season',
+       y = 'Median score for games played')+
+  geom_point()+
+  scale_color_brewer(palette = 'Set3')
+
+split_total_scatter # %>% ggplotly(tooltip = 'text')
+```
+
+![](/static/images/nba-fantasy-draft/plots-4.png)
+
+``` r
+sessionInfo()
+
+## R version 4.3.1 (2023-06-16)
+## Platform: x86_64-apple-darwin20 (64-bit)
+## Running under: macOS Ventura 13.2
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/lib/libRblas.0.dylib 
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## time zone: Australia/Sydney
+## tzcode source: internal
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+##  [1] RColorBrewer_1.1-3 plotly_4.10.2      janitor_2.2.0      glue_1.6.2        
+##  [5] XML_3.99-0.14      rvest_1.0.3        lubridate_1.9.2    forcats_1.0.0     
+##  [9] stringr_1.5.0      dplyr_1.1.2        purrr_1.0.1        readr_2.1.4       
+## [13] tidyr_1.3.0        tibble_3.2.1       ggplot2_3.4.2      tidyverse_2.0.0   
+## 
+## loaded via a namespace (and not attached):
+##  [1] utf8_1.2.3        generics_0.1.3    xml2_1.3.5        stringi_1.7.12   
+##  [5] hms_1.1.3         digest_0.6.33     magrittr_2.0.3    evaluate_0.21    
+##  [9] grid_4.3.1        timechange_0.2.0  fastmap_1.1.1     jsonlite_1.8.7   
+## [13] httr_1.4.6        selectr_0.4-2     fansi_1.0.4       viridisLite_0.4.2
+## [17] scales_1.2.1      lazyeval_0.2.2    cli_3.6.1         rlang_1.1.1      
+## [21] munsell_0.5.0     withr_2.5.0       yaml_2.3.7        tools_4.3.1      
+## [25] tzdb_0.4.0        colorspace_2.1-0  curl_5.0.1        vctrs_0.6.3      
+## [29] R6_2.5.1          lifecycle_1.0.3   snakecase_0.11.1  htmlwidgets_1.6.2
+## [33] pkgconfig_2.0.3   pillar_1.9.0      gtable_0.3.3      data.table_1.14.8
+## [37] highr_0.10        xfun_0.39         tidyselect_1.2.0  rstudioapi_0.15.0
+## [41] knitr_1.43        farver_2.1.1      htmltools_0.5.5   labeling_0.4.2   
+## [45] rmarkdown_2.23    compiler_4.3.1
+```
