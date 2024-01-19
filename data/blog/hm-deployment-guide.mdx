@@ -1,0 +1,45 @@
+---
+title  : The Herd Mentality article deployment guide
+date   : '2024-03-15'
+tags   : ['meta', 'nodejs']
+draft  : false
+summary: 'A short, practical guide on how to deploy MDX articles to herdmentality.xyz'
+authors: ['christophermortimer', 'darrenwong']
+---
+
+import { Caption, Highlight } from './components/InPostComponents.tsx'
+
+<TOCInline toc={props.toc} indentDepth={2} />
+<br/>
+
+
+# (?) Introduction
+
+- Have put the proposed author of each section in the headings but will remove those before publishing
+
+# (CM) Setting up Node.js
+
+- Setting up Node.js for windows and linux/macos?
+- npm install to get all packages?
+
+# (CM) Deploying a local development server
+
+- npm run dev or similar to set up a local dev server
+- the concept and unhealthily addicting nature of hot reloading
+
+# (DW) Blog data structure
+
+- blog posts are mdx files and go in [dir]
+  - short intro to what an mdx file is
+- images for those blogs can be any image type (prefer webp, jpg, png) and go in [dir]
+
+# (DW) Extra things
+
+- additional components (ToC) etc
+- setting up author cards
+- resources to learn React/nextjs if interested in creating or editing custom components
+
+# (DW/CM) Branching strategy in herdmentality/hm-blog 
+
+- feature branches (posts, front-end updates) branch off main and are merged back into main
+- to deploy, raise a PR from main to deploy
