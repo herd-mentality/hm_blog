@@ -30,10 +30,11 @@ import { Caption, Highlight } from './components/InPostComponents.tsx'
 - npm run dev or similar to set up a local dev server
 - the concept and unhealthily addicting nature of hot reloading
 
-# (DW) Blog data structure
+# (DW) Blog directory structure
 
-- This is a NextJS@13 project, so project structure is set up like this: https://nextjs.org/docs/getting-started/project-structure
-
+- This blog is set up as a React/NextJS@13 (with Contentlayer) project, forked from [timlrx / tailwind-nextjs-starter-blog](https://github.com/timlrx/tailwind-nextjs-starter-blog). 
+    - Read more about how a general React/NextJS project is structured [here](https://nextjs.org/docs/getting-started/project-structure) if interested.
+- If you're adding blog posts, there are two main directories that will be of interest to you: `data/blog` where you place the article in MDX format and `public/static/images` where you place the images for that article.
 
 ```
 📁 hm_blog/
@@ -51,9 +52,15 @@ import { Caption, Highlight } from './components/InPostComponents.tsx'
 ...
 ```
 
+## MDX Article files
 
-- blog posts are mdx files and go in [dir]
-  - short intro to what an mdx file is and why its different to a MD file
+- Place your articles in the [`data/blog` directory](https://github.com/herd-mentality/hm_blog/tree/main/data/blog). 
+- Articles should be `.mdx` files. You can turn `.md` files into `.mdx` files by simply renaming and adding an `x` to the end of the file extension.
+    - `.mdx` is a format that ...
+
+- All articles require a header
+
+
 - images for those blogs can be any image type (prefer webp, jpg, png) and go in [dir]
 
 # (DW) Extra things
