@@ -1,6 +1,6 @@
 ---
 title  : The Herd Mentality article deployment guide
-date   : '2024-03-15'
+date   : '2024-01-20'
 tags   : ['meta', 'nodejs']
 draft  : false
 summary: 'A short, practical guide on how to deploy MDX articles to herdmentality.xyz'
@@ -22,6 +22,9 @@ import { Caption, Highlight } from './components/InPostComponents.tsx'
 - Setting up Node.js for windows and linux/macos?
 - npm install to get all packages?
 
+# (CM/DW) Cloning hm_blog / opening with VSCode
+
+
 # (CM) Deploying a local development server
 
 - npm run dev or similar to set up a local dev server
@@ -29,11 +32,47 @@ import { Caption, Highlight } from './components/InPostComponents.tsx'
 
 # (DW) Blog data structure
 
+- This is a NextJS@13 project, so project structure is set up like this: https://nextjs.org/docs/getting-started/project-structure
+
+
+```
+📁 hm_blog/
+...
+│   ├── 📁 data/                       # Stores blog articles and author details   
+│   │   ├── 📁 authors/
+│   │   ├── 📁 blog/
+│   │   │   ├── 📁 <multi-part-post>/
+│   │   │   ├── 📄 <blog-post>.mdx
+...
+│   ├── 📁 public/                     # Stores images and other website assets
+│   │   ├── 📁 static/
+│   │   │   ├── 📁 images/
+│   │   │   │   ├── 📁 <dir-per-post>/ 
+...
+```
+
+
 - blog posts are mdx files and go in [dir]
-  - short intro to what an mdx file is
+  - short intro to what an mdx file is and why its different to a MD file
 - images for those blogs can be any image type (prefer webp, jpg, png) and go in [dir]
 
 # (DW) Extra things
+
+- This is a website built with React, a Javascript front-end web-development library.
+- The core concept is reusable and versatile components (think of them as functions that correspond to features on the page).
+
+```
+📁 hm_blog/
+...
+│   ├── 📁 data/                       # Stores blog articles and author details   
+│   │   ├── 📁 authors/                # Author details - mdx per author
+│   │   │   ├── 📄 <author>.mdx
+│   │   ├── 📁 blog/
+...
+│   ├── 📁 components/                 # Stores components
+│   │   ├── 📄 <component>.tsx
+...
+```
 
 - additional components (ToC) etc
 - setting up author cards
