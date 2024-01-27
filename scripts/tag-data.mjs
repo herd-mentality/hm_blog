@@ -16,7 +16,7 @@ function createTagCount() {
       })
     }
   })
-  writeFileSync('public/tag-data.json', JSON.stringify(tagCount))
+  writeFileSync('data/tag-data.json', JSON.stringify(tagCount))
   console.log('Tag counts generated...')
 }
 
