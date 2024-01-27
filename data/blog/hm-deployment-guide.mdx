@@ -19,13 +19,64 @@ import { Caption, Highlight } from './components/InPostComponents.tsx'
 
 # (CM) Setting up Node.js
 
-- Setting up Node.js for windows and linux/macos?
-- npm install to get all packages?
+## Installing and setting up Node.js for your OS
+
+There are many ways to install Node.js, however I will just go through the official way.
+
+- For Windows, just download the installer from [https://nodejs.org/en/download](https://nodejs.org/en/download) and follow the prompts.
+- For Debian based Linux distos like Ubuntu just use apt
+
+`sudo apt install nodejs`
+
+To test it was successful, in your terminal of choice:
+
+`node --version`
+
+Honorable mention to [NVM](https://github.com/nvm-sh/nvm), which makes having multiple verisons of Node.js on one machine nice and easy.
 
 # (CM/DW) Cloning hm_blog / opening with VSCode
 
+Personally, I create a directory structure on any PC I have for clone Git repositories.
+On Windows I create it as
+
+`
+C:\git\github\herdmentality\
+`
+
+and on Linux based systems it is
+
+`
+/home/user/git/github/herdmentality/
+`
+
+This structure will avoid conflicts with repositories clone names if you are forking repositories or migrating repositories from one Git provider to another.
+Feel free to not do this, but at least decide on a good location for your clone.
+
+Open your terminal of choice (this may even be the one built into VScode) and change to your clone directory.
+
+> http or ssh? or just assume the reader knows what to do here.
+
+```sh
+git clone 
+```
+
+## Install dependancies using NPM
+
+We need to install all the dependancies required for this web project, which include Next.js and many others.
+
+`npm install`
 
 # (CM) Deploying a local development server
+
+`npm start`
+
+See in the package.json file 
+
+```json
+"scripts": {
+    "start": "next dev",
+}
+```
 
 - npm run dev or similar to set up a local dev server
 - the concept and unhealthily addicting nature of hot reloading
