@@ -4,19 +4,29 @@ import 'katex/dist/katex.css'
 import '@fontsource/dm-mono/300.css'
 import '@fontsource/dm-mono/400.css'
 import '@fontsource/dm-mono/500.css'
-// import '@/css/docsearch.css' // Uncomment if using algolia docsearch
-// import '@docsearch/css' // Uncomment if using algolia docsearch
 
+import React from 'react'
 import { ThemeProvider } from 'next-themes'
 import type { AppProps } from 'next/app'
 import Head from 'next/head'
 
 import siteMetadata from '@/data/siteMetadata'
 // import { Analytics } from 'pliny/analytics'
-import { SearchProvider } from 'pliny/search'
+// import { SearchProvider } from 'pliny/search'
+import { SearchProvider, SearchConfig } from 'pliny/search'
 import LayoutWrapper from '@/components/LayoutWrapper'
 import { useEffect } from 'react'
 import { useRouter } from 'next/router'
+
+import {
+  KBarProvider,
+  KBarPortal,
+  KBarPositioner,
+  KBarAnimator,
+  KBarSearch,
+  useMatches,
+  NO_GROUP,
+} from 'kbar'
 
 import * as ga from '../src/ga'
 
@@ -43,12 +53,11 @@ export default function App({ Component, pageProps }: AppProps) {
       <Head>
         <meta content="width=device-width, initial-scale=1" name="viewport" />
       </Head>
-      {/* <Analytics analyticsConfig={siteMetadata.analytics} /> */}
-      <LayoutWrapper>
-        <SearchProvider searchConfig={siteMetadata.search}>
+      <SearchProvider searchConfig={siteMetadata.search as SearchConfig}>
+        <LayoutWrapper>
           <Component {...pageProps} />
-        </SearchProvider>
-      </LayoutWrapper>
+        </LayoutWrapper>
+      </SearchProvider>
     </ThemeProvider>
   )
 }
