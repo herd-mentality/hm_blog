@@ -1,21 +1,24 @@
 ---
 title  : The Herd Mentality article deployment guide
 date   : '2024-01-20'
-tags   : ['meta', 'nodejs']
+tags   : ['meta', 'nodejs', 'react', 'javascript']
 draft  : false
 summary: 'A short, practical guide on how to deploy MDX articles to herdmentality.xyz'
 authors: ['christophermortimer', 'darrenwong']
 ---
 
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import { Caption, Highlight } from './components/InPostComponents.tsx'
 
 <TOCInline toc={props.toc} indentDepth={2} />
 <br/>
 
+# Introduction
 
-# (?) Introduction
+- This article will take you through the process of deploying a blog post to the [Herd Mentality website](https://www.herdmentality.xyz/)
+    - If you run into trouble with any of this or would like someone else to do it, contact a member of the team
 
-- Have put the proposed author of each section in the headings but will remove those before publishing
+- To skip to a summary of the process, [see the example workflow here](#example-workflow-blog-post-deployment)
 
 # (CM) Setting up Node.js
 
@@ -60,11 +63,13 @@ Open your terminal of choice (this may even be the one built into VScode) and ch
 git clone 
 ```
 
-## Install dependancies using NPM
+## Install dependencies using NPM
 
-We need to install all the dependancies required for this web project, which include Next.js and many others.
+We need to install all the dependencies required for this web project, which include Next.js and many others.
 
 `npm install`
+
+This installs the dependencies listed in the package.json file.
 
 # (CM) Deploying a local development server
 
@@ -79,13 +84,20 @@ See in the package.json file
 ```
 
 - npm run dev or similar to set up a local dev server
+
+![](/static/images/deployment-guide/npm-run-dev.png)
+
+<Caption text="Result of running npm run dev, note the URL of the server: http://localhost:3000, this can change depending on how many development servers you currently have open"/>
+
 - the concept and unhealthily addicting nature of hot reloading
 
-# (DW) Blog directory structure
+# Blog directory structure
 
-- This blog is set up as a React/NextJS@13 (with Contentlayer) project, forked from [timlrx / tailwind-nextjs-starter-blog](https://github.com/timlrx/tailwind-nextjs-starter-blog). 
-    - Read more about how a general React/NextJS project is structured [here](https://nextjs.org/docs/getting-started/project-structure) if interested.
-- If you're adding blog posts, there are two main directories that will be of interest to you: `data/blog` where you place the article in MDX format and `public/static/images` where you place the images for that article.
+- This blog is set up as a React/NextJS@13 (with Contentlayer) project, forked from [timlrx / tailwind-nextjs-starter-blog](https://github.com/timlrx/tailwind-nextjs-starter-blog)
+    - Read more about how a general React/NextJS project is structured [here](https://nextjs.org/docs/getting-started/project-structure) if interested
+- If you're adding blog posts, there are two main directories that will be of interest to you: 
+    - `data/blog` where you place the article in MDX format; and, 
+    - `public/static/images` where you place the images for that article
 
 ```
 📁 hm_blog/
@@ -105,38 +117,198 @@ See in the package.json file
 
 ## MDX Article files
 
-- Place your articles in the [`data/blog` directory](https://github.com/herd-mentality/hm_blog/tree/main/data/blog). 
-- Articles should be `.mdx` files. You can turn `.md` files into `.mdx` files by simply renaming and adding an `x` to the end of the file extension.
-    - `.mdx` is a format that ...
+- Place your articles in the [`data/blog` directory](https://github.com/herd-mentality/hm_blog/tree/main/data/blog)
+    - If you plan on creating a blog post series, consider making a sub-directory in `data/blog`. See the `data/blog/justBlackjack` series for an example.
 
-- All articles require a header
+- Articles should be `.mdx` files. You can turn `.md` files into `.mdx` files by:
+    - Simply renaming the file and adding an `x` to the end of the file extension
+    - This blog requires that you add metadata in the form of [frontmatter](https://tailwind-nextjs-starter-blog.vercel.app/blog/new-features-in-v1#configuring-a-blog-post-frontmatter) to the top of the `.mdx` file, for example the frontmatter of this blog post is as follows:
+        - Note each author name must match up with an author file in `data/authors`, [see more about adding new authors later in this article](#adding-new-authors)
 
+```yaml
+---
+title  : The Herd Mentality article deployment guide
+date   : '2024-01-20'
+tags   : ['meta', 'nodejs', 'react', 'javascript']
+draft  : false
+summary: 'A short, practical guide on how to deploy MDX articles to herdmentality.xyz'
+authors: ['christophermortimer', 'darrenwong'] # If just one author, do ['authorname']
+---
+```
 
-- images for those blogs can be any image type (prefer webp, jpg, png) and go in [dir]
+## Image files
 
-# (DW) Extra things
+- In a NextJS project, [static assets are served for the website from the `public/` directory](https://nextjs.org/docs/app/building-your-application/optimizing/static-assets). By convention, we'll place our article images into:
 
-- This is a website built with React, a Javascript front-end web-development library.
-- The core concept is reusable and versatile components (think of them as functions that correspond to features on the page).
+```
+public/static/images/<article-name-here>
+```
+
+- Images for those blogs can be any image type (although we prefer webp, jpg, png)
+    - We can then add these images to our blog posts by adding the following markdown:
+
+```markdown
+![](/static/images/<article-name-here>/<image-name>.png)
+```
+
+## Interactive in-post components
+
+- [`.mdx`](https://mdxjs.com/docs/what-is-mdx/) is a format that allows you to mix normal markdown with JavaScript expressions (including JSX), see a list of currently available components below
+    - If you'd like to see these in action, look at the raw source of the other blog posts in the [blog repository](https://github.com/herd-mentality/hm_blog/tree/main/data/blog)
+
+<Tabs>
+  <TabList>
+    <Tab>Table of Contents</Tab>
+    <Tab>Caption & Highlight</Tab>
+    <Tab>Tabset</Tab>
+    <Tab>Collapsible callout</Tab>
+  </TabList>
+
+  <TabPanel>
+
+    ![](/static/images/deployment-guide/toc.png)
+
+    ```javascript
+    <TOCInline toc={props.toc} indentDepth={2} />
+    ```
+
+  </TabPanel>
+  <TabPanel>
+
+    Why do some components require an import whereas others don't? Components that are exported from `components/MDXComponents.tsx` are exposed globally, i.e. will be available to all `.mdx` files with no need for an import statement. Components that likely won't be used in every single post are not exposed here for performance reasons.
+
+    ![](/static/images/deployment-guide/caption.png)
+
+    ![](/static/images/deployment-guide/highlight.gif)
+
+    ```javascript
+    import { Caption, Highlight } from './components/InPostComponents.tsx'
+
+    // blog contents
+
+    <Caption text="Caption text goes here"/>
+
+    ... lorem ipsum <Highlight text="Highlighted text goes here"/> ...
+    ```
+
+  </TabPanel>
+  <TabPanel>
+
+    ![](/static/images/deployment-guide/tabset.png)
+
+    ```javascript
+    import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+
+    <Tabs>
+    <TabList>
+        <Tab>
+            // Heading of Tab 1
+        </Tab>
+        <Tab>
+            // Heading of Tab 2
+        </Tab>
+        // Keep adding tabs as needed
+    </TabList>
+
+    <TabPanel>
+
+        // Text content of Tab 1
+        // Can include anything, such as code blocks
+
+    </TabPanel>
+    <TabPanel>
+
+        // Text content of Tab 2
+
+    </TabPanel>
+    // Keep adding tab panels as needed
+    </Tabs>
+    ```
+
+  </TabPanel>
+  <TabPanel>
+
+    ![](/static/images/deployment-guide/collapsible.gif)
+
+    ```javascript
+    <details>
+        <summary>
+            // Heading for the collapsible section here
+        </summary>
+
+        // Text content goes here, can put code blocks in here, etc
+
+    </details>
+    ```
+
+  </TabPanel>
+</Tabs>
+
+# Branching strategy in herd-mentality/hm_blog
+
+- Branching strategy in the [`herd-mentality/hm_blog`](https://github.com/herd-mentality/hm_blog) repository is as follows:
+    - `main` is the main development branch. Feature branches (including post draft branches) branch off `main` and are merged back into `main`
+    - `deploy` is the deployment branch, the only branch that we merge into `deploy` is `main` when we want to deploy changes
+- Vercel is our deployment and CI/CD provider. Raising a pull request also generates a Vercel preview that you can review prior to merging, click the Visit Preview button to assess your changes.
+
+![](/static/images/deployment-guide/vercel-cicd.png)
+
+# Example workflow: blog post deployment
+
+This section summarises the contents of this article so far - if anything here doesn't make sense, revisit the sections above or ask a member of the team:
+
+1. After cloning the directory and running `npm install`, ensure you are on the `main` branch: `git checkout main`
+2. Checkout a new branch with the name of your article and the `post/` prefix: `git checkout -b post/<shortened-article-name>`
+3. Add your `.mdx` post file to `data/blog`; add related images to `public/static/images/<shortened-article-name>` and link to them from your `.mdx` file
+4. Run a development server to review how your article looks and check that all in-post components work as intended: `npm run dev`, then ⌘/Control + Click the development server URL
+5. Make any edits required. Once all is well, close the development server (Control + C in the terminal you're hosting the development server from)
+6. Commit your changes and push them to the remote repository, raise a pull request to merge `post/<shortened-article-name>` into `main`
+7. Click *Visit Preview* in the pull request to make sure changes are correct on Vercel
+8. Once the PR is merged, raise another PR to merge `main` into `deploy`. Once merged, the changes should hit the [Herd Mentality website](https://www.herdmentality.xyz/) within a few minutes.
+
+# Extras
+## Adding new authors
+
+- Authors are stored in `data/authors` as `.mdx` files. To add a new author, add a new `<authorname>.mdx`
+    - Add their avatar to `public/static/images/<author-name>-avatar.jpg`, try to crop it so the new author's face is in frame and zoomed similarly to the other author avatars
+    - Copy the following into the `<authorname>.mdx` file and fill it in. Note that the social links (`email` through to `personal`) are all optional, delete any lines that the author doesn't have. Set the `preferred_social` to the link you'd like to display under the author's name in posts
+
+```yaml
+---
+name: Full Name Here
+avatar: /static/images/<author-name>-avatar.png
+role: Analyst OR Engineer (no senior/junior)
+company: Herd Mentality
+email: email@live.com
+linkedin: https://www.linkedin.com/in/<linkedin-handle-here>/
+github: https://github.com/<github-handle-here>/
+twitter: https://twitter.com/<twitter-handle-here>/
+personal: https://author-personal-site-here/xyz
+preferred_social: personal
+---
+```
+
+Examples on how author details are displayed can be seen below.
+
+![](/static/images/deployment-guide/author-blog.png)
+
+<Caption text="Author's name showing on a blog post attributed to them, spotlighting their preferred_social"/>
+
+![](/static/images/deployment-guide/author-page.png)
+
+<Caption text="Authors on the Authors page, with all socials showing"/>
+
+## Adding in-post components
+
+- This is a website built with React, a Javascript front-end web-development library
+- The core concept is reusable and versatile components (think of them as functions that correspond to features on the page)
+- If you'd like to add components, add them in `components/` and import them to blog posts in a similar fashion to above
+    - [Visit this page](https://react.dev/learn) if you'd like to learn React
 
 ```
 📁 hm_blog/
-...
-│   ├── 📁 data/                       # Stores blog articles and author details   
-│   │   ├── 📁 authors/                # Author details - mdx per author
-│   │   │   ├── 📄 <author>.mdx
-│   │   ├── 📁 blog/
 ...
 │   ├── 📁 components/                 # Stores components
 │   │   ├── 📄 <component>.tsx
 ...
 ```
-
-- additional components (ToC) etc
-- setting up author cards
-- resources to learn React/nextjs if interested in creating or editing custom components
-
-# (DW/CM) Branching strategy in herdmentality/hm-blog 
-
-- feature branches (posts, front-end updates) branch off main and are merged back into main
-- to deploy, raise a PR from main to deploy
