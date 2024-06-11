@@ -1,0 +1,176 @@
+---
+title  : Basic Git Workflows
+date   : '2024-06-09'
+tags   : ['git']
+draft  : false
+summary: 'An overview of how to work with Git'
+authors: ['vincentdoan', 'darrenwong']
+---
+
+<TOCInline toc={props.toc} indentDepth={2} />
+<br/>
+
+Welcome back to our Git guide series! In this post, we'll walk you through the basic Git workflows, covering essential commands and concepts to help you manage your projects effectively. By the end of this guide, you'll be able to track changes, commit updates, and maintain a clean project history.
+
+# Workflow 1: Using the Code
+
+When you want to use the code from a repository, you typically need to clone the repository and ensure you are on the correct branch.
+
+## 1. Navigate to the repository directory
+
+```shell
+cd your-repository-directory
+```
+
+## 2. Check out the desired branch
+
+List all branches to see the available options:
+
+```shell
+git branch -a
+```
+
+Checkout the desired branch (e.g. `master`):
+
+```shell
+git checkout master
+```
+
+## 3. Update your local repository
+
+Pull in the latest changes made to the branch:
+
+```shell
+git pull origin main
+```
+
+# Workflow 2: Making Changes to the Code
+
+When you want to make changes to the code, you typically create a new branch, make your changes, and then commit those changes.
+
+## 1. Pull in the latest changes to your main branch
+
+Before starting any new work, it's crucial to ensure your local main branch (often called `master` or `main`) is up-to-date with the remote repository. This helps avoid conflicts and ensures you have the latest changes.
+
+```shell
+git pull origin master
+```
+
+## 2. Switch to your desired developing branch
+
+Now, switch to the branch you want to work on. If the branch doesn't exist yet, you can create and switch to a new branch in one command.
+
+```shell
+git checkout <new-branch-name>
+```
+
+Or, to create and switch to a new branch:
+
+```shell
+git checkout -b <new-branch-name>
+```
+
+## 3. Make changes
+
+With your branch ready, you can start making changes to your project. This could involve editing existing files, adding new ones, or removing outdated files.
+
+## 4. Check the status
+
+Before staging your changes, it's a good idea to check the status of your repository. This command shows you which files have been modified, added, or deleted.
+
+```shell
+git status
+```
+
+## 5. Stage changes
+
+To include your changes in the next commit, you need to stage them. Staging tells Git which files you want to track and commit.
+
+```shell
+git add <file>
+```
+
+You can also stage multiple files or all changes at once:
+
+```shell
+git add .
+# OR
+git add -A
+```
+
+## 6. Commit changes
+
+Committing captures the current state of your project. It's important to write meaningful commit messages to keep track of your changes and provide context for your team.
+
+```shell
+git commit -m "commit message"
+```
+
+## 7. Push Changes to Remote
+
+Finally, push your changes to the remote repository. This step updates the remote branch with your local commits, making them available to your team or for deployment.
+
+```shell
+git push origin <new-branch-name>
+```
+
+## 8. Create a pull request (PR)
+
+Once your changes are pushed to the remote branch, it's time to create a pull request. A pull request allows others to review your code before it is merged into the main branch. This step is crucial for maintaining code quality and catching potential issues.
+
+- Follow the link provided in the terminal after your push, or manually go to your remote repository (e.g., GitHub, GitLab, Bitbucket).
+- Navigate to the "Pull Requests" section.
+- Click on "New Pull Request."
+- Select the base branch (usually master) and the compare branch (your working branch).
+- Provide a descriptive title and detailed description of your changes.
+- Submit the pull request.
+
+## 9. Merge your developing branch to the main branch
+
+After your pull request has been reviewed and approved, you can merge your changes into the main branch. However, if there has been work being done and merged to the main branch since last time you branched out, and those changes conflict with your work in the developing branch, then you will get git conflicts. See the [next post in the series](./3-git-advanced-workflows) for a guide to resolve git conflicts.
+
+If there are no git conflicts, or they have been resolved:
+
+- If you're using GitHub or Bitbucket, you can merge the pull request directly on the website.
+- Alternatively, you can merge locally:
+
+First, switch to the main branch:
+
+```shell
+git checkout master
+```
+
+Then merge your developing branch:
+
+```shell
+git merge <new-branch-name>
+```
+
+Finally, push the merged changes to the remote repository:
+
+```shell
+git push origin master
+```
+
+# Summary
+The basic Git workflow involves making changes, staging and committing those changes, managing branches, and syncing with a remote repository. Here's a quick recap of the commands we've covered:
+
+```shell
+# 1. Pull in the latest changes to your main branch (eg. master) 
+git pull origin master
+# 2. Switch to desired developing branch 
+git checkout <new-branch-name>
+# or 
+git checkout -b <new-branch-name> # to create and switch a new branch
+# 3. Make changes 
+# 4. Check status 
+git status
+# 5. Stage changes 
+git add <file>
+# 6. Commit changes
+git commit -m "commit message"
+# 7. Push changes to remote 
+git push origin <new-branch-name>
+# 8. Create a pull request (PR) 
+# 9. Once your PR is approved, merge your developing branch to the main branch 
+```
