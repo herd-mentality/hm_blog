@@ -4,6 +4,7 @@ import 'katex/dist/katex.css'
 import '@fontsource/dm-mono/300.css'
 import '@fontsource/dm-mono/400.css'
 import '@fontsource/dm-mono/500.css'
+import '@fontsource-variable/space-grotesk'
 // import '@/css/docsearch.css' // Uncomment if using algolia docsearch
 // import '@docsearch/css' // Uncomment if using algolia docsearch
 
