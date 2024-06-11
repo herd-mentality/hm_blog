@@ -36,6 +36,10 @@
   @apply text-primary-500 duration-300
 }
 
+h1, h2, h3 {
+  font-family: 'Space Grotesk Variable', serif;
+}
+
 .mono {
   font-family: 'DM Mono', sans-serif;
 }
