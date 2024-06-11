@@ -1,0 +1,138 @@
+---
+title  : Advanced Git Workflows
+date   : '2024-06-10'
+tags   : ['git']
+draft  : false
+summary: 'An overview of how to resolve merge conflicts in Git'
+authors: ['vincentdoan', 'darrenwong']
+---
+
+<TOCInline toc={props.toc} indentDepth={2} />
+<br/>
+
+As a developer, mastering Git is crucial for efficient collaboration and maintaining a clean codebase. This post dives into advanced Git workflows, focusing on resolving conflicts and branching strategies that can streamline your development process.
+
+# Understanding Git Conflicts
+
+Git conflicts occur when changes from different branches collide. This can happen during merges, rebases, or even cherry-picking. Understanding how to resolve these conflicts efficiently is key to maintaining a smooth workflow.
+
+## Common Causes of Conflicts
+
+- Simultaneous changes to the same line of code.
+- Deleting a file that another branch is modifying.
+- Different changes to the same file in different branches.
+
+# Resolving Git Conflicts
+
+Resolving conflicts can seem daunting, but with the right tools and strategies, it becomes manageable.
+
+## 1. Pull in the changes 
+Your Git platform (such as GitHub, GitLab, or Bitbucket) will automatically check for conflicts when you raise a PR. If conflicts exist, it will notify you, and you can resolve them before merging.
+The first step is to ensure you have the latest changes from the branch you want to merge into. This helps in identifying any potential conflicts in your local Git repository.
+
+```shell
+# Let your developing branch be called add-plot-b 
+git checkout add-plot-b
+git pull origin main
+```
+
+## 2. Identify the Conflict
+
+```shell
+$ git status 
+On branch main
+You have unmerged paths.
+
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+
+        both modified:   R/analysis.R
+
+no changes added to commit (use "git add" and/or "git commit -a")
+```
+
+The output from `git status` indicates that there are unmerged paths due to a conflict. The `analysis.R` file now appears in a modified state. Let's examine the file and see what has been modified.
+
+## 3. Open the Conflict in an Editor 
+
+Conflicts are marked with `<<<<<<<`, `=======`, and `>>>>>>>`. Edit the file to resolve the differences.
+After opening `R/analysis.R` in RStudio, you might see something like this:
+
+```R
+# analysis.R
+
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Load the dataset
+data <- read.csv("data/sample_data.csv")
+
+# Perform initial data cleaning
+data_clean <- data %>%
+  filter(!is.na(Value)) %>%
+<<<<<<< HEAD
+  mutate(NewColumnA = Value * 2)
+
+# Plot the data
+ggplot(data_clean, aes(x = Date, y = NewColumnA)) +
+  geom_line() +
+  ggtitle("Plot of NewColumnA over Time")
+=======
+  mutate(NewColumnB = Value / 2)
+
+# Plot the data
+ggplot(data_clean, aes(x = Date, y = NewColumnB)) +
+  geom_line() +
+  ggtitle("Plot of NewColumnB over Time")
+>>>>>>> add-plot-b
+```
+
+In this case, the conflict is between changes made in the `HEAD` branch (the `main` branch) and the `add-plot-b` branch. The conflict markers `<<<<<<<`, `=======`, and `>>>>>>>` indicate the conflicting changes. The `=======` line is the "centre" of the conflict. All the content between the centre and the `<<<<<<< HEAD` line is content that exists in the current branch main which the `HEAD` ref is pointing to. Alternatively all content between the center and `>>>>>>> add-plot-b` is content that is present in our merging branch.
+
+You need to resolve these by editing the file to combine or choose one of the changes, then marking the conflict as resolved and committing the changes. Here's how you might resolve the conflict:
+
+```R
+# analysis.R
+
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Load the dataset
+data <- read.csv("data/sample_data.csv")
+
+# Perform initial data cleaning
+data_clean <- data %>%
+  filter(!is.na(Value)) %>%
+  mutate(NewColumnA = Value * 2,
+         NewColumnB = Value / 2)
+
+# Plot the data for NewColumnA
+ggplot(data_clean, aes(x = Date, y = NewColumnA)) +
+  geom_line() +
+  ggtitle("Plot of NewColumnA over Time")
+
+# Plot the data for NewColumnB
+ggplot(data_clean, aes(x = Date, y = NewColumnB)) +
+  geom_line() +
+  ggtitle("Plot of NewColumnB over Time")
+```
+
+## 3. Mark the conflict as 'resolved'
+
+After resolving the conflict, you would then add the resolved file and commit the changes:
+
+```shell
+git add R/analysis.R
+git commit -m "Resolved merge conflict in analysis.R"
+```
+
+## 4. Push your resolved conflicts back to remote (your PR) 
+
+```shell
+git push origin add-plot-b
+```
