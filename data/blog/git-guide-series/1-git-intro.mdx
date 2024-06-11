@@ -1,0 +1,117 @@
+---
+title  : Getting Started with Git 
+date   : '2024-06-08'
+tags   : ['git']
+draft  : false
+summary: 'An introduction to using Git, covering basic concepts'
+authors: ['vincentdoan', 'darrenwong']
+---
+
+import { Caption } from './components/InPostComponents.tsx'
+
+<TOCInline toc={props.toc} indentDepth={2} />
+<br/>
+
+Welcome to our Git tutorial series! In this post, we will cover the essentials of version control, basic Git concepts and terminology, and guide you through the setup and configuration of Git. By the end of this guide, you'll have a solid foundation to start using Git effectively.
+
+# 1. Introduction to Version Control
+
+**Version control** is the practice of tracking and managing changes to software code. It enables developers to work simultaneously on a project, keep a history of changes, and revert to earlier versions if necessary. Version control is crucial for collaboration, preventing conflicts, and ensuring code integrity.
+
+**Git** is a popular distributed version control system that allows developers to maintain a complete history of changes, branch and merge code efficiently, and work offline. Git's speed, flexibility, and robustness make it the preferred choice for many development teams.
+
+**Why version control is crucial:**
+- **Tracking Changes**: Version control allows you to keep a detailed history of changes made to your code. This means you can see who made changes, what was changed, and when it was changed. If something goes wrong, you can revert to a previous version easily.
+- **Collaboration**: Multiple developers can work on the same project simultaneously without overwriting each other's work. Version control systems merge changes from different contributors, ensuring a seamless collaborative process.
+- **Backup**: Having a version-controlled codebase serves as a backup. If your local files are lost or corrupted, you can always retrieve the latest version from the remote repository.
+
+# 2. Basic Git Components
+
+![](/static/images/git-guide-series/git-intro.png)
+
+<Caption text="A visualisation of the typical branching structure of a Git repository."/>
+
+**Repository**: A repository (repo) is a storage location for your project's files and the entire timeline of changes made to those files. It can be local (on your machine) or remote (hosted on platforms like GitHub or Bitbucket). In the diagram, the repository is represented by the outer box containing all elements.
+
+**Commit**: A commit is a snapshot of your project at a specific point in time, recording changes made to files along with a descriptive message. It's like a save point in your project's history.
+		
+> Vincent likes to think of commits as save points in a game. You can have a major save point, and minor save points. For example, before you start a challenge, you may set a major save point so that if you fail, you can restart the challenge. But during the challenge, you may also have minor save points to revert smaller decisions if things don’t turn out the way you want. (Yes, Vincent is a disgraceful save scum!)
+
+**Branch**: A branch is an independent line of development. Branches allow you to work on new features or fixes separately from the main codebase. You can create, switch between, and merge branches as needed. In the diagram, the main branch is labelled "Main" and has its commits along a straight line, while the feature branches "Develop 1" and "Develop 2" diverge from the main line, showing independent lines of development. The develop branch can be a hotfix for a bug, or a new feature. Using the branch structure allows multiple tasks to be developed in parallel, and keeps the main branch clean from questionable code.
+
+# 3. Setup and Initial Configuration
+
+## Install Git
+
+To start using Git, you need to install it on your computer. Note that RStudio users already have Git installed, so you can skip this step if you're using RStudio.
+- **Windows**: Download the installer from Git's official website and follow the instructions.
+- **Mac**: Use Homebrew to install Git with brew install git, or download it from Git's website.
+- **Linux**: Use your distribution's package manager (e.g., sudo apt-get install git for Debian-based systems).
+
+## Initial Configuration
+After installing Git, configure your username and email, which will be associated with your commits.
+
+### 1. Configure Git for the first time
+
+```shell
+git config --global user.name "your username"
+git config --global user.email "first.last@example.com"
+```
+
+If you don't configure this with at least your email, you will see warnings when you commit changes, because Git embeds this info into each commit. This ensures that your commits are correctly attributed to you, as this is how other people can see who made changes. Example warning message:
+
+```shell
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+```
+
+### 2. Cache or store your password
+
+**To cache your git credentials**
+
+```shell
+git config --global credential.helper "cache --timeout=2419200"
+```
+
+This caches your git credentials for 4 weeks. After this, it will ask you to enter it again. This is the safer practice. It stores your credentials in a socket file in `~/.git-credentials-cache/` via a cache-demon process, which will expire when the cache-demon dies (eg. after the configured timeout period or when the server restarts).
+
+**To permanently store your git password**
+
+```shell
+git config --global credential.helper store
+```
+
+This will store your password permanently. It will only ask you to re-enter the password whenever you change your git account password. What this command actually does is it configures your `.gitconfig` file to have the option `helper = store`, which stores your credentials (username and password) in a plain text file on disk (by default at `~/.git-credentials`).
+
+# 4. Cloning a repository
+
+## What does cloning mean?
+
+To clone a repository means to create a copy of an existing repository from a remote server (like GitHub or Bitbucket) to your local machine. This allows you to make use of the codebase, and contribute to an open-source project or collaborate on a team project.
+
+## Step-by-step guide to clone a repository
+
+1. **Find the repository URL**: First, navigate to the repository you want to clone on a hosting service like GitHub, GitLab, or Bitbucket. Copy the repository's URL from the browser's address bar or the "Clone" button provided on the platform.
+2. **Open Your Terminal**: Open your terminal (Command Prompt, PowerShell, or Git Bash). If you are using an IDE like RStudio, simply click on Terminal in your Console panel.
+3. **Navigate to Your Desired Directory**: Use the `cd` command to navigate to the directory where you want to clone the repository.
+4. **Clone the Repository**: Use the `git clone` command followed by the repository URL to clone it to your local machine.
+
+```shell
+git clone <https://github.com/example/example-repo.git>
+```
+
+5. This command creates a new directory named after the repository (e.g., `example-repo`) and downloads all the project files and history.
+6. **Explore the Cloned Repository**: Once cloning is complete, navigate into the newly created directory and explore the files.
+
+```shell
+cd example-repo
+ls  # or dir on Windows
+```
