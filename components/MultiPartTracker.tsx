@@ -27,7 +27,7 @@ const MultiPartTracker = ({ path, allPosts }: TrackerProps) => {
                 {index + 1}
               </div>
               <div className="posts-in-series min-w-0">
-                <p className="relative my-1 h-11 overflow-hidden whitespace-normal text-sm font-medium">
+                <p className="relative my-1 overflow-hidden whitespace-normal text-sm font-medium">
                   {post.path === path ? (
                     <span className="text-gray-500">{post.title}</span>
                   ) : (
