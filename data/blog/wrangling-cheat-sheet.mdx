@@ -7,6 +7,8 @@ summary: 'For Things I Do Often but Forget How To Do'
 authors: ['earlduncan']
 ---
 
+<TOCInline toc={props.toc} indentDepth={2} />
+
 *Originally released on [RPubs](https://rpubs.com/Earlien/Wrangling), 30 July, 2024.*
 
 # Preface
@@ -102,7 +104,7 @@ dat %>%
     rename(!!sym(new_name) := old_name)
 ```
 
-See also [mutating](#Mutate_string) and [other uses](#Other_string)
+See also [mutating](#mutate-column-using-string-as-column-name) and [other uses](#string-as-column-name-in-dplyr-functions)
 using string as a column name
 
 # Mutating Values
@@ -317,7 +319,7 @@ dat %>%
 Note: `var` can be a vector. Alternatively, if `var` is a list, replace
 `!!sym()` with `!!!syms()`.
 
-See also [renaming](#Rename_string) and [other uses](#Other_string)
+See also [renaming](#rename-column-using-string-as-column-name) and [other uses](#string-as-column-name-in-dplyr-functions)
 using string as a column name
 
 # Reshaping data frames
@@ -613,7 +615,7 @@ here](https://stackoverflow.com/questions/57136322/what-does-the-operator-mean-i
 For use of `!!!`, see
 [here](https://stackoverflow.com/questions/61180201/triple-exclamation-marks-on-r)
 
-See also [renaming](#Rename_string) and [mutating](#Mutate_string) using
+See also [renaming](#rename-column-using-string-as-column-name) and [mutating](#mutate-column-using-string-as-column-name) using
 string as a column name
 
 ## Grouping by negation
