@@ -1,0 +1,779 @@
+---
+title  : Data Wrangling Cheat Sheet
+date   : '2024-08-06'
+tags   : ['r', 'data-wrangling', 'in-depth']
+draft  : false
+summary: 'For Things I Do Often but Forget How To Do'
+authors: ['earlduncan']
+---
+
+*Originally released on [RPubs](https://rpubs.com/Earlien/Wrangling), 30 July, 2024.*
+
+# Preface
+
+## Aim
+
+This guide serves as a cheat sheet for wrangling tasks that I find
+myself often doing but don’t always remember the exact way to execute
+the code to achieve the result I want. `pivot_longer` is a good example.
+I use it fairly frequently, and it’s straightforward when you only want
+to convert a number of columns into a single “name” and “value” pair of
+new columns. As soon as the `names_pattern` argument is used, especially
+when regex is involved, things get complicated quickly. This guide
+contains worked examples which demonstrate different ways these common
+wrangling tasks might be performed, and provides ready-to-use code via a
+simple copy-paste.
+
+## R Libraries
+
+The R code in this document relies on two main R libraries.
+
+``` r
+library(dplyr)
+library(tidyr)
+```
+
+# Renaming
+
+## Rename multiple columns
+
+`rename` can be used to rename one or several columns by passing a named
+vector containing the new and old variable names. But that is often too
+tedious when you need to rename many columns. If the new column names
+have a common structure, e.g. they are all being converted to uppercase,
+or they are all being prepended with `new_`, then `rename_with` is the
+function to use.
+
+E.g. converting column names to lowercase, and replacing periods with
+underscores from names (all columns by default)
+
+``` r
+head(iris, 2)
+```
+
+``` r
+##   Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1          5.1         3.5          1.4         0.2  setosa
+## 2          4.9         3.0          1.4         0.2  setosa
+```
+
+``` r
+iris %>%
+    rename_with(~ tolower(gsub("\\.", "_", .x)), .cols = everything())
+```
+
+``` r
+##   sepal_length sepal_width petal_length petal_width species
+## 1          5.1         3.5          1.4         0.2  setosa
+## 2          4.9         3.0          1.4         0.2  setosa
+```
+
+E.g. Add prefix to all but first column
+
+``` r
+iris %>%
+    rename_with(~ paste0("var_", .x), .cols = -1)
+```
+
+``` r
+##   Sepal.Length var_Sepal.Width var_Petal.Length var_Petal.Width var_Species
+## 1          5.1             3.5              1.4             0.2      setosa
+## 2          4.9             3.0              1.4             0.2      setosa
+```
+
+Note: `.cols` can take column names (quoted or unquoted, negated or
+not), indices (negated or not), and `select` helper functions like
+`starts_with`, `contains`, etc.
+
+## Rename column using string as column name
+
+E.g.
+
+``` r
+var <- "new_name"
+dat %>%
+    rename("{new_name}" := old_name)
+```
+
+Alternatively:
+
+``` r
+dat %>%
+    rename(!!sym(new_name) := old_name)
+```
+
+See also [mutating](#Mutate_string) and [other uses](#Other_string)
+using string as a column name
+
+# Mutating Values
+
+## Replace NAs, NaN, or Inf
+
+E.g. Replace `NAs` in a specific column with zero
+
+``` r
+dat %>% 
+    mutate(var = replace_na(var, 0))           # tidyr solution
+    mutate(var = replace(var, is.na(var), 0))  # more general base R solution
+```
+
+Note: `replace_na()` will not work if the variable is a factor, and the
+replacement is not already a level for your factor ([see
+here](https://tidyr.tidyverse.org/reference/replace_na.html))
+
+The `replace_na()` function is very specific and limited. For multiple
+variables, and replacing other special values, use `across()`:
+
+``` r
+dat %>% 
+    mutate(across(c(var1, var2), ~ replace(., is.na(.), 0))) %>%
+    mutate(across(c(var3, var4), ~ replace(., is.nan(.), 0))) %>%
+    mutate(across(var5,          ~ replace(., is.infinite(.), 999)))
+```
+
+## Insert values for missing combinations
+
+Example data set:
+
+``` r
+cancer <- tibble(
+    sex = c("Male", "Female", "Female"),
+    cancer = c("Prostate", "Ovarian", "Ovarian"),
+    agegrp = c("40-50", "40-50", "51-60"),
+    count = c(20, 16, 23)
+)
+cancer
+```
+
+``` r
+## # A tibble: 3 × 4
+##   sex    cancer   agegrp count
+##   <chr>  <chr>    <chr>  <dbl>
+## 1 Male   Prostate 40-50     20
+## 2 Female Ovarian  40-50     16
+## 3 Female Ovarian  51-60     23
+```
+
+E.g. Add missing agegrp for each sex-cancer combo
+
+``` r
+cancer %>% 
+    complete(nesting(sex, cancer), agegrp)
+```
+
+``` r
+## # A tibble: 4 × 4
+##   sex    cancer   agegrp count
+##   <chr>  <chr>    <chr>  <dbl>
+## 1 Female Ovarian  40-50     16
+## 2 Female Ovarian  51-60     23
+## 3 Male   Prostate 40-50     20
+## 4 Male   Prostate 51-60     NA
+```
+
+Add missing agegrp for each sex-cancer combo, imputing 0 for missing
+counts
+
+``` r
+cancer %>% 
+    complete(nesting(sex, cancer), agegrp, fill = list(count = 0))
+```
+
+``` r
+## # A tibble: 4 × 4
+##   sex    cancer   agegrp count
+##   <chr>  <chr>    <chr>  <dbl>
+## 1 Female Ovarian  40-50     16
+## 2 Female Ovarian  51-60     23
+## 3 Male   Prostate 40-50     20
+## 4 Male   Prostate 51-60      0
+```
+
+Add missing cancers for each sex-agegrp combo, imputing 0 for missing
+counts
+
+``` r
+cancer %>% 
+    complete(nesting(sex, agegrp), cancer, fill = list(count = 0))
+```
+
+``` r
+## # A tibble: 6 × 4
+##   sex    agegrp cancer   count
+##   <chr>  <chr>  <chr>    <dbl>
+## 1 Female 40-50  Ovarian     16
+## 2 Female 40-50  Prostate     0
+## 3 Female 51-60  Ovarian     23
+## 4 Female 51-60  Prostate     0
+## 5 Male   40-50  Ovarian      0
+## 6 Male   40-50  Prostate    20
+```
+
+Add all missing combinations
+
+``` r
+cancer %>% 
+    complete(sex, agegrp, cancer, fill = list(count = 0))
+```
+
+``` r
+## # A tibble: 8 × 4
+##   sex    agegrp cancer   count
+##   <chr>  <chr>  <chr>    <dbl>
+## 1 Female 40-50  Ovarian     16
+## 2 Female 40-50  Prostate     0
+## 3 Female 51-60  Ovarian     23
+## 4 Female 51-60  Prostate     0
+## 5 Male   40-50  Ovarian      0
+## 6 Male   40-50  Prostate    20
+## 7 Male   51-60  Ovarian      0
+## 8 Male   51-60  Prostate     0
+```
+
+## Mutate across multiple columns as new columns
+
+``` r
+dat %>%
+    mutate(across(starts_with("var"), ~ .x * 2, .names = "new_{col}"))
+```
+
+E.g.
+
+``` r
+iris %>%
+    mutate(across(starts_with("Sepal"), ~ .x * 2, .names = "new_{col}")) %>%
+    head(2)
+```
+
+``` r
+##   Sepal.Length Sepal.Width Petal.Length Petal.Width Species new_Sepal.Length
+## 1          5.1         3.5          1.4         0.2  setosa             10.2
+## 2          4.9         3.0          1.4         0.2  setosa              9.8
+##   new_Sepal.Width
+## 1               7
+## 2               6
+```
+
+## Mutate across referring to column name
+
+`cur_column` gives the name of the current column. E.g.
+
+``` r
+dat <- tibble(
+    condition = c(rep("asthma", 2), rep("obesity", 2)),
+    asthma = c(TRUE, TRUE, FALSE, TRUE),
+    obesity = c(TRUE, FALSE, TRUE, TRUE)
+)
+
+dat %>%
+    mutate(across(c("asthma", "obesity"), ~  ifelse(condition == cur_column(), NA, .x)))
+```
+
+``` r
+## # A tibble: 4 × 3
+##   condition asthma obesity
+##   <chr>     <lgl>  <lgl>  
+## 1 asthma    NA     TRUE   
+## 2 asthma    NA     FALSE  
+## 3 obesity   FALSE  NA     
+## 4 obesity   TRUE   NA
+```
+
+## Convert all of one data type to another data type
+
+E.g. convert all character-valued columns to factors, and all numeric
+columns to integers
+
+``` r
+dat %>%
+    mutate(across(where(is.character), as.factor)) %>%
+    mutate(across(where(is.double), as.integer))
+```
+
+## Mutate column using string as column name
+
+To create a new column:
+
+``` r
+var <- "new_col"
+
+dat %>%
+    mutate("{var}" := old_col * 100)
+# or
+dat %>%
+    mutate(!!sym(var) := old_col * 100)
+```
+
+To apply the mutation to the same column:
+
+``` r
+dat %>%
+    mutate("{var}" := get(var) * 100)0)
+# or
+dat %>%
+    mutate(!!sym(var) := !!sym(var) * 100)
+```
+
+Note: `var` can be a vector. Alternatively, if `var` is a list, replace
+`!!sym()` with `!!!syms()`.
+
+See also [renaming](#Rename_string) and [other uses](#Other_string)
+using string as a column name
+
+# Reshaping data frames
+
+## Pivot longer with multiple variables in 1 column name
+
+E.g. Pivot on these columns using the word before the first underscore
+as “name” and the word after as the values (new columns)
+
+``` r
+dat %>%
+    pivot_longer(
+        c(A_long, B_long, A_lat, B_lat, A_location, B_location),
+        names_to = c("name", ".value"),
+        names_pattern = "(.*)_(.*)"  # or names_sep = "_"
+    )
+```
+
+E.g. Pivot on these columns using the word before the first underscore
+as “name” and the remainder as the values (new columns)
+
+``` r
+dat %>%
+    pivot_longer(
+        c(A_long, B_long, A_lat, B_lat, A_location_name, B_location_name),
+        names_to = c("name", ".value"),
+        names_pattern = "([^_])_(.*)"   # Everything before first underscore + remainder
+    )
+```
+
+E.g. Pivot all columns except `id.1` and `id.2` using last character as
+“name” and the word before the period as the values (new columns)
+
+``` r
+dat %>%
+    pivot_longer(
+        -c(id.1, id.2),
+        names_to = c(".value", "name"),
+        names_pattern = "(.*).(.$)"   # or names_sep = "\\."
+    )
+```
+
+E.g. splitting one column into three using first two delimiters:
+
+``` r
+dat <- tibble(
+    id = 1:3,
+    male.age.5 = 4,
+    male.age.10 = 5.5,
+    `male.age.15.and.over` = 6,
+    female.age.5 = 3.5,
+    female.age.10 = 9, 
+    `female.age.15.and.over` = 7
+)
+```
+
+Solution 1:
+
+``` r
+dat %>%
+    pivot_longer(
+        -id,
+        names_to = c("sex", "age", ".value"),
+        names_pattern = "([^\\.]*).(age).(.*)"  # or names_pattern = "([^\\.]*).([^\\.]*).(.*)"
+    )
+```
+
+``` r
+## # A tibble: 6 × 6
+##      id sex    age     `5`  `10` `15.and.over`
+##   <int> <chr>  <chr> <dbl> <dbl>         <dbl>
+## 1     1 male   age     4     5.5             6
+## 2     1 female age     3.5   9               7
+## 3     2 male   age     4     5.5             6
+## 4     2 female age     3.5   9               7
+## 5     3 male   age     4     5.5             6
+## 6     3 female age     3.5   9               7
+```
+
+Solution 2:
+
+``` r
+dat %>%
+    rename_with(~gsub(".and.over", "+", .x)) %>%
+    pivot_longer(
+        -id,
+        names_to = c("sex", "age", ".value"),
+        names_sep = "\\."   # or either of the above two names_pattern solutions
+    )
+```
+
+``` r
+## # A tibble: 6 × 6
+##      id sex    age     `5`  `10` `15+`
+##   <int> <chr>  <chr> <dbl> <dbl> <dbl>
+## 1     1 male   age     4     5.5     6
+## 2     1 female age     3.5   9       7
+## 3     2 male   age     4     5.5     6
+## 4     2 female age     3.5   9       7
+## 5     3 male   age     4     5.5     6
+## 6     3 female age     3.5   9       7
+```
+
+## Split the values in one column into multiple rows (`strsplit`)
+
+E.g. splitting values in a column based on a delimiter
+
+``` r
+tibble(col_1 = LETTERS[1:3]) %>%
+    mutate(year = paste(c(2021:2025), collapse = ", ")) %>%
+    mutate(year = strsplit(year, ", ")) %>%
+    unnest(year)
+```
+
+``` r
+## # A tibble: 15 × 2
+##    col_1 year 
+##    <chr> <chr>
+##  1 A     2021 
+##  2 A     2022 
+##  3 A     2023 
+##  4 A     2024 
+##  5 A     2025 
+##  6 B     2021 
+##  7 B     2022 
+##  8 B     2023 
+##  9 B     2024 
+## 10 B     2025 
+## 11 C     2021 
+## 12 C     2022 
+## 13 C     2023 
+## 14 C     2024 
+## 15 C     2025
+```
+
+## Split one column into two columns (`separate`)
+
+E.g. splitting a column based on the first space only
+
+``` r
+tibble(car = rownames(mtcars)) %>%
+    slice(1:5) %>%
+    separate(col = car, into = c("manufacturer", "make"), sep = "^\\S*\\K\\s+")
+```
+
+``` r
+## # A tibble: 5 × 2
+##   manufacturer make      
+##   <chr>        <chr>     
+## 1 Mazda        RX4       
+## 2 Mazda        RX4 Wag   
+## 3 Datsun       710       
+## 4 Hornet       4 Drive   
+## 5 Hornet       Sportabout
+```
+
+## Convert named vector to tibble and vice versa
+
+<table class="table">
+<tr>
+<th>
+to:
+</th>
+<th>
+named vector
+</th>
+<th>
+one-row df
+</th>
+<th>
+two-column df
+</th>
+</tr>
+<tr>
+<td>
+<b>named vector</b>
+</td>
+<td>
+</td>
+<td>
+
+``` r
+tibble(!!!dat)
+```
+
+</td>
+<td>
+
+``` r
+dat %>%
+    stack() %>%
+    tibble() %>%
+    rename(names = 2)     
+    # To match reverse code"
+```
+
+</td>
+</tr>
+<tr>
+<td>
+<b>one-row df</b>
+</td>
+<td>
+
+``` r
+dat %>% 
+    unlist()
+```
+
+</td>
+<td>
+</td>
+<td>
+
+``` r
+dat %>% 
+    unlist() %>%
+    stack() %>%
+    tibble() %>%
+    rename(names = 2)
+```
+
+</td>
+</tr>
+<tr>
+<td>
+<b>two-column df</b>
+</td>
+<td>
+
+``` r
+dat %>%
+    pull(values, names)
+```
+
+</td>
+<td>
+
+``` r
+dat %>%
+    pull(values, names) %>%
+    tibble(!!!.)
+```
+
+</td>
+<td>
+</td>
+</tr>
+</table>
+
+Note: when converting a two-column tibble to named vector,
+`pull(dat, values, names)` is preferred over
+
+``` r
+library(janitor)          # For row_to_names()
+dat %>%
+    t() %>%
+    row_to_names(row_number = 1) %>%     # Use first row as column names
+    as_tibble()
+```
+
+# Other wrangling
+
+## String as column name in dplyr functions
+
+``` r
+vars <- c("foo", "bar")
+
+# The following are equivalent:
+dat %>%
+    group_by(across(all_of(vars)))            # or
+    group_by(foo, bar)                        # or
+    group_by(across(all_of(c("foo", var))))   # or
+    group_by(foo, !!sym(var))                 # or
+    group_by(!!!syms(vars))
+```
+
+This also applies to `arrange()`. For `select()` or `relocate()`, drop
+`across()`, e.g. `select(all_of(vars))`.
+
+``` r
+var = "foo" 
+
+# The following are equivalent:
+dat %>%
+    rename(new_foo = !!sym(var))                           # or
+    rename(!!sym(glue("new_{var}")) := !!sym(var))         # or
+    rename_with(~ paste0("new_", .x), .cols = !!sym(var))
+```
+
+For use of `!!`, `sym()`, and `!!sym()`, [see
+here](https://stackoverflow.com/questions/57136322/what-does-the-operator-mean-in-r-particularly-in-the-context-symx).
+For use of `!!!`, see
+[here](https://stackoverflow.com/questions/61180201/triple-exclamation-marks-on-r)
+
+See also [renaming](#Rename_string) and [mutating](#Mutate_string) using
+string as a column name
+
+## Grouping by negation
+
+Put the negation inside `across()`, not before it. E.g. to group by all
+columns except “foo” and “bar”:
+
+``` r
+dat %>%
+    group_by(across(-c(foo, bar)))
+
+# or
+
+vars <- c("foo", "bar")
+dat %>%
+    group_by(across(-vars))
+```
+
+A practical example is when you want to sum a column of counts by all
+groups:
+
+``` r
+dat %>%
+    group_by(across(-n)) %>%
+    summarise(n = sum(n))
+```
+
+## Sum across multiple columns
+
+Summing across multiple columns:
+
+``` r
+dat %>%
+    group_by(var1) %>%
+    mutate(sum = rowSums(across(starts_with("value_"))))
+```
+
+Compare to summing across multiple rows:
+
+``` r
+dat %>%
+    group_by(var1) %>%
+    summarise(across(starts_with("value_"), ~ sum(., na.rm = TRUE)))
+```
+
+Note the differences in speed:
+
+``` r
+dat %>%
+    mutate(
+        # pop = pop.1 + pop.2 + pop.3 +  ... + pop.100          # Hard-coded, but fast
+        # pop = apply(dat %>% select(starts_with("pop.")), 1, sum)       # VERY slow
+        pop = select(., starts_with("pop.")) %>% rowSums(na.rm = TRUE)   # FAST
+    )
+```
+
+## Filenames and filepaths
+
+List all files in a particular folder, with optional regex string match
+(as a vector)
+
+``` r
+files <- list.files(
+    "/data/my_folder", 
+    pattern = "a*z\\.xlsx",
+    full.names = TRUE
+)
+```
+
+Split vector of filepaths into directory and file name (with extension)
+
+``` r
+tibble(full_name = files) %>%
+    mutate(
+        filepath = dirname(full_name),
+        file = basename(full_name)
+    )
+```
+
+Note: `dirname` and `basename` are both base R functions.
+
+Extract file extension from filename:
+
+``` r
+tools::file_ext(filename)
+```
+
+# Shortcuts and speed hacks
+
+## Converting age to 5-year age groups
+
+E.g.
+
+``` r
+dat <- tibble(age = 2:20)
+
+dat %>% 
+    mutate(
+        agegrp = paste(floor(age /5) * 5L, (floor(age /5) + 1L) * 5L - 1L, sep = "-"),
+        agegrp = ifelse(agegrp == "20-24", "20+", agegrp)
+    )
+```
+
+``` r
+## # A tibble: 19 × 2
+##      age agegrp
+##    <int> <chr> 
+##  1     2 0-4   
+##  2     3 0-4   
+##  3     4 0-4   
+##  4     5 5-9   
+##  5     6 5-9   
+##  6     7 5-9   
+##  7     8 5-9   
+##  8     9 5-9   
+##  9    10 10-14 
+## 10    11 10-14 
+## 11    12 10-14 
+## 12    13 10-14 
+## 13    14 10-14 
+## 14    15 15-19 
+## 15    16 15-19 
+## 16    17 15-19 
+## 17    18 15-19 
+## 18    19 15-19 
+## 19    20 20+
+```
+
+## Relabelling factor levels without converting to string
+
+This requires the `forcats` library. E.g.
+
+``` r
+library(forcats)
+tibble(
+    age_band = c("0-4", "5-9", "10-14", "15-19", "20-24", "25+")
+) %>%
+    mutate(
+        age_band2 = fct_collapse(     # Combine levels
+            age_band,
+            "0-9" = c("0-4", "5-9"),
+            "10-19" = c("10-14", "15-19")
+        ),
+        # Relabel all levels with function
+        age_band2 = fct_relabel(age_band2, ~ sub("-", ".", .x)),
+        # Relabel specific levels manually
+        age_band2 = fct_recode(age_band2, "0.09" = "0.9"),
+    ) %>%
+    select(age_band, age_band2) %>%
+    distinct()
+```
+
+``` r
+## # A tibble: 6 × 2
+##   age_band age_band2
+##   <chr>    <fct>    
+## 1 0-4      0.09     
+## 2 5-9      0.09     
+## 3 10-14    10.19    
+## 4 15-19    10.19    
+## 5 20-24    20.24    
+## 6 25+      25+
+```
