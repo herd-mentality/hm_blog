@@ -7,10 +7,12 @@ summary: 'Enabling parallel and asynchronous processing in your Plumber APIs usi
 authors: ['darrenwong']
 ---
 
+import { Highlight } from './components/InPostComponents.tsx'
+
 # Introduction
 [`plumber`](https://www.rplumber.io/) is a fantastic tool if you want to deploy your R code and functions as an API. It allows you to easily create an API and its endpoints with minimal changes to your R code. Once built, you can also host your API with a variety of services, Posit Connect being one example.
 
-However, `plumber` suffers from a limitation of R. R is single-threaded, so a request to an API endpoint will block the main process from handling any further requests until the current one is done. This can be mitigated by deploying your application across [multiple containers](https://www.rplumber.io/articles/hosting.html#docker-advanced), allowing for simultaneous processing of multiple requests. However, in situations where you only want to deploy one container, this can be an issue if you think your API will have high traffic or if you have any long-running model inference in your code. In my experience, this issue has been a pain point when:
+However, `plumber` suffers from a limitation of R. <Highlight text="R is single-threaded, so a request to an API endpoint will block the main process from handling any further requests until the current one is done"/>. This can be mitigated by deploying your application across [multiple containers](https://www.rplumber.io/articles/hosting.html#docker-advanced), allowing for simultaneous processing of multiple requests. However, in situations where you only want to deploy one container, this can be an issue if you think your API will have high traffic or if you have any long-running model inference in your code. In my experience, this issue has been a pain point when:
 
 -	I’ve wanted the API to provide instantaneous feedback to the front-end that it received the request correctly; or,
 -	Long-running model inference blocks requests to status-checking endpoints.
