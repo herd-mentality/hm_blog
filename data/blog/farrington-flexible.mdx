@@ -1,0 +1,54 @@
+---
+title  : The Farrington Flexible algorithm for aberration detection
+date   : '2024-08-07'
+tags   : ['r', 'syndromic-surveillance']
+draft  : false
+summary: 'Syndromic surveillance for the early detection of epidemics'
+authors: ['darrenwong']
+---
+
+# Introduction
+
+Public health surveillance encompasses the statistical analysis of case alerts data to try to catch outbreaks as they start to occur. There are various algorithms used in this space, but this article will focus on the Farrington Flexible aberration detection algorithm as implemented in the `surveillance` R package. This algorithm is an improvement on the original Farrington method, and was found to have high sensitivity (high true positive rate) and high specificity (high true negative rate) compared to other similar methods (EARS-C1/2/3, RAMMIE) in this paper.
+
+So how do we detect aberrations? To determine what data points are aberrations, we need to have some sense of what ‘normal’ looks like. We would then need to define how far from normality an observation would need to be to be abnormal.
+
+# Modelling normality
+
+How we’d model normality depends on the data we’re looking at; in the case of aberration detection, we are more often than not looking at counts of events - whether that be deaths, or the incidence of symptoms. 
+
+Counts commonly follow the Poisson distribution, as long as they are integers, independent, and non-negative - so this appears to be a suitable distribution to use to model our series. However, the Poisson uses the assumption that the variance equals the mean which is often not the case in outbreak data. To handle this, we use Negative Binomial regression which is a generalised form of Poisson regression. Negative Binomial regression has an extra parameter that controls how ‘dispersed’ the variance is, allowing us to have a higher variance than our mean.
+
+This is how normality is modelled in the Farrington Flexible method. 5 years of historical data are modelled using a Negative Binomial regression model, with seasonality being accounted for with a 10-level factor. It appears to me that these are improvements that Noufaily et al. [ADD A SOURCE] added to the original (Farrington) method, which only fit a model on a window of weeks taken from the last $b$ years. The original method wouldn’t have needed to account for seasonality since it only looks at a small window at the same time each year. 
+
+Back to the Farrington Flexible method, this is the regression equation we use:
+
+<center>$$\log \mu_i = \theta + \beta t_i + \delta_{j(t_i)}$$</center>
+
+- Includes a linear trend ($\beta$)
+- $j(t_i)$ is a seasonal factor level (10-level factor?) for week $t_i$; where $j(t_0)=0$ and $\delta_0=0$
+In addition to the above, Noufaily added the down-weighting of outlier historical values (where the Anscombe residual > 2.58 that week) to reduce the effect of previous outbreaks on the current model fit.
+
+# Detecting aberrations
+
+The Farrington Flexible method defines an exceedance score, $X$, as the following:
+
+<center>$$X = \frac{y_0 - \hat{\mu}_0}{U - \hat{\mu}_0}$$</center>
+
+- Where $y_0$ is the current observed count and $\hat{\mu}_0 = \exp(\hat{\theta} + \hat{\beta} t_i + \delta_{j(t_0)})$ is the current expected count. 
+- $U$ is the upper threshold, and is the $100(1-\alpha)$% negative binomial quantile, where $\alpha$ is the Type I error.
+    - One may calculate $U$ using the 2/3 power transformation of the Poisson distribution as well, but this has been found to be functionally the same performance-wise.
+
+If an individual observation has an exceedance score that is $\ge 1$ (i.e. their difference to the expected count exceeds the difference between the upper threshold and the expected count), that observation is flagged as an outbreak.
+
+This is very similar conceptually to other algorithms (and even excess mortality methods) that use the 95% (or similar) quantile of the modelled historical distribution as an outbreak threshold.
+
+# In action
+
+We’ll use the `surveillance` R package for the functions and data utilised in this demonstration. This package is well documented:
+
+-	[`surveillance` documentation](https://surveillance.r-forge.r-project.org/pkgdown/index.html)
+-	[Short course on Statistical surveillance of infectious diseases](https://staff.math.su.se/hoehle/surv-short/surv-short2008_4.pdf)
+-	[Surveillance: An R package for the monitoring of infectious diseases](https://www.researchgate.net/publication/24054021_Surveillance_An_R_package_for_the_monitoring_of_infectious_diseases)
+
+We start by loading our data and turning it into an `sts` object, which is a `surveillance` construct that is essentially a wrapper around a time series. We then specify the controls for the Farrington Flexible model and pass the data and these controls to the `farringtonFlexible()` function. Finally, we use `surveillance`’s `plot()` methods on the `sts` object to visualise the results of the algorithm.
