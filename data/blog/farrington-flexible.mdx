@@ -1,0 +1,160 @@
+---
+title  : The Farrington Flexible algorithm for aberration detection
+date   : '2024-08-08'
+tags   : ['r', 'time-series', 'modelling', 'glm']
+draft  : false
+summary: 'Syndromic surveillance for the early detection of epidemics'
+authors: ['darrenwong']
+---
+
+import { Caption, Highlight } from './components/InPostComponents.tsx'
+
+# Introduction
+
+One aspect of public health surveillance is the statistical analysis of case alerts data to try to catch outbreaks as they start to occur. There are various algorithms used in this space, but this article will focus on the Farrington Flexible aberration detection algorithm as implemented in the `surveillance` R package. This algorithm builds on the original Farrington method, and was found to have high sensitivity (high true positive rate) and high specificity (high true negative rate) compared to other similar methods (EARS-C1/2/3, RAMMIE) [in this paper](https://academic.oup.com/bioinformatics/article/35/17/3110/5301313).
+
+So how do we detect aberrations? To determine what data points are aberrations, we need to have some sense of what ‘normal’ looks like. We would then need to define how far from normality an observation would need to be to be abnormal.
+
+# Modelling normality
+
+How we’d model normality depends on the data we’re looking at. In the case of aberration detection, we are more often than not looking at counts of events - whether that be deaths, or the incidence of symptoms. 
+
+Counts commonly follow the Poisson distribution, as long as they are integers, independent, and non-negative - so this appears to be a suitable distribution to use to model our series. <Highlight text="However, the Poisson distribution uses the assumption that the variance equals the mean which is often not the case in outbreak data"/>. To handle this, we use Negative Binomial regression which is a generalised form of Poisson regression. Negative Binomial regression has an extra parameter that controls how ‘dispersed’ the variance is, allowing us to have a higher variance than our mean.
+
+This is how normality is modelled in the Farrington Flexible method. 5 years of historical data are modelled using a Negative Binomial regression model, with seasonality being accounted for with a 10-level factor. It appears to me that these are improvements that Noufailly et al. added to the original (Farrington) method, which only fit a model on a window of weeks taken from the last $b$ years. The original method wouldn’t have needed to account for seasonality since it only looks at a small window at the same time each year. 
+
+Back to the Farrington Flexible method, this is the regression equation we use:
+
+<center>$$\log \mu_i = \theta + \beta t_i + \delta_{j(t_i)}$$</center>
+
+- Includes a linear trend ($\beta$)
+- $j(t_i)$ is a 10-level seasonal factor for week $t_i$; where $j(t_0)=0$ and $\delta_0=0$
+
+This equation is fit for each of the weeks in the projection period, with the goal of projecting expected value and an upper threshold ([see the next section](#detecting-aberrations)) for each projection week.
+
+In addition to the above, Noufailly added the down-weighting of outlier historical values (where the Anscombe residual > 2.58 that week) to reduce the effect of previous outbreaks on the current model fit. Noufailly's method also discards the last 26 weeks of observations to further reduce the possibility of recent outbreaks causing the model to overesimate the aberration threshold.
+
+<details>
+	<summary>How seasonality is accounted for</summary>
+
+    I was curious what the seasonal factor really was, so I dug into `surveillance::farringtonFlexible()` and found that it was just a numerical variable that is turned into a (presumably unordered) factor and fed as a predictor into the GLM fitting process.
+
+    Given a number of years to look back (`b`) and weeks window width (`w`) specified in the controls list; as well as a week number to project for (`k`):
+
+    1.	From week `k`, go back `b` years to get equivalent week numbers for the last `b` years (i.e. `seq(k, length.out = (b + 1), by = -52)`)
+    2.	From each of these points, +/- `w` weeks to get the first yearly ‘season’
+    3.	Split up the rest of the weeks in the year equally between the remaining 9 seasons
+    4.	Remove the last 26 weeks (also specified in the controls list) 
+    5.	Feed the seasons variable into the GLM as a factor to inform fitting
+
+</details>
+
+<br/>
+
+# Detecting aberrations
+
+The Farrington Flexible method defines an exceedance score, $X$, as the following:
+
+<center>$$X = \frac{y_0 - \hat{\mu}_0}{U - \hat{\mu}_0}$$</center>
+
+- Where $y_0$ is the current observed count and $\hat{\mu}_0 = \exp(\hat{\theta} + \hat{\beta} t_i + \delta_{j(t_0)})$ is the current expected count. 
+- $U$ is the upper threshold, and is the $100(1-\alpha)$% negative binomial quantile, where $\alpha$ is the Type I error.
+    - One may calculate $U$ using the 2/3 power transformation of the Poisson distribution as well, but this has been found to be functionally the same performance-wise.
+
+If an individual observation has an exceedance score that is $\ge 1$ (i.e. their difference to the expected count exceeds the difference between the upper threshold and the expected count), that observation is flagged as an outbreak.
+
+This is very similar conceptually to other algorithms (and even excess mortality methods) that use the 95% (or similar) quantile of the modelled historical distribution as an outbreak threshold.
+
+# In action
+
+We’ll use the `surveillance` R package for the functions and data ([Salmonella Agona cases in the UK 1990-1995](https://surveillance.r-forge.r-project.org/pkgdown/reference/salmonella.agona.html)) utilised in this demonstration. This package is well documented:
+
+-	[`surveillance` documentation](https://surveillance.r-forge.r-project.org/pkgdown/index.html)
+-	[Short course on Statistical surveillance of infectious diseases](https://staff.math.su.se/hoehle/surv-short/surv-short2008_4.pdf)
+-	[Surveillance: An R package for the monitoring of infectious diseases](https://www.researchgate.net/publication/24054021_Surveillance_An_R_package_for_the_monitoring_of_infectious_diseases)
+
+We start by loading our data and turning it into an `sts` object, which is a `surveillance` construct that is essentially a wrapper around a time series. We then specify the controls for the Farrington Flexible model and pass the data and these controls to the `farringtonFlexible()` function. Finally, we use `ggplot2` to visualise the results of the algorithm.
+
+```r
+library(dplyr)
+library(surveillance)
+library(ggplot2)
+
+data("salmonella.agona")
+
+date_filter <- 150
+
+# Convert old disProg object to sts
+salmonella <- disProg2sts(salmonella.agona)
+
+# Graph the data (could use surveillance's plot methods but I prefer to have full control)
+tidy.sts(salmonella) %>% 
+  filter(epoch >= date_filter) %>% 
+  ggplot(aes(x = date)) +
+  annotate(
+    'rect', xmin = as.Date('1995-05-22'), xmax = as.Date('1995-12-18'), ymin = 0, ymax = Inf,
+    fill = 'green', alpha = 0.2
+  ) +
+  annotate(
+    'rect', xmin = as.Date('1994-11-21'), xmax = as.Date('1995-05-22'), ymin = 0, ymax = Inf,
+    fill = '#FA9F42', alpha = 0.2
+  ) +
+  geom_col(aes(y = observed)) +
+  labs(
+    x = 'Date', y = 'Observed cases',
+    title = 'Salmonella data',
+    caption = 'Area to assess for outbreaks marked with green\nLast 26 weeks not used in fit, marked with orange area '
+  )
+```
+
+![](/static/images/farrington-flexible/salmonella_unaltered.jpg)
+
+<Caption text="We can see the period we'll be assessing for outbreaks in green, and the period that gets removed from the fitting process (for the first projection week) in orange"/>
+
+```r
+# Here we specify controls to the Farrington Flexible function
+controls <- list(
+  range                = 282:312, # Range of weeks to test for outbreaks
+  noPeriods            = 10,      # 10 seasonal factors - this is what enables seasonality in Noufailly
+  b = 5, w = 3,                   # Look back 5 years, set reference season to target week +/- 3 weeks (so 7 weeks in reference season)
+  weightsThreshold     = 2.58,
+  pastWeeksNotIncluded = 26,
+  pThresholdTrend      = 1,
+  alpha                = 0.1
+)
+
+# Fit a Farrington Flexible model
+salmonella_ff <- farringtonFlexible(salmonella, control = controls)
+
+# Plot FF fit against historical data
+tidy.sts(salmonella) %>% 
+  # Join in Farrington Flexible modelled table
+  left_join(
+    tidy.sts(salmonella_ff) %>% 
+      select(year, epochInYear, alarm, upperbound), 
+    suffix = c('', '_ff'),
+    by = c('year', 'epochInYear')
+  ) %>% 
+  filter(epoch >= date_filter) %>% 
+  mutate(
+    # Mark where alerts have occurred
+    alarm_plot = ifelse(alarm_ff, observed, NA)
+  ) %>% 
+  ggplot(aes(x = date)) +
+  annotate(
+    'rect', xmin = as.Date('1994-11-21'), xmax = as.Date('1995-05-22'), ymin = 0, ymax = Inf,
+    fill = '#FA9F42', alpha = 0.2
+  ) +
+  geom_col(aes(y = observed), fill = 'darkgrey') +
+  geom_line(aes(y = upperbound_ff), linetype = 'dotted', colour = 'black', size = 3) +
+  geom_point(aes(y = alarm_plot), colour = '#EC4899', cex = 6) +
+  labs(
+    x = 'Date', y = 'Observed cases',
+    title = 'Salmonella data + Farrington Flexible aberration threshold',
+    caption = 'Aberration threshold in black, alerts in pink\nLast 26 weeks not used in fit, marked with orange area'
+  )
+```
+
+![](/static/images/farrington-flexible/salmonella_ff.jpg)
+
+<Caption text="We can see the aberration detection threshold in black, and observations marked as alerts in pink"/>
