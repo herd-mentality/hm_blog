@@ -1,0 +1,88 @@
+---
+title  : Asynchronous Processing in Plumber APIs with Future
+date   : '2024-08-08'
+tags   : ['r', 'plumber', 'api', 'parallel-processing']
+draft  : false
+summary: 'Enabling parallel and asynchronous processing in your Plumber APIs using the future package'
+authors: ['darrenwong']
+---
+
+# Introduction
+[`plumber`](https://www.rplumber.io/) is a fantastic tool if you want to deploy your R code and functions as an API. It allows you to easily create an API and its endpoints with minimal changes to your R code. Once built, you can also host your API with a variety of services, Posit Connect being one example.
+
+However, `plumber` suffers from a limitation of R. R is single-threaded, so a request to an API endpoint will block the main process from handling any further requests until the current one is done. This can be mitigated by deploying your application across [multiple containers](https://www.rplumber.io/articles/hosting.html#docker-advanced), allowing for simultaneous processing of multiple requests. However, in situations where you only want to deploy one container, this can be an issue if you think your API will have high traffic or if you have any long-running model inference in your code. In my experience, this issue has been a pain point when:
+
+-	I’ve wanted the API to provide instantaneous feedback to the front-end that it received the request correctly; or,
+-	Long-running model inference blocks requests to status-checking endpoints.
+    -	An example of this is [AWS Sagemaker’s health checks to the `/ping` endpoint](https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests), where a number of failed health check requests causes AWS to shut the container down
+
+These are issues that the other features of `plumber` such as filters cannot handle, since the only way to return an API response is with the `return()` function (or using an implicit return) in a non-filter endpoint.
+
+# The solution
+To fix these issues, we need to address the single-threading limitation. We do this by allowing R to work across multiple cores/processes, a paradigm referred to as parallel computing or parallelisation. The `future` package provides an easy way to implement this, and works well when combined with `plumber`. 
+
+[`future`](https://future.futureverse.org/) also allows you to harness parallel computing with minimal modification to your code. All you’ll need to do after installing and loading it is to select a parallel backend to use, then wrap the code you want to send to another process in `future({})`. In my experience there’s no need to mess with explicitly exporting packages or data to the background processes; it just works out of the box. 
+
+With the work in the `future({})` block sent to a parallel worker, the main `plumber` API process is freed up to accept and process further requests.
+
+```r:plumber.R
+library(future)
+
+plan(multisession) # Choose a parallel backend
+
+#* Endpoint example
+#* @get /endpoint_example
+function() {
+
+  response <- list(msg = 'received!')
+
+  future({
+
+    # Some long-running model
+
+  })
+
+  return(response)
+
+}
+```
+
+Note that any code you place in the `future({})` block will get sent to a parallel worker, and the code immediately after it will start to run as the parallel tasks tick in the background. This means you can strategically pick and choose which parts of your code you want to send parallel. For example:
+
+-	If you want your endpoint to accept the request, then instantly return an API response while running your long-running model in the background; wrap all code in your endpoint except the `return()` statement in `future({})` (as in the example above).
+-	If you want your *entire* endpoint to run parallel to the main process, wrap all code in your endpoint – including the `return()` statement – in `future({})`.
+    -	This means that the API response is only sent when the model has completed
+    -	This is what we used to fix the issue with AWS Sagemaker `/ping` checks being blocked, and would likely work better for high volume APIs that need to meet this requirement
+
+It should be noted that this isn’t entirely a magic bullet. There are some drawbacks when it comes to transparency (debugging and logging), and you are limited by the resources you choose for your deployment. If more requests come in than cores available, `future` will handle the queueing of requests for you.
+
+You can also embrace asynchronicity to a larger extent, and combine `future` with [`promises`](https://rstudio.github.io/promises/articles/promises_02_intro.html) to evaluate the output of a future block when it resolves. However, I’ve not found the need to do that yet as the models I’ve worked with mainly saved their outputs to disk for a downstream tool to pick up.
+
+# A note on logging
+
+Often, you’ll be using `future` to send long-running jobs to parallel workers to free up the main thread. However, it’s these exact types of jobs that you’d also require logs for (for monitoring and debugging purposes).
+
+For processes in `future({})` blocks, messages that are usually sent to the R console or to `stdout` are instead collected by `future` and revealed only when the results of the `future({})` block are queried. This means that logs won’t be available in real-time through the standard route.
+
+There are ways around this that still allow you to see logs in real-time; however they mainly center around logging to files that sit on disk. We can use a combination of `sink` and `cat` for this; but my main preference is to use [`logger`](https://daroczig.github.io/logger/) and to set up file appenders.
+
+```r
+# Example using sink/cat; no need to load extra packages
+sink('log_file.log') # Open sink
+cat('Log messages here\n')
+sink()               # Close sink
+
+# Example using logger
+logger::log_appender(logger::appender_file('log_file.log'))
+logger::log_info('Log messages here')
+```
+# Closing
+
+If you find that this solution doesn’t cut it for you, or if your API has particularly high traffic; `plumber`’s documentation mentions ways to handle [load-balancing and routing using nginx](https://www.rplumber.io/articles/hosting.html#multiple-applications-on-one-port).
+
+Similarly, `future` also has a lot of additional features you can learn by reading the docs. For example:
+-	You can check if a future has resolved without blocking processes that wait for it to finish by using [`resolved(f)`](https://future.futureverse.org/reference/resolved.html).
+-	You can use the [`backtrace(f)`](https://future.futureverse.org/reference/backtrace.html?q=backtrace) (not `traceback()`) function on a future to see the last call in the callstack if you run into errors.
+-	Use `tryCatch` or [`purrr::safely()`](https://purrr.tidyverse.org/reference/safely.html) where possible to gracefully handle errors that you foresee cropping up.
+
+Finally, if you want to take it even further, take a look at [`furrr`](https://furrr.futureverse.org/) - a powerful cross between `future` and `purrr`.
