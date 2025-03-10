@@ -1,0 +1,501 @@
+---
+title  : Implementing a Hash Table in C
+date   : '2025-03-10'
+tags   : ['c', 'data-structures', 'hash-table']
+draft  : false
+summary: 'Creating a simple hash table in C using concepts from CS50x'
+authors: ['darrenwong']
+---
+
+import { Caption, Highlight } from './components/InPostComponents.tsx';
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+
+# Introduction
+ 
+I’ve been working through Harvard’s awesome [CS50x Introduction to Computer Science](https://cs50.harvard.edu/x/2024/) course, and a concept that’s been pretty interesting to me is the hash table data structure. This data structure allows us to leverage the best properties of _arrays_ and _linked lists_ to achieve searches in average-case $O(1)$ time, while the worst-case complexity is $O(n)$ when multiple keys collide in the same bucket.
+
+As a quick primer, here are descriptions of the array and linked list data structures and their pros and cons:
+
+<Tabs>
+  <TabList>
+    <Tab>Arrays</Tab>
+    <Tab>Linked Lists</Tab>
+  </TabList>
+
+  <TabPanel>
+
+    - Array items are kept contiguously in memory, allowing constant-time $O(1)$ access for indexed lookups and $O(logn)$ searching if the array is sorted (binary search).
+    - However, dynamically growing an array is expensive, since expanding its size requires reallocating and copying all elements since we need to keep all members contiguous in memory.
+
+  </TabPanel>
+  <TabPanel>
+
+    - Linked lists directly address the issue of not being able to grow our data structure. List items are kept in non-contiguous memory addresses, next to a pointer to the next list item.
+    - As a result, searching in a linked list is slower, since in the worst case, we may have to traverse the entire list to find the desired item.
+    - However, adding new nodes to the start or end of the list is trivial since we no longer need items contiguously in memory.
+
+  </TabPanel>
+</Tabs>
+<br/>
+
+
+Hash tables are constructed as arrays of linked lists. Without going too much into detail, what this means is that:
+
+- When an item is added to the hash table, its ID or key is _hashed_ which should give us a number corresponding to which bucket (i.e. array item) the item should sit under.
+- <Highlight text="By hashing the ID of a data item, we can instantly determine which bucket it belongs to, allowing for O(1) access in the average case."/>
+- The array item contains a pointer (i.e. a memory address) to the start of a linked list which holds all the data in that bucket.
+- This means that, if there is only one item in each linked list, we can access data in $O(1)$ time. This “best case” occurs when we don’t get much hash key collision, something we can manipulate with what hash function we use and how big of a hash table we allocate initially.
+    - On the other hand, the worst case of $O(n)$ occurs when all keys have collided and all data is in the one linked list.
+
+![Hash table illustration](/static/images/hash-tables-in-c/hash-table.png)
+
+<Caption text="Illustration of a hash table from an article on Codesphere by Simon Pfeiffer. Note how the keys are hashed into a number representing which bucket to be stored in, then each bucket contains a linked list."/>
+
+So what does this mean practically for us?
+
+- <Highlight text="Increasing the size of the hash table reduces the chance of key collisions, improving search performance by keeping lookups closer to O(1)."/>
+- Since there are linked lists under each bucket, our hash table can now grow indefinitely - however this comes at the cost of search time.
+- Since hash tables rely on an array of pointers, increasing the number of buckets (to reduce collisions) often requires resizing and rehashing, which can be costly because every key must be reinserted into the new table.
+- Another downside of hash tables is that they allocate a large amount of memory upfront to set up the initial array.
+
+Due to their performance implications, hash tables are found commonly in the wild - for example, _JavaScript objects_ and _Python dictionaries_ are implemented as hash tables.
+
+# Implementation
+
+## Required C concepts
+
+There are a few key C concepts we need to go through quickly before we dive into the implementation:
+
+- C allows you to define your own data structures using the `struct` keyword. 
+- C requires you to pre-specify the data type returned from a function. So `int main (void)` is a function definition that returns an integer and that takes no arguments.
+- A core concept in C are pointers, which are essentially addresses in memory to certain variables.
+    - We use the dereference operator `*` to return the contents of the item at a given pointer.
+    - We use `->` to access a struct member when working with a pointer to a struct. It is shorthand for `(*pointer).attribute`. So if we have a `node` struct that contains an attribute called `key`, then we do `{node}->{key}` to access the `key` of a given `node`.
+
+# Actual implementation
+
+To begin, we need a few structs:
+
+- A `node` struct to define the nodes of a linked list containing space for a `key`, a `value`, and then a pointer to the `next` item in the linked list.
+- A `hash_table` struct to define the overarching array in the hash table, an array of pointers of length `TABLE_SIZE`.
+
+```C
+#define TABLE_SIZE 11
+
+
+// Implementation of the linked list component
+typedef struct node {
+
+
+   char *key;
+   char *value;
+   struct node *next;
+
+
+} node;
+
+
+// Overarching struct for the hash table
+typedef struct {
+   node *buckets[TABLE_SIZE]; // Array of pointers to linked lists
+} hash_table;
+```
+
+We also need a hash function that takes a word and returns an integer, describing which bucket to place the data into
+
+> NB: Strings in C are represented as character arrays, and a string variable is a pointer to the first character of the array. This allows efficient passing of strings as function arguments.
+
+```C
+/*
+   Hash function
+
+
+   We need a hash function that can adequately hash our keys,
+     whilst suppressing the probability of key collision. CS50
+     suggests a naive approach using the first letter of the name,
+     but let's use DJB2 for now.
+
+
+   djb2 hash function modified from http://www.cse.yorku.ca/~oz/hash.html
+
+
+*/
+unsigned int hash(const char *word, const int table_size) {
+
+
+   unsigned long hash = 5381;
+   int c;
+   while ((c = *word++))
+       hash = ((hash << 5) + hash) + c;
+   return hash % table_size;  // Keep it within table size
+
+
+}
+```
+
+With these fairly simple building blocks, we can now create the hash table:
+- Note how the return value of this function is a pointer to a `hash_table` struct.
+- We use `malloc(sizeof(hash_table))` to allocate memory for the entire `hash_table` struct, which includes the array of pointers. Since the `buckets` array is part of the struct, we don’t need a separate allocation for it. 
+- We then go through each element of the array and replace the value with a `NULL` since the allocated memory addresses may currently contain ‘garbage values’ that were left over from some other system process.
+
+```C
+// Create hash table
+hash_table *create_table() { // Returns a pointer to the hash table
+
+
+   // Allocate memory for the hash table struct
+   hash_table *ht = malloc(sizeof(hash_table));  
+   if (!ht) {
+       printf("Memory allocation failed\n");
+       return NULL;
+   }
+
+
+   // Initialize all buckets to NULL (drop all garbage values)
+   for (int i = 0; i < TABLE_SIZE; i++) {
+       ht->buckets[i] = NULL;
+   }
+
+
+   return ht;
+}
+```
+
+## Interacting with the hash table
+
+With our hash table now implemented, all that remains is to create the functions we use to interact with the table. We’ll implement operations such as getting, inserting, and deleting values, then we’ll finish off with methods to print or delete the entire table.
+
+### get()
+
+This function accepts the hash table, as well as a string representing the key we want to get the value for.
+- We then hash the key to figure out which bucket to look in.
+- Accessing that element of the bucket takes us to the corresponding linked list.
+- From here all we need to do is traverse the linked list by grabbing the `next` address to find the next item until we find a key that matches the search string.
+- Note the `while (cursor)` loop, this will terminate once we’re at the last item in the linked list whose `next` attribute will be `NULL` (which evaluates to false in C).
+
+```C
+// Get from hash table
+char *get(hash_table *ht, const char *key) {
+
+
+   // Get index in overarching array of hash table
+   unsigned int index = hash(key, TABLE_SIZE);
+
+
+   // Get pointer to first node under this key
+   node *cursor = ht->buckets[index];
+
+
+   // Then from there, we just traverse the linked list until we find the key we're looking for
+   while (cursor) {
+
+
+       if (strcmp(cursor->key, key) == 0) {
+           return cursor->value;
+       }
+       cursor = cursor->next;
+
+
+   }
+
+
+   // If we reach this point, we will not have found anything
+   return NULL;
+
+
+}
+```
+
+### insert()
+
+This function accepts a key and corresponding value to insert into the hash table.
+
+- We first hash the key to figure out which bucket to place the item in.
+- We then check the linked list at that bucket to see if the key already exists - if it does then we update the value.
+- If the key doesn’t exist, we’ll create a new node at the start of the linked list. This means we need to:
+    - Allocate memory for a new node with `malloc()`.
+    - Fill that node with the key and value provided.
+    - Set the `next` attribute to the original first item in the list.
+    - Update the pointer in the overarching array to point to the new first item in the list.
+
+> NB: We use `strdup` to allocate new memory and copy the string, since directly assigning `key = some_string` would only copy the pointer, leading to potential memory issues.
+
+```C
+// Insert into the hash table
+void insert(hash_table *ht, const char *key, const char *value) {
+
+
+   // Get index in overarching array of hash table
+   unsigned int index = hash(key, TABLE_SIZE);
+
+
+   // Check if key already exists and update value
+   node *current = ht->buckets[index];
+   while (current) {
+       if (strcmp(current->key, key) == 0) { // If key exists, update value
+           free(current->value);             // Yeet old value
+           current->value = strdup(value);   // Update with new value
+           return;                           // Exit without inserting a duplicate node
+       }
+       current = current->next;
+   }
+
+
+   // Allocate memory for the new node if doesn't already exist
+   node *new_node = malloc(sizeof(node));
+
+
+   if (!new_node) {
+       printf("Memory allocation failed\n");
+       return;
+   }
+
+
+   // Copy name and number
+   new_node->key      = strdup(key);
+   new_node->value    = strdup(value);
+   new_node->next     = ht->buckets[index];  // Insert at the beginning of the linked list
+   ht->buckets[index] = new_node;            // Update head pointer
+
+
+}
+```
+
+### delete()
+
+This function accepts a key, navigates to that item, and deletes the node.
+
+- We first hash the key to figure out which bucket to look for the item in.
+- We then grab the pointer to the relevant linked list and traverse that linked list until we find a key that matches the one we need to delete.
+- Once found, we `free` the `key` and `value` from memory.
+- We set the previous node’s `next` pointer to the node after the one being deleted to complete the operation.
+- Note that if we’re deleting the first node in the list, we’ll also need to update the pointer in the overarching array.
+
+```C
+// Delete node
+void delete(hash_table *ht, const char *key) {
+
+
+   // Get index in overarching array of hash table
+   unsigned int index = hash(key, TABLE_SIZE);
+
+
+   // Node pointer
+   node *ptr  = ht->buckets[index];
+   node *prev = NULL;
+
+
+   if (!ptr) {
+       printf("No nodes to delete\n");
+       return;
+   }
+
+
+   // If node exists, traverse linked list to find where our node is
+   while (ptr) {
+
+
+       if (strcmp(ptr->key, key) == 0) {
+
+
+           // If deleting the head node, update the hash table array
+           if (prev == NULL) {
+               ht->buckets[index] = ptr->next;
+           } else {
+               prev->next = ptr->next;   // Bypass the node being deleted
+           }
+
+
+           // Free memory
+           free(ptr->key);
+           free(ptr->value);
+           free(ptr);
+           printf("Deleted key: %s\n", key);
+           return;  // Exit after deleting (assuming unique keys)
+
+
+       }
+
+
+       prev = ptr;      // Move prev to current node
+       ptr = ptr->next; // Move to next node
+
+
+   }
+
+
+   printf("Key not found: %s\n", key);
+
+
+}
+```
+
+### print_table()
+
+This is a simple function that will traverse the array items of the hash table, printing the contents of each linked list that exists.
+
+```C
+// Print table
+void print_table(hash_table *ht) {
+
+
+   for (int i = 0; i < TABLE_SIZE; i++) {
+
+
+       printf("[%d]: ", i);
+       node *cursor = ht->buckets[i];
+       while (cursor) {
+           printf("(%s, %s) -> ", cursor->key, cursor->value);
+           cursor = cursor->next;
+       }
+       printf("NULL\n");
+
+
+   }
+
+
+}
+```
+
+### free_table()
+
+This is an important function to ensure that there are no memory leaks once the `main()` function completes. We use this function to ‘delete’ the hash table from memory.
+
+- Similar to `print_table()`, this function traverses the array and each linked list, `free`-ing items from memory as we go.
+
+```C
+// Free table
+void free_table(hash_table *ht) {
+
+
+   for (int i = 0; i < TABLE_SIZE; i++) {
+
+
+       node *cursor = ht->buckets[i];
+       while (cursor) {
+           node *temp = cursor;
+           cursor = cursor->next;
+           free(temp->key);
+           free(temp->value);
+           free(temp);
+       }
+
+
+   }
+
+
+   free(ht);
+
+
+}
+```
+
+## Example usage
+
+We’ll place our example usage code in the `main()` function for illustration. Here we start off by creating the table, placing keys and values into it, getting & deleting items, then freeing the table.
+
+```C
+int main(void) {
+
+
+   hash_table *ht = create_table();
+
+
+   insert(ht, "Charlie", "(634) 466-1630");
+   insert(ht, "Mac", "1-436-705-3673");
+   insert(ht, "Dee", "1-214-717-1808");
+   insert(ht, "Dennis", "(491) 584-6065");
+   insert(ht, "Frank", "(641) 848-9738");
+
+
+   char *name = "Agamemnon";
+   char *result = get(ht, name);  // Declare and initialize `result`
+   if (result) {
+       printf("Found %s: %s\n", name, result);
+   } else {
+       printf("%s not found\n", name);
+   }
+
+
+   name = "Dennis";
+   result = get(ht, name);  // result var already initialised
+   if (result) {
+       printf("Found %s: %s\n", name, result);
+   } else {
+       printf("%s not found\n", name);
+   }
+
+
+   print_table(ht);
+
+
+   delete(ht, "Agamemnon");
+   delete(ht, "Dennis");
+
+
+   print_table(ht);
+
+
+   free_table(ht);
+
+
+   // We see that Dee and Charlie have keys that collide in this small of a table
+   printf("Dee hash: %i\n", hash("Dee", TABLE_SIZE));
+   printf("Charlie hash: %i\n", hash("Charlie", TABLE_SIZE));
+
+
+   return 0;
+
+
+}
+```
+
+```c
+/*
+   Result
+
+
+   $ make hash-table
+   $ ./hash-table
+   > Agamemnon not found
+   > Found Dennis: (491) 584-6065
+   > [0]: (Mac, 1-436-705-3673) -> NULL
+   > [1]: NULL
+   > [2]: (Dee, 1-214-717-1808) -> (Charlie, (634) 466-1630) -> NULL
+   > [3]: NULL
+   > [4]: NULL
+   > [5]: (Dennis, (491) 584-6065) -> NULL
+   > [6]: NULL
+   > [7]: NULL
+   > [8]: (Frank, (641) 848-9738) -> NULL
+   > [9]: NULL
+   > [10]: NULL
+   > Key not found: Agamemnon
+   > Deleted key: Dennis
+   > [0]: (Mac, 1-436-705-3673) -> NULL
+   > [1]: NULL
+   > [2]: (Dee, 1-214-717-1808) -> (Charlie, (634) 466-1630) -> NULL
+   > [3]: NULL
+   > [4]: NULL
+   > [5]: NULL
+   > [6]: NULL
+   > [7]: NULL
+   > [8]: (Frank, (641) 848-9738) -> NULL
+   > [9]: NULL
+   > [10]: NULL
+   > Dee hash: 2
+   > Charlie hash: 2
+
+
+*/
+```
+
+Note that we can see already that two of our keys (Dee and Charlie) have collided. This happens because our hash function produces the same remainder (`hash(key) % 11`) for both Charlie and Dee. A larger table size would reduce the probability of such collisions.
+
+![Hash table collision illustration](/static/images/hash-tables-in-c/mermaid-hash-collision.png)
+
+<Caption text="An illustration of how two names may end up in the same bucket. Unfortunately there aren’t enough people here for a game of Chardee MacDennis."/>
+
+# Wrap-up
+
+While fun, this is still a naive implementation of this data structure. To improve this, we could probably start by splitting up the struct and function definitions into their own scripts to improve readability.
