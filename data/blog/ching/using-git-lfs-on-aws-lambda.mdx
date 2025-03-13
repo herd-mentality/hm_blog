@@ -1,0 +1,30 @@
+---
+title  : Using Git LFS on AWS
+date   : '2025-03-13'
+tags   : ['git', 'aws', 'cloudshell', 'sagemaker']
+draft  : false
+summary: 'Cloning Git with Large File System (LFS) on various AWS services'
+authors: ['chingchew']
+---
+
+Sometimes you want to clone a Git repository that has large files versioned using Git Large File System (LFS), e.g. with the following command:
+
+```bash
+git lfs clone <repository-url>
+```
+
+# AWS CloudShell
+AWS CloudShell uses 'dnf' so the command to install is:
+
+```bash
+sudo dnf install git-lfs
+```
+
+Note that due to CloudShell disk size limits (usually I get \<1GB free), you might need to use another option.
+
+# AWS SageMaker Notebook
+AWS SageMaker Notebooks use Amazon Linux and the Deep Learning AMIs.
+
+Follow the instructions from this blog post:
+
+https://jeremypedersen.com/posts/2024-01-17-add-git-lfs/
