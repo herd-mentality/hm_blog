@@ -1,0 +1,16 @@
+---
+title  : Free up disk space on AWS SageMaker Notebook
+date   : '2025-05-01'
+tags   : ['aws', 'sagemaker']
+draft  : false
+summary: 'Clear trash on AWS SageMaker Notebook to free up disk space'
+authors: ['chingchew']
+---
+
+If you delete a lot of files and find that you are still running out of disk space on AWS SageMaker Notebook, this could be due to deleted files still occupying disk space.
+
+To permanently delete files on your Notebook instance, you can run the following commands in a Notebook terminal:
+
+```bash
+rm -rf SageMaker/.Trash-1000/
+```
