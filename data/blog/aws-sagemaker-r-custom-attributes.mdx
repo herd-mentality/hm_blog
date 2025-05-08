@@ -1,0 +1,27 @@
+---
+title  : Plumber R reading AWS SageMaker custom attributes
+date   : '2025-05-09'
+tags   : ['aws', 'sagemaker', 'r', 'plumber', 'inference']
+draft  : false
+summary: 'Reading AWS SageMaker asynchronous inference `CustomAttributes` header in R using Plumber'
+authors: ['chingchew']
+---
+AWS SageMaker asynchronous inference supports `CustomAttributes`, allowing callers to pass additional information to the model outside of the inference payload.
+
+See [AWS SageMaker InvokeEndpointAsync documentation](https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_runtime_InvokeEndpointAsync.html#API_runtime_InvokeEndpointAsync_RequestSyntax).
+
+If you are using the Plumber R package in your custom SageMaker model, you can access the `CustomAttributes` value via a header:
+
+```r
+#' Parse `CustomAttributes` header and do something with it.
+#' @param req The HTTP request sent
+#' @post /invocations
+function(req) {
+  custom_attributes <- req$HTTP_X_AMZN_SAGEMAKER_CUSTOM_ATTRIBUTES
+
+  # Do something with it
+  output = ...
+
+  return(output)
+}
+```

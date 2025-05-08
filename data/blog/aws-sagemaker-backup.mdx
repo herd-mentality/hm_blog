@@ -1,0 +1,33 @@
+---
+title  : Migrate AWS SageMaker Notebook to JupyterLab 4
+date   : '2025-05-09'
+tags   : ['aws', 'sagemaker', 'jupyter', 'jupyterlab']
+draft  : false
+summary: 'Easy way to migrate AWS SageMaker Notebook using S3'
+authors: ['chingchew']
+---
+With AWS SageMaker Notebooks running JupyterLab 1 and JupyterLab 3 reaching [end of standard support on 30 June 2025](https://docs.aws.amazon.com/sagemaker/latest/dg/nbi-jl.html#nbi-jl-version-maintenance), AWS recommends [migrating your Notebooks using Amazon Elastic Block Storage (EBS) volumes](https://aws.amazon.com/blogs/machine-learning/migrate-your-work-to-amazon-sagemaker-notebook-instance-with-amazon-linux-2/).
+
+An alternative is to use S3 as follows:
+
+1. Create an S3 bucket (you can also use an existing S3 bucket). The following commands assume the S3 bucket name is `sm-backup`.
+1. Start your AWS SageMaker Notebook and open JupyterLab.
+1. In the left panel, create a new folder called `backup`.
+1. Move folders and files that you want to backup into the `backup` folder.
+1. Open 'Terminal' and run the following commands:
+
+```bash
+zip -r SageMaker/notebook-backup.zip SageMaker/backup
+aws s3 cp SageMaker/notebook-backup.zip s3://sm-backup
+```
+
+Create the new JupyterLab 4 Notebook, open 'Terminal' and run the following commands:
+
+```bash
+aws s3 cp s3://sm-backup/notebook-backup.zip SageMaker
+unzip SageMaker/notebook-backup.zip
+```
+
+Move folders and files out of the `backup` folder and your migration is now complete.
+
+Delete the `backup` folder, delete the `notebook-backup.zip` file, delete the old SageMaker Notebook and delete the S3 bucket (if required).
