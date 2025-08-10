@@ -21,6 +21,7 @@ function Results() {
       onRender={({ item, active }) =>
         typeof item === 'string' ? (
           <div
+            className="font-grotesk"
             style={{
               padding: '8px 12px',
               fontSize: 12,
@@ -283,6 +284,7 @@ export default function CommandPalette() {
             }}
           >
             <KBarSearch
+              className="font-grotesk"
               style={{
                 padding: '12px 16px',
                 fontSize: 16,
@@ -293,7 +295,7 @@ export default function CommandPalette() {
                 background: 'transparent',
                 color: 'inherit',
               }}
-              placeholder="Search…"
+              placeholder="Type a command or search…"
               onChange={(e) => setSearchQuery((e.target as HTMLInputElement).value)}
             />
             <div style={{ padding: '8px 8px 12px' }}>

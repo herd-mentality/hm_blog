@@ -8,6 +8,7 @@ import { InferGetStaticPropsType } from 'next'
 import { NewsletterForm } from 'pliny/ui/NewsletterForm'
 import { allBlogs } from 'contentlayer/generated'
 import type { Blog } from 'contentlayer/generated'
+import { useEffect, useState } from 'react'
 
 const MAX_DISPLAY = 5
 
@@ -16,6 +17,20 @@ export const getStaticProps = async () => {
   const posts = allCoreContent(sortedPosts)
 
   return { props: { posts } }
+}
+
+function UseKeyHint() {
+  const [isMac, setIsMac] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (typeof navigator !== 'undefined') {
+      const p = navigator.platform.toLowerCase()
+      const ua = navigator.userAgent.toLowerCase()
+      const mac = p.includes('mac') || ua.includes('mac os') || ua.includes('macintosh')
+      setIsMac(mac)
+    }
+  }, [])
+  if (isMac === null) return null
+  return <span className="hidden sm:inline font-grotesk">, or press {isMac ? '⌘' : 'Ctrl'} + K to search</span>
 }
 
 export default function Home({ posts }: InferGetStaticPropsType<typeof getStaticProps>) {
@@ -27,8 +42,9 @@ export default function Home({ posts }: InferGetStaticPropsType<typeof getStatic
           <h1 className="text-3xl font-extrabold leading-9 tracking-tight text-gray-900 dark:text-gray-100 sm:text-4xl sm:leading-10 md:text-6xl md:leading-14">
             Latest
           </h1>
-          <p className="text-lg leading-7 text-gray-500 dark:text-gray-400">
-            {siteMetadata.description}
+          <p className="text-lg leading-7 text-gray-500 dark:text-gray-400 font-grotesk">
+            See the latest posts from the Herd
+            <UseKeyHint />
           </p>
         </div>
         <ul className="divide-y divide-gray-200 dark:divide-gray-700">
