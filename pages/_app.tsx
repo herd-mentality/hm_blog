@@ -18,8 +18,13 @@ import { SearchProvider } from 'pliny/search'
 import LayoutWrapper from '@/components/LayoutWrapper'
 import { useEffect } from 'react'
 import { useRouter } from 'next/router'
+import dynamic from 'next/dynamic'
 
 import * as ga from '../src/ga'
+
+const CommandPalette = dynamic(() => import('@/components/CommandPalette'), {
+  ssr: false,
+})
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter()
@@ -45,6 +50,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta content="width=device-width, initial-scale=1" name="viewport" />
       </Head>
       {/* <Analytics analyticsConfig={siteMetadata.analytics} /> */}
+      <CommandPalette />
       <LayoutWrapper>
         <SearchProvider searchConfig={siteMetadata.search}>
           <Component {...pageProps} />
