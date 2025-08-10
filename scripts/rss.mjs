@@ -10,7 +10,8 @@ const rss = () => {
   const allBlogs = JSON.parse(
     readFileSync(resolve(__dirname, '../.contentlayer/generated/Blog/_index.json'), 'utf8')
   )
-  generateRSS(siteMetadata, allBlogs)
+  const visibleBlogs = allBlogs.filter((post) => post.draft !== true)
+  generateRSS(siteMetadata, visibleBlogs)
   console.log('RSS feed generated...')
 }
 export default rss

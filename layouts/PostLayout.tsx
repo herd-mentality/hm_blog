@@ -11,6 +11,7 @@ import Tag from '@/components/Tag'
 import siteMetadata from '@/data/siteMetadata'
 import ScrollTopAndComment from '@/components/ScrollTopAndComment'
 import MultiPartTracker from '@/components/MultiPartTracker'
+import RBloggersSidebar from '@/components/RBloggersSidebar'
 
 const editUrl = (path) => `${siteMetadata.siteRepo}/blob/master/data/${path}`
 const discussUrl = (path) =>
@@ -47,10 +48,7 @@ export default function PostLayout({
   const split_path = path.split('/')
   const nested_group = split_path.slice(1, split_path.length - 1)
 
-  // If nested group, show the component. If not, then show nothing.
-  // Since nests of depth > 1 are allowed, just do nested_group.join('/') (regardless of length of nested_group) and report that name
-  // Would also be good to query the data - need to find where the nested data go
-  // Looks like we can filter the json from generated/Blog/_index.json for those with a path that matches the nested route?
+  const hasRTag = (tags || []).map((t) => t.toLowerCase()).includes('r')
 
   return (
     <SectionContainer>
@@ -157,6 +155,7 @@ export default function PostLayout({
                     <MultiPartTracker path={path} allPosts={allPosts} />
                   </div>
                 )}
+                {hasRTag && <RBloggersSidebar />}
                 {tags && (
                   <div className="py-4 xl:py-8">
                     <h2 className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
