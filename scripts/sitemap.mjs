@@ -10,7 +10,8 @@ const sitemap = () => {
   const allBlogs = JSON.parse(
     readFileSync(resolve(__dirname, '../.contentlayer/generated/Blog/_index.json'), 'utf8')
   )
-  generateSitemap(siteMetadata.siteUrl, allBlogs)
+  const visibleBlogs = allBlogs.filter((post) => post.draft !== true)
+  generateSitemap(siteMetadata.siteUrl, visibleBlogs)
   console.log('Sitemap generated...')
 }
 export default sitemap
