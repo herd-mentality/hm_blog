@@ -30,6 +30,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Inter', ...fontFamily.sans],
+        grotesk: ['"Space Grotesk Variable"', 'Space Grotesk', ...fontFamily.sans],
       },
       colors: {
         primary: colors.teal,
