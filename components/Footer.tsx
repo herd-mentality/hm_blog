@@ -21,6 +21,16 @@ export default function Footer() {
             {siteMetadata.title}
           </Link>
           <div>{` • `}</div>
+          {/* R-bloggers backlink */}
+          <a
+            className="footer-link"
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://www.r-bloggers.com/"
+          >
+            R-bloggers
+          </a>
+          <div>{` • `}</div>
           <div>{`© ${new Date().getFullYear()}`}</div>
         </div>
         <div className="mb-2 flex space-x-2 text-sm text-gray-500 dark:text-gray-400">
