@@ -30,7 +30,11 @@ function UseKeyHint() {
     }
   }, [])
   if (isMac === null) return null
-  return <span className="hidden sm:inline font-grotesk">, or press {isMac ? '⌘' : 'Ctrl'} + K to search</span>
+  return (
+    <span className="hidden font-grotesk sm:inline">
+      , or press {isMac ? '⌘' : 'Ctrl'} + K to search
+    </span>
+  )
 }
 
 export default function Home({ posts }: InferGetStaticPropsType<typeof getStaticProps>) {
@@ -42,7 +46,7 @@ export default function Home({ posts }: InferGetStaticPropsType<typeof getStatic
           <h1 className="text-3xl font-extrabold leading-9 tracking-tight text-gray-900 dark:text-gray-100 sm:text-4xl sm:leading-10 md:text-6xl md:leading-14">
             Latest
           </h1>
-          <p className="text-lg leading-7 text-gray-500 dark:text-gray-400 font-grotesk">
+          <p className="font-grotesk text-lg leading-7 text-gray-500 dark:text-gray-400">
             See the latest posts from the Herd
             <UseKeyHint />
           </p>
