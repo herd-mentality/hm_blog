@@ -1,0 +1,290 @@
+---
+title  : Quackpipe, running DuckDB local and on AWS Glue
+date   : '2025-08-15'
+tags   : ['Cloud Infrastructure', 'Data Engineering', 'Python', 'DuckDB']
+draft  : false
+summary: 'Your new addiction to fast, flexible data pipelines. The quickest high from local to cloud.'
+authors: ['christophermortimer']
+---
+
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
+
+<TOCInline toc={props.toc} indentDepth={2} />
+<br />
+
+![Architecture Diagram](/static/images/quackpipe-aws-glue-duckdb/quackpipe.png)
+
+# Quackpipe
+
+Stop waiting for AWS Glue jobs while in development by using a local-first workflow with DuckDB and deploy with Terraform.
+Your new addiction to fast, flexible data pipelines. The quickest high from local to cloud.
+
+Based on the following Github repository [https://github.com/mortie23/quackpipe](https://github.com/mortie23/quackpipe)
+
+### Developing on a platform that wasn't made for it
+
+Have you ever had the pain of being in a situation where, as a developer you are asked to do your development inside a tool that really isn't meant for development, like the AWS Glue web console.
+
+Each change to your code leads to:
+
+- slow runs/job startups that take half a minute
+- limited debuggability, where you can't add breakpoints
+- multiple clicks to open log files
+- downloading and opening resulting files from S3 is slow
+- packaging friction and dependency trial-and-error
+- permissions / IAM / S3 path errors only show up late
+
+Not the optimal DX (Developer Experience).
+
+### Quack Pipe gives you a local-first workflow
+
+1. Develop and iterate Python (and DuckDB SQL) locally against local data (initially CSV)
+2. Re-use the exact same code when packaging for AWS Glue Python Shell
+3. Deploy with deterministic Terraform infrastructure (S3 artifacts, IAM, Glue Job)
+4. Run fast (seconds) for small/medium datasets and can scale later if needed
+
+![Architecture Diagram](/static/images/quackpipe-aws-glue-duckdb/quackpipe-architecture.png)
+
+### Architecture
+
+Components:
+
+- Example local runner: `nfl_team_season_total.py` (calls DuckDB over local or S3 CSVs)
+- Example data lake (S3):
+
+| folder      | description                           |
+| ----------- | ------------------------------------- |
+| `scripts/`  | For source script and wheel artifacts |
+| `data/nfl/` | The source data                       |
+| `results/`  | Output results                        |
+| `tmp/`      | Required in Glue job properties       |
+
+- Artifact Publishing: Terraform-managed S3 objects for script and wheel
+- Glue Python Shell Job: Executes the same script with `--extra-py-files` pointing to built wheel
+- IAM Roles/Policies: Least-privilege access to bucket objects & logs
+
+| Data flow | Data files  | Execution         | Query            | Output              |
+| --------- | ----------- | ----------------- | ---------------- | ------------------- |
+| local     | CSV on disk | Python            | DuckDB in-memory | stdout / local file |
+| cloud     | CSV in S3   | Glue Python Shell | DuckDB in-memory | S3                  |
+
+![AWS Console Glue Job](/static/images/quackpipe-aws-glue-duckdb/quackpipe-glue-job-details.png)
+
+### Why DuckDB Here?
+
+The main reason here was an alternative to Glue Spark jobs and to make the local runner option easy to install and setup. However, DuckDB is also extremely suitability for this type of analytical workflow on moderate sized datasets. There are zero external services required and you get a consistent behavior locally and in Glue.
+
+### Local Development Workflow
+
+1. Create & activate virtual environment
+2. Install deps via Poetry
+3. Run the script (iterative changes are seconds)
+
+I built this on my Windows 11 machine (but it also runs on Linux machine), so I am using PowerShell. The instructions will be similar if Linux|MacOS system.
+
+Let's create a virtual python environment.
+
+```shell
+mkdir C:\venv
+python -m venv C:\venv\quackpipe
+C:\venv\quackpipe\Scripts\Activate.ps1
+```
+
+Create a dot env file. (`.env`) in the root of the project.
+Copy the contents of the `.example` file and paste it in the `.env` file
+
+Your virtual environment should be activated. We will use pip to install poetry and then poetry to manage all other dependencies.
+
+```shell
+# From this cloned directory as the working directory
+pip install poetry
+poetry install
+```
+
+#### Run a local quackpipe
+
+```shell
+# From this cloned directory as the working directory
+python nfl_team_season_total.py
+```
+
+![VS Code Local Run Screenshot](/static/images/quackpipe-aws-glue-duckdb/quackpipe-vscode-local.png)
+
+Inspect outputs / adjust transformations as you need.
+
+### Switching to Remote (Glue) Execution
+
+Firstly produce a versioned wheel under `dist/`
+
+```shell
+poetry build
+```
+
+```log
+Building quackpipe (0.1.0)
+Building sdist
+  - Building sdist
+  - Built quackpipe-0.1.0.tar.gz
+Building wheel
+  - Building wheel
+  - Built quackpipe-0.1.0-py3-none-any.whl
+(quackpipe)
+```
+
+Now, we can use Terraform to:
+
+- Deploy all the infra and IAM required
+- Sync the Python script and wheel to S3
+- Sync the data to S3
+- Create the Glue job
+
+#### Terraform variable and state hygiene
+
+Before you deploy the infra using IaC (Terraform) it is important to know what belongs in `variables.tf` vs `terraform.tfvars`.
+
+- `variables.tf` declares schema (name, type, default, validation).
+- `terraform.tfvars` (untracked by Git) supplies environment / secret values.
+- Commit `terraform.tfvars.example` only.
+
+![Terraform variables](/static/images/quackpipe-aws-glue-duckdb/quackpipe-terraform-vars.png)
+
+> NOTE: the state files should be stored in remote cloud storage (such as S3) but for this simple demo example they are just kept local
+
+Create a `terraform.tfvars` and populate it with the contents of the example (with setting the correct secret values for you use case)
+
+```shell
+# First check the plan
+terraform plan
+# Apply the plan
+terraform apply -auto-approve
+```
+
+> Issue: I couldn't see the Glue job in the web console after the successful deploy, but I realised that I have the wrong region selected. 🤪
+
+### Data Input Modes
+
+The simple solution that solves the two modes (local and remote).
+
+| Execution Mode | Description                                                  |
+| -------------- | ------------------------------------------------------------ |
+| Local          | Uses on-disk CSVs under `data/`                              |
+| Remote         | Uploads same CSVs to S3 and script switches to `s3://` paths |
+
+In the main Glue script we use this handy function to get the job parameters. The key parameter is `execution_mode` which is set to 'local' in the `.env` for local running and left absent in the Glue job.
+
+```py
+def get_job_params(
+    required_params: list,
+) -> dict:
+    """Get job parameters for a AWS Glue job
+
+    Args:
+        required_params (list): list of the parameters to get
+
+    Returns:
+        dict: a dictionary of the parameters values
+    """
+    try:
+        # If in Glue get from job parameters
+        from awsglue.utils import getResolvedOptions
+
+        args = getResolvedOptions(sys.argv, required_params)
+    except ModuleNotFoundError:
+        # Local fallback using environment variables (populated by .env)
+        args = {k: os.getenv(k) for k in required_params}
+    return args
+
+
+# Load .env file into environment
+load_dotenv()
+execution_mode = os.getenv("execution_mode")
+```
+
+Since the leave it absent in the Glue job, it drops into the else and looks for the files in S3.
+
+```py
+if execution_mode == "local":
+    try:
+        file_path = Path("data") / data_collection / file_name
+        df = pd.read_csv(file_path)
+        df = sanitize_column_names(df)
+        con.register(table_name, df)
+        registered_status = (True, None)
+    ...
+    except Exception as e:
+        registered_status = (False, f'{str(e)}: {file_name}')
+else:
+    try:
+        key = f"data/{data_collection}/{file_name}"
+        content = read_s3_file(
+            bucket=bucket,
+            key=key,
+        )
+
+        df = pd.read_csv(StringIO(content))
+        df = sanitize_column_names(df)
+        # Add a file row number for tracking later
+        df.insert(0, 'Row Number', range(1, len(df) + 1))
+        con.register(table_name, df)
+        registered_status = (True, None)
+    ...
+    except Exception as e:
+        registered_status = (False, f'{str(e)}: {file_name}')
+```
+
+![Data Folder Layout Screenshot](/static/images/quackpipe-aws-glue-duckdb/quackpipe-data-local-s3.png)
+
+### Run the Glue job via the web console
+
+![Glue Job Run Screenshot](/static/images/quackpipe-aws-glue-duckdb/quackpipe-glue-runs.png)
+
+You can see that before I got a successful run, I had some issues. I initially had an error saying the Glue version was not valid.
+
+```log
+InvalidInputException: Given GlueVersion [3.0] is not valid.
+InvalidInputException: Given GlueVersion [4.0] is not valid.
+```
+
+I removed `glue_version` from the Terraform definition and set `python_version = "3.9"`. It defaulted to deploy to Glue version 5.
+
+The first time I got the configuration correct and a successful run started, the job spent many minutes (over 11 until I stopped it) compiling DuckDB from source. I realised it was that DuckDB >=1.2.x had dropped Python 3.7 wheels. Actual Glue runtime resolved to Python 3.7 (despite attempts for 3.9) and since there is no wheel it resulted in a source build.
+
+To fix this I pinned the DuckDB dependency to:
+
+```ini
+duckdb==1.1.3
+```
+
+This version still publishes Python 3.7 manylinux wheels. I rebuilt the quackpipe wheel and redeployed and the startup time was much faster.
+
+After getting a successful run, the results exported to S3 folder.
+
+![Results of Glue job](/static/images/quackpipe-aws-glue-duckdb/quackpipe-results-s3.png)
+
+### Terraform Infrastructure Highlights
+
+- Bucket name includes region for uniqueness
+- Explicit folder objects created for clarity (not strictly required by S3)
+- `fileset` used to push all `data/nfl/*.csv` into `data/nfl/` prefix
+- Glue job avoids hard-coded Glue version (region variability) while pinning Python 3.9
+- IAM policies refer to actual bucket resource IDs—prevents stale string drift
+
+Example from `terraform plan` when a new wheel is built.
+
+![Terraform Plan Screenshot](/static/images/quackpipe-aws-glue-duckdb/quackpipe-terraform-plan.png)
+
+### Handling Python Dependencies
+
+- Strategy: Build once locally → upload wheel → use `--extra-py-files`
+- DuckDB pinned to a version with prebuilt manylinux wheels (faster cold start)
+- Avoids runtime `pip install` penalties
+
+### Summary
+
+- DuckDB in-memory operations sub-second for small test set running locally
+- Running in cloud the cold start time is dominated by Glue container and dependency load
+
+This is really just a very slim example of an idea. It could be extend to more jobs or Parquet outputs and adding features such as:
+
+- Add CI step to build/upload artifacts before Terraform apply (ensures script exists).
+- Migrate to Python 3.9 runtime once consistently supported (or adopt Glue 5.0 when stable) and restore newer DuckDB.
