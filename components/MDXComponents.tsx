@@ -15,9 +15,9 @@ export const Wrapper = ({ layout, content, ...rest }: MDXLayout) => {
   return <Layout content={content} {...rest} />
 }
 
-interface AutoLinkedHeadingProps {
+interface AutoLinkedHeadingProps extends React.HTMLAttributes<HTMLElement> {
   tag: keyof JSX.IntrinsicElements
-  id: string
+  id?: string
   children: React.ReactNode
 }
 
@@ -41,6 +41,7 @@ const AutoLinkedHeading: React.FC<AutoLinkedHeadingProps> = ({
   tag: Tag,
   id,
   children,
+  className,
   ...props
 }) => {
   const router = useRouter()
@@ -50,7 +51,7 @@ const AutoLinkedHeading: React.FC<AutoLinkedHeadingProps> = ({
   const basePath = router.asPath.split('#')[0]
 
   return (
-    <Tag id={id} className="heading-anchor" {...props}>
+    <Tag id={id} className={`heading-anchor ${className || ''}`} {...(props as any)}>
       <CustomLink href={`${basePath}#${id}`} aria-label={`Link to ${id}`}>
         {textContent}
       </CustomLink>
