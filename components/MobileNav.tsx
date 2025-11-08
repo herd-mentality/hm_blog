@@ -25,7 +25,7 @@ const MobileNav = () => {
 
   const mobileMenuOverlay = (
     <div
-      className={`fixed inset-0 z-50 min-h-screen bg-white transition-transform duration-300 ease-in-out dark:bg-gray-900 sm:hidden ${
+      className={`fixed inset-0 z-50 min-h-screen bg-white/70 backdrop-blur-xl transition-transform duration-300 ease-in-out dark:bg-gray-900/70 sm:hidden ${
         navShow ? 'translate-x-0' : 'invisible translate-x-full'
       }`}
     >
