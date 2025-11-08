@@ -10,7 +10,7 @@ const Header = () => {
     <header className="flex items-center justify-between py-10">
       <div>
         <Link href="/" aria-label={siteMetadata.headerTitle}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             <div className="mr-3">
               <Logo />
             </div>
@@ -27,8 +27,8 @@ const Header = () => {
           </div>
         </Link>
       </div>
-      <div className="flex items-center text-base leading-5">
-        <div className="flex hidden space-x-5 sm:block">
+      <div className="ml-6 flex flex-1 items-center justify-end gap-5 text-base leading-5 sm:ml-8 md:ml-12">
+        <div className="ml-auto hidden space-x-6 sm:flex">
           {headerNavLinks.map((link) => (
             <Link key={link.title} href={link.href} className="nav-link">
               {link.title}

@@ -17,10 +17,6 @@ export default function Footer() {
         <div className="mb-2 flex space-x-2 text-sm text-gray-500 dark:text-gray-400 ">
           {/* <div>{siteMetadata.author}</div>
           <div>{` • `}</div> */}
-          <Link href="/" className="footer-link">
-            {siteMetadata.title}
-          </Link>
-          <div>{` • `}</div>
           {/* R-bloggers backlink */}
           <a
             className="footer-link"
@@ -31,6 +27,9 @@ export default function Footer() {
             R-bloggers
           </a>
           <div>{` • `}</div>
+          <Link href="/" className="footer-link">
+            {siteMetadata.title}
+          </Link>
           <div>{`© ${new Date().getFullYear()}`}</div>
         </div>
         <div className="mb-2 flex space-x-2 text-sm text-gray-500 dark:text-gray-400">

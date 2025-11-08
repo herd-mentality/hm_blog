@@ -26,19 +26,17 @@ const CommandPalette = dynamic(() => import('@/components/CommandPalette'), {
   ssr: false,
 })
 
+type NextPageWithFlags = AppProps['Component'] & { hideHeader?: boolean; fullWidthMain?: boolean }
+
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter()
+  const PageComponent = Component as NextPageWithFlags
 
   useEffect(() => {
     const handleRouteChange = (url) => {
       ga.pageview(url)
     }
-    //When the component is mounted, subscribe to router changes
-    //and log those page views
     router.events.on('routeChangeComplete', handleRouteChange)
-
-    // If the component is unmounted, unsubscribe
-    // from the event with the `off` method
     return () => {
       router.events.off('routeChangeComplete', handleRouteChange)
     }
@@ -51,9 +49,12 @@ export default function App({ Component, pageProps }: AppProps) {
       </Head>
       {/* <Analytics analyticsConfig={siteMetadata.analytics} /> */}
       <CommandPalette />
-      <LayoutWrapper>
+      <LayoutWrapper
+        hideHeader={Boolean(PageComponent.hideHeader)}
+        fullWidthMain={Boolean(PageComponent.fullWidthMain)}
+      >
         <SearchProvider searchConfig={siteMetadata.search}>
-          <Component {...pageProps} />
+          <PageComponent {...pageProps} />
         </SearchProvider>
       </LayoutWrapper>
     </ThemeProvider>

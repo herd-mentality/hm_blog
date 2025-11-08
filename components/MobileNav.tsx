@@ -18,9 +18,9 @@ const MobileNav = () => {
   }
 
   return (
-    <div className="sm:hidden">
+    <>
       <button
-        className="ml-1 mr-1 h-8 w-8 rounded py-1"
+        className="flex h-8 w-8 items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 sm:hidden"
         aria-label="Toggle Menu"
         onClick={onToggleNav}
       >
@@ -38,21 +38,21 @@ const MobileNav = () => {
         </svg>
       </button>
       <div
-        className={`fixed top-0 left-0 z-10 h-full w-full transform bg-gray-200 opacity-95 duration-300 ease-in-out dark:bg-gray-800 ${
-          navShow ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed inset-0 z-50 min-h-screen bg-white transition-transform duration-300 ease-in-out dark:bg-gray-900 sm:hidden ${
+          navShow ? 'translate-x-0' : 'invisible translate-x-full'
         }`}
       >
-        <div className="flex justify-end">
+        <div className="flex justify-end p-5">
           <button
-            className="mr-5 mt-11 h-8 w-8 rounded"
-            aria-label="Toggle Menu"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+            aria-label="Close Menu"
             onClick={onToggleNav}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
               fill="currentColor"
-              className="text-gray-900 dark:text-gray-100"
+              className="h-5 w-5 text-gray-900 dark:text-gray-100"
             >
               <path
                 fillRule="evenodd"
@@ -62,21 +62,21 @@ const MobileNav = () => {
             </svg>
           </button>
         </div>
-        <nav className="fixed mt-8 h-full">
+        <div className="-mt-20 flex min-h-screen flex-col items-center justify-center px-8">
           {headerNavLinks.map((link) => (
-            <div key={link.title} className="px-12 py-4">
+            <div key={link.title} className="w-full py-4 text-center">
               <Link
                 href={link.href}
-                className="text-2xl font-bold tracking-widest text-gray-900 dark:text-gray-100"
+                className="block font-grotesk text-3xl font-bold tracking-wide text-gray-900 transition-colors duration-200 hover:text-primary-500 dark:text-gray-100 dark:hover:text-primary-400"
                 onClick={onToggleNav}
               >
                 {link.title}
               </Link>
             </div>
           ))}
-        </nav>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
