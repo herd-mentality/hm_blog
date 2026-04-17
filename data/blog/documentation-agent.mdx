@@ -2,14 +2,16 @@
 title  : Building a Documentation Agent with Slack, Claude, and Confluence
 date   : '2026-04-17'
 tags   : ['ai', 'claude', 'slack', 'confluence', 'python', 'fastapi', 'knowledge-management']
-draft  : true
+draft  : false
 summary: 'How I built a one-click Slack shortcut that turns incident threads and Q&A chains into structured Confluence KB articles using the Claude API.'
 authors: ['chingchew']
 ---
 
-These days, most teams collaborate and resolve issues in their organisation's messaging platform like Teams or Slack. When an incident resolves, someone might write it up (if they have time and if they remember!). Most threads stay in chat: searchable if you have access and know what to search for; invisible if you don't.
+These days, most teams collaborate and resolve issues in their organisation's messaging platform like Teams or Slack. When an incident resolves, someone might write it up (if they have time and if they remember!). 
 
-Six months later the same incident happens again. Same problem, different person, no documentation.
+Most threads stay in chat: searchable if you have access and know what to search for; invisible if you don't. Six months later the same incident happens again. 
+
+Same problem, different person, no documentation.
 
 ![Example Slack thread before extraction](/static/images/documentation-agent/example-thread.jpg)
 
@@ -33,7 +35,9 @@ Five components, four HTTPS calls.
 
 No custom frontend. Slack and Confluence are the only UIs the user ever sees.
 
-![Slack message shortcut trigger](/static/images/documentation-agent/create-kb-hook.jpg)
+<div className="flex justify-center">
+    <Image src="/static/images/documentation-agent/create-kb-hook.jpg" alt="Slack message shortcut trigger" width={414} height={204} />
+</div>
 
 ---
 
@@ -129,7 +133,9 @@ The confidence rubric is mechanical rather than estimated:
 
 PII detection scans the extracted fields, not the raw thread. Usernames like `@priya.sharma` in a Slack thread are acceptable; they are flagged only if they appear verbatim inside extracted fields like `summary` or `resolution`. When PII is detected, the generated Confluence page includes an embedded warning panel listing the affected fields, and the Slack notification surfaces them too. The article is still created, but the warning prompts a reviewer to redact before sharing or publishing.
 
-![Slack Block Kit response showing confidence score and PII warning](/static/images/documentation-agent/kb-created.jpg)
+<div className="flex justify-center">
+    <Image src="/static/images/documentation-agent/kb-created.jpg" alt="Slack response showing confidence score and PII warning" width={426} height={329} />
+</div>
 
 ---
 
@@ -138,7 +144,9 @@ PII detection scans the extracted fields, not the raw thread. Usernames like `@p
 Three thread types were tested: incident, Q&A and how-to/runbook. The schema generalises across all three. A noisy, off-topic thread produces a lower confidence score and skips Confluence creation. A clean, well-documented incident produces a structured article with root cause, severity, steps and follow-up action items in under 10 seconds.
 
 ![Generated Confluence KB article — part 1](/static/images/documentation-agent/kb-1.jpg)
+
 ![Generated Confluence KB article — part 2](/static/images/documentation-agent/kb-2.jpg)
+
 ![Generated Confluence KB article — part 3](/static/images/documentation-agent/kb-3.jpg)
 
 ---
