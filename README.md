@@ -1,181 +1,170 @@
-# The Herd Mentality Blog
+# 🐏 The Herd Mentality Blog
 
-This blog is a fork of [Tailwind Nextjs Starter Blog](https://github.com/timlrx/tailwind-nextjs-starter-blog)
+Welcome to the Herd Mentality blog repository! This is where we share our technical insights, tutorials, and experiences in data science, software engineering, and cloud technologies.
 
-## Development
+![demo](.github/mastheaddemo.gif)
 
-* Sheep icon from [IconScout](https://iconscout.com/icon/sheep-59) (from contributor [Icograms](https://iconscout.com/contributors/icograms)) with all #656565 colour values replaced with a lighter #A5A5A5
-* Favicons generated from PNG downloaded from IconScout using [favicon.io](https://favicon.io/favicon-converter/)
+## 📝 Contributing
 
-Ongoing development tracked [here](https://trello.com/b/UPRSuYgq/blog-development)
+Want to write for the blog? Check out our [**Contributing Guide**](CONTRIBUTING.md) for detailed instructions on:
 
-<img width="281" alt="image" src="https://github.com/herd-mentality/hm_blog/assets/74039081/33bd1030-f68c-40cb-b52f-c429dd4e6eb8"><br/>
-<img width="285" alt="image" src="https://github.com/herd-mentality/hm_blog/assets/74039081/85dd306f-c5cb-47f3-8427-54a7436726cf">
+- Adding new blog posts
+- Creating author profiles
+- Using custom components
+- Image management
+- Best practices and style guidelines
 
---------------------------------
+## 🚀 Quick Start
 
-# From the original repository
-## Features
+### Prerequisites
 
-- Easy styling customization with [Tailwind 3.0](https://tailwindcss.com/blog/tailwindcss-v3) and primary color attribute
-- Near perfect lighthouse score - [Lighthouse report](https://www.webpagetest.org/result/210111_DiC1_08f3670c3430bf4a9b76fc3b927716c5/)
-- Lightweight, 45kB first load JS, uses Preact in production build
-- Mobile-friendly view
-- Light and dark theme
-- Self-hosted font with [Fontsource](https://fontsource.org/)
-- Supports [plausible](https://plausible.io/), [simple analytics](https://simpleanalytics.com/) and google analytics
-- [MDX - write JSX in markdown documents!](https://mdxjs.com/)
-- Server-side syntax highlighting with line numbers and line highlighting via [rehype-prism-plus](https://github.com/timlrx/rehype-prism-plus)
-- Math display supported via [KaTeX](https://katex.org/)
-- Citation and bibliography support via [rehype-citation](https://github.com/timlrx/rehype-citation)
-- Automatic image optimization via [next/image](https://nextjs.org/docs/basic-features/image-optimization)
-- Flexible data retrieval with [mdx-bundler](https://github.com/kentcdodds/mdx-bundler)
-- Support for tags - each unique tag will be its own page
-- Support for multiple authors
-- Blog templates
-- TOC component
-- Support for nested routing of blog posts
-- Newsletter component with support for mailchimp, buttondown, convertkit and klaviyo
-- Supports [giscus](https://github.com/laymonage/giscus), [utterances](https://github.com/utterance/utterances) or disqus
-- Projects page
-- Preconfigured security headers
-- SEO friendly with RSS feed, sitemaps and more!
+- Node.js 14.x or higher
+- npm or yarn
 
-## Quick Start Guide
+### Installation
 
-1. JS (official support)
-
+1. Clone the repository:
 ```bash
-npx degit https://github.com/timlrx/tailwind-nextjs-starter-blog.git
+git clone https://github.com/herd-mentality/hm_blog.git
+cd hm_blog
 ```
 
-or with TypeScript (community support)
-
-```bash
-npx degit timlrx/tailwind-nextjs-starter-blog#typescript
-```
-
-2. Personalize `siteMetadata.js` (site related information)
-3. Modify the content security policy in `next.config.js` if you want to use
-   any analytics provider or a commenting solution other than giscus.
-4. Personalize `authors/default.md` (main author)
-5. Modify `projectsData.js`
-6. Modify `headerNavLinks.js` to customize navigation links
-7. Add blog posts
-8. Deploy on Vercel
-
-## Installation
-
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-## Development
-
-First, run the development server:
-
-```bash
-npm start
-```
-
-or
-
+3. Run the development server:
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+The site will auto-reload as you make changes!
 
-## Extend / Customize
+## 🏗️ Tech Stack & Features
 
-`data/siteMetadata.js` - contains most of the site related information which should be modified for a user's need.
+Built with modern web technologies and best practices:
 
-`data/authors/default.md` - default author information (required). Additional authors can be added as files in `data/authors`.
+### Core Framework
+- **Next.js** - React framework with SSR and static generation
+- **TypeScript** - Type-safe JavaScript
+- **Tailwind CSS 3.0** - Utility-first CSS framework
+- **MDX** - Write JSX in markdown documents
 
-`data/projectsData.js` - data used to generate styled card on the projects page.
+### Content Features
+- 📝 Multiple author support
+- 🏷️ Tag-based organization (each tag gets its own page)
+- 🔢 Table of contents generation
+- 📊 Math display via [KaTeX](https://katex.org/)
+- 📚 Citation and bibliography support via [rehype-citation](https://github.com/timlrx/rehype-citation)
+- 🎨 Custom React components in blog posts
+- 🗂️ Nested routing for blog posts
 
-`data/headerNavLinks.js` - navigation links.
+### Development Features
+- 💻 Server-side syntax highlighting with line numbers ([rehype-prism-plus](https://github.com/timlrx/rehype-prism-plus))
+- 🖼️ Automatic image optimization via [next/image](https://nextjs.org/docs/basic-features/image-optimization)
+- 🌓 Light and dark theme
+- 📱 Fully responsive design
+- ⚡ Lightweight (45kB first load JS)
+- 🎯 Near-perfect Lighthouse scores
 
-`data/logo.svg` - replace with your own logo.
+### SEO & Analytics
+- 🔍 SEO-friendly with RSS feeds and sitemaps
+- 📈 Analytics support (Plausible, Simple Analytics, Google Analytics)
+- 🔒 Preconfigured security headers
 
-`data/blog` - replace with your own blog posts.
+## 📁 Project Structure
 
-`public/static` - store assets such as images and favicons.
-
-`tailwind.config.js` and `css/tailwind.css` - contain the tailwind stylesheet which can be modified to change the overall look and feel of the site.
-
-`css/prism.css` - controls the styles associated with the code blocks. Feel free to customize it and use your preferred prismjs theme e.g. [prism themes](https://github.com/PrismJS/prism-themes).
-
-`components/social-icons` - to add other icons, simply copy an svg file from [Simple Icons](https://simpleicons.org/) and map them in `index.js`. Other icons use [heroicons](https://heroicons.com/).
-
-`components/MDXComponents.js` - pass your own JSX code or React component by specifying it over here. You can then call them directly in the `.mdx` or `.md` file. By default, a custom link and image component is passed.
-
-`layouts` - main templates used in pages.
-
-`pages` - pages to route to. Read the [Next.js documentation](https://nextjs.org/docs) for more information.
-
-`next.config.js` - configuration related to Next.js. You need to adapt the Content Security Policy if you want to load scripts, images etc. from other domains.
-
-## Post
-
-### Frontmatter
-
-Frontmatter follows [Hugo's standards](https://gohugo.io/content-management/front-matter/).
-
-Currently 10 fields are supported.
+Key directories and files:
 
 ```
-title (required)
-date (required)
-tags (required, can be empty array)
-lastmod (optional)
-draft (optional)
-summary (optional)
-images (optional, if none provided defaults to socialBanner in siteMetadata config)
-authors (optional list which should correspond to the file names in `data/authors`. Uses `default` if none is specified)
-layout (optional list which should correspond to the file names in `data/layouts`)
-canonicalUrl (optional, canonical url for the post for SEO)
+my-blog/
+├── components/          # React components
+│   ├── InPostComponents.tsx  # Custom components for blog posts
+│   ├── MDXComponents.tsx     # MDX component mappings
+│   └── ...
+├── data/
+│   ├── blog/           # Blog posts (.mdx files)
+│   ├── authors/        # Author profiles
+│   ├── siteMetadata.js # Site configuration
+│   └── headerNavLinks.ts
+├── layouts/            # Page layout templates
+├── pages/              # Next.js pages and routing
+├── public/
+│   └── static/
+│       └── images/     # Blog post images
+├── css/                # Global styles and themes
+└── contentlayer.config.ts
 ```
 
-Here's an example of a post's frontmatter:
+## 🎨 Customization
 
+### Key Configuration Files
+
+- **`data/siteMetadata.js`** - Site metadata (title, description, social links, etc.)
+- **`data/headerNavLinks.ts`** - Navigation menu links
+- **`tailwind.config.js`** - Tailwind CSS theme customization
+- **`css/tailwind.css`** - Global styles and color schemes
+- **`css/prism.css`** - Code block syntax highlighting theme
+- **`next.config.js`** - Next.js configuration and Content Security Policy
+
+### Styling
+
+The site uses Tailwind CSS for styling. To customize the look:
+
+1. Modify colors in `tailwind.config.js`
+2. Update global styles in `css/tailwind.css`
+3. Change code block themes by editing `css/prism.css` (or use [Prism themes](https://github.com/PrismJS/prism-themes))
+
+### Components
+
+- **`components/InPostComponents.tsx`** - Custom blog post components (`<Caption>`, `<Highlight>`)
+- **`components/MDXComponents.tsx`** - Maps HTML elements to custom React components
+- **`components/social-icons/`** - Social media icons (add more from [Simple Icons](https://simpleicons.org/))
+
+## 🛠️ Available Scripts
+
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm start            # Start production server
+npm run analyze      # Analyze bundle size
 ```
----
-title: 'Introducing Tailwind Nexjs Starter Blog'
-date: '2021-01-12'
-lastmod: '2021-01-18'
-tags: ['next-js', 'tailwind', 'guide']
-draft: false
-summary: 'Looking for a performant, out of the box template, with all the best in web technology to support your blogging needs? Checkout the Tailwind Nextjs Starter Blog template.'
-images: ['/static/images/canada/mountains.jpg', '/static/images/canada/toronto.jpg']
-authors: ['default', 'sparrowhawk']
-layout: PostLayout
-canonicalUrl: https://tailwind-nextjs-starter-blog.vercel.app/blog/introducing-tailwind-nextjs-starter-blog
----
-```
 
-### Compose
+## 🚢 Deployment
 
-Run `node ./scripts/compose.js` to bootstrap a new post.
+The blog is deployed on [Vercel](https://vercel.com), which provides seamless integration with Next.js:
 
-Follow the interactive prompt to generate a post with pre-filled front matter.
+1. Push your changes to the main branch
+2. Vercel automatically builds and deploys
+3. Visit your live site!
 
-## Deploy
+For other deployment platforms (Netlify, GitHub Pages, etc.), see the [Next.js deployment documentation](https://nextjs.org/docs/deployment).
 
-**Vercel**  
-The easiest way to deploy the template is to use the [Vercel Platform](https://vercel.com) from the creators of Next.js. Check out the [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+> [!NOTE]
+> The site uses `next/image` for automatic image optimization. If deploying to static hosting platforms, you may need to configure an alternative image optimization provider.
 
-**Netlify / GitHub Pages / Firebase etc.**  
-As the template uses `next/image` for image optimization, additional configurations have to be made to deploy on other popular static hosting websites like [Netlify](https://www.netlify.com/) or [GitHub Pages](https://pages.github.com/). An alternative image optimization provider such as Imgix, Cloudinary or Akamai has to be used. Alternatively, replace the `next/image` component with a standard `<img>` tag. See [`next/image` documentation](https://nextjs.org/docs/basic-features/image-optimization) for more details.
+## 📋 Development Notes
 
-The API routes used in the newsletter component cannot be used in a static site export. You will need to use a form API endpoint provider and substitute the route in the newsletter component accordingly. Other hosting platforms such as Netlify also offer alternative solutions - please refer to their docs for more information.
+### Design Assets
 
-## Support
+- **Sheep icon**: From [IconScout](https://iconscout.com/icon/sheep-59) by [Icograms](https://iconscout.com/contributors/icograms) (color modified to #A5A5A5)
+- **Favicons**: Generated via [favicon.io](https://favicon.io/favicon-converter/)
 
-Using the template? Support this effort by giving a star on GitHub, sharing your own blog and giving a shoutout on Twitter or becoming a project [sponsor](https://github.com/sponsors/timlrx).
+### Development Tracking
 
-## Licence
+Ongoing development and feature planning tracked on [Trello](https://trello.com/b/UPRSuYgq/blog-development)
+
+## 🙏 Credits
+
+This blog is built on the excellent [Tailwind Next.js Starter Blog](https://github.com/timlrx/tailwind-nextjs-starter-blog) template by [Timothy Lin](https://www.timrlx.com).
+
+## 📄 License
 
 [MIT](https://github.com/timlrx/tailwind-nextjs-starter-blog/blob/master/LICENSE) © [Timothy Lin](https://www.timrlx.com)
+
+---
+
+**Built with 🐏 by the Herd Mentality team**
