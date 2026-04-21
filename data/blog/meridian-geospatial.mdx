@@ -21,7 +21,9 @@ This is the problem Meridian is built to solve. It is a two-mode spatial decisio
 
 Seven components. Two Claude API calls. One classical optimisation solver.
 
-![Component flow: Streamlit UI to Claude tool use to GeoPandas/DuckDB to ArcGIS OD Matrix routing to PuLP MCLP optimiser to Claude narrative to Folium/Plotly map](/static/images/meridian-geospatial/architecture.svg)
+<div className="flex justify-center">
+    <Image src="/static/images/meridian-geospatial/architecture.svg" alt="Component flow: Streamlit UI to Claude tool use to GeoPandas/DuckDB to ArcGIS OD Matrix routing to PuLP MCLP optimiser to Claude narrative to Folium/Plotly map" width={290} height={830} />
+</div>
 
 1. **Streamlit UI**: text input, mode toggle, clickable suggested queries
 2. **NL Input Layer** (Claude tool use): translates natural language into typed `QueryParams`
