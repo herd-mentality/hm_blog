@@ -1,0 +1,190 @@
+---
+title  : Building an AI-Powered Health Facility Planner for Australian PHNs
+date   : '2026-04-21'
+tags   : ['ai', 'claude', 'geospatial', 'python', 'health', 'optimisation', 'streamlit']
+draft  : false
+summary: 'How I built a two-mode spatial decision support tool that lets health planners ask plain-English questions about GP coverage gaps and get optimised facility placement recommendations with briefing-quality narrative.'
+authors: ['chingchew']
+---
+
+A health planner is asked: "Where should we commission two new GP clinics to maximise coverage for rural communities in Western NSW?" They have a budget and a workforce shortage classification map, but no way to answer the question independently.
+
+So they queue a GIS request. The analyst gets to it in two weeks. The recommendation lands in an email thread. No one is certain the assumptions match current policy. The planning cycle moves on.
+
+This is the problem Meridian is built to solve. It is a two-mode spatial decision support tool for Australian Primary Health Networks (PHNs): ask a plain-English question about general practitioner (GP) coverage gaps, get a map and a briefing-quality narrative in seconds.
+
+![Meridian Streamlit interface showing text input, mode toggle and suggested queries](/static/images/meridian-geospatial/app-interface.jpg)
+
+---
+
+## Architecture
+
+Seven components. Two Claude API calls. One classical optimisation solver.
+
+<div className="flex justify-center">
+    <Image src="/static/images/meridian-geospatial/architecture.svg" alt="Component flow: Streamlit UI to Claude tool use to GeoPandas/DuckDB to ArcGIS OD Matrix routing to PuLP MCLP optimiser to Claude narrative to Folium/Plotly map" width={290} height={830} />
+</div>
+
+1. **Streamlit UI**: text input, mode toggle, clickable suggested queries
+2. **NL Input Layer** (Claude tool use): translates natural language into typed `QueryParams`
+3. **Spatial Data Layer** (GeoPandas + DuckDB/Parquet): population centres, existing GP locations, PHN boundaries, DPA classifications
+4. **Routing Layer** (ArcGIS Online Network Analyst REST API): travel time matrix for demand points vs facility locations; pre-computed and disk-cached as Parquet to minimise app response times
+5. **Optimisation Layer** (PuLP, Mode 2 only): Maximal Coverage Location Problem solver finds the `k` candidate sites that maximise covered population
+6. **Output Layer** (Claude API): generates briefing-quality narrative from structured solver results
+7. **Visualisation** (Folium/Plotly): choropleth coverage map, proposed site markers, before/after statistics panel
+
+The LLM does two things: parse the query and write the narrative. It does not do the optimisation. A 40-year-old algorithm does that.
+
+---
+
+## Implementation
+
+### 1. Tool use for query parsing
+
+Natural language queries map cleanly to structured parameters. Rather than asking the model to reason spatially, I forced it to fill a typed schema via tool use with `tool_choice: any`.
+
+```python
+_PARSE_TOOL = {
+    "name": "extract_query_params",
+    "description": "Extract structured health planning query parameters from natural language.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "mode": {"type": "string", "enum": ["diagnostic", "prescriptive"]},
+            "region": {"type": "string", "description": "PHN region name, e.g. 'Western NSW'"},
+            "facility_type": {"type": "string", "enum": ["gp"]},
+            "threshold_min": {"type": "integer", "description": "Travel time threshold in minutes (10-120)"},
+            "k": {"type": "integer", "description": "Number of new facilities to place (prescriptive mode only, 1-10)"},
+            "pop_min": {"type": "integer", "description": "Minimum population for a locality to be included"},
+        },
+        "required": ["mode", "region", "facility_type", "threshold_min"],
+    },
+}
+
+response = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=512,
+    system=_PARSE_SYSTEM,
+    tools=[_PARSE_TOOL],
+    tool_choice={"type": "any"},
+    messages=[{"role": "user", "content": user_input}],
+)
+
+tool_use = next(block for block in response.content if block.type == "tool_use")
+params = QueryParams(**tool_use.input)
+```
+
+The model fills the schema directly. No regex, no post-processing, no format failures. Schema validation catches the edge cases.
+
+### 2. MCLP for facility optimisation
+
+Facility location is a [well-studied operations research problem](https://en.wikipedia.org/wiki/Maximum_coverage_location_problem). The Maximal Coverage Location Problem (MCLP) asks: given a set of candidate sites, which `k` sites maximise the population covered within a threshold travel time?
+
+PuLP formulates this as an integer linear program. The solver runs in seconds for PHN-scale instances (roughly 50 demand points and 100 candidate sites).
+
+```python
+prob = LpProblem("MCLP", LpMaximize)
+x = [LpVariable(f"x_{j}", cat="Binary") for j in range(n_candidates)]
+y = [LpVariable(f"y_{i}", cat="Binary") for i in range(n_demand)]
+
+prob += lpSum(pops[i] * y[i] for i in range(n_demand))  # maximise covered population
+prob += lpSum(x) <= k                                     # select at most k sites
+
+for i, did in enumerate(demand_ids):
+    if covered_by[did]:
+        prob += y[i] <= lpSum(x[j] for j in covered_by[did])
+    else:
+        prob += y[i] == 0
+
+prob.solve(PULP_CBC_CMD(msg=0))
+```
+
+`covered_by[did]` is the set of candidate indices that cover demand point `did` within `threshold_min` minutes. Demand points already covered by existing facilities are pinned to `y[i] = 1` and excluded from the optimisation budget.
+
+### 3. Routing cache
+
+The ArcGIS Online Network Analyst REST API provides accurate Australian road network travel times. For the demo, the full travel time matrix (demand points vs all facilities and candidates) is pre-computed offline and stored as a Parquet file. The live demo reads from disk, so no API call overhead during the presentation.
+
+An open-source alternative is implemented under `ROUTING_PROVIDER=ors` using [OpenRouteService](https://openrouteservice.org/) for anyone without an ArcGIS licence.
+
+### 4. Narrative generation
+
+The output layer receives structured results and generates briefing-quality narrative. Critically, raw user input never reaches the narrative prompt: it receives structured data only.
+
+```python
+lines = [
+    f"Region: {ctx.region}",
+    f"Mode: {ctx.mode}",
+    f"Travel time threshold: {ctx.threshold_min} minutes",
+    f"Population within threshold: {ctx.covered_population:,} ({ctx.coverage_pct:.1f}%)",
+    f"Towns lacking coverage: {', '.join(ctx.uncovered_towns)}",
+]
+# For prescriptive mode:
+if ctx.proposed_sites:
+    lines += [
+        f"Proposed new clinic locations: {', '.join(ctx.proposed_sites)}",
+        f"Coverage before: {ctx.covered_before:,} ({ctx.coverage_pct_before:.1f}%)",
+        f"Coverage after: {ctx.covered_after:,} ({ctx.coverage_pct_after:.1f}%)",
+    ]
+```
+
+The system prompt instructs the model to write as a health policy analyst for PHN executives and DHDA officials, referencing current policy context (e.g. the November 2025 Bulk Billing Practice Incentive Program) where relevant to facility viability.
+
+---
+
+## Results
+
+Mode 1 returns a choropleth map of coverage gaps. Towns without access within the specified travel time threshold are highlighted. The narrative names them explicitly and summarises the population affected.
+
+![Mode 1 result: choropleth coverage gap map for Western NSW PHN](/static/images/meridian-geospatial/mode1-coverage-map.jpg)
+
+Mode 2 overlays the optimised clinic locations on the same map, with proposed site markers and a before/after statistics panel below.
+
+![Mode 2 result: map with optimised clinic locations and proposed markers](/static/images/meridian-geospatial/mode2-proposed-sites.jpg)
+
+<div className="flex justify-center">
+    <Image src="/static/images/meridian-geospatial/before-after-stats.jpg" alt="Before/after coverage statistics panel" width={600} height={346} />
+</div>
+
+The narrative output reads as a briefing note, not a raw data dump. A policy officer can take it directly into a planning document.
+
+---
+
+## What Was Hard
+
+**Data sourcing took longer than the solver.** There is no authoritative, geocoded, regularly updated dataset of GP practice locations in Australia. The Health Workforce Dataset (HWD) provides counts by PHN region, not individual practice coordinates. The approach here supplements with the NHSD (National Health Services Directory) snapshot, geocoded to postcode centroids where precise coordinates are unavailable.
+
+**Candidate site derivation is approximate.** There is no public dataset of "proposed" facility sites. Candidates are derived from ABS localities above a population threshold with no existing facility within the coverage radius, intersected with DPA-classified areas. The straight-line distance pre-filter means some candidates are slightly mis-ranked before the routing layer validates them.
+
+**The LLM is not the hard part.** Tool use for query parsing worked on the first attempt with a clear schema and a tight system prompt. The harder problems were data quality, routing API authorisation and the edge cases in the coverage matrix construction where demand points straddle PHN boundary polygons.
+
+**Scope discipline was the most important decision.** Western NSW PHN only, GP facilities only, one routing provider as primary. Every time I considered extending scope mid-build I added it to a limitations section instead and kept building.
+
+---
+
+## Where It Goes Next
+
+The architecture generalises to any domain where a powerful analytical tool exists but sits behind a specialist translation layer. The pattern is: LLM for NL-to-structured-params, classical solver or domain tool for the hard computation, LLM for structured-results-to-narrative.
+
+For Meridian specifically:
+
+- **Broader PHN coverage**: the data pipeline and solver are PHN-agnostic. The constraint is data validation across diverse PHN geographies and routing API call volume.
+- **Richer facility types**: allied health, specialists, hospitals. Each adds a new facility type to the schema enum and a new dataset to the spatial layer.
+- **Demand weighting**: MCLP currently maximises raw population coverage. A weighted variant could incorporate health need indicators (chronic disease prevalence, socioeconomic vulnerability) as demand weights.
+- **National scale**: the two blockers are routing API cost at scale (OD matrix for all 2,400+ Australian localities is a significant call volume) and PHN boundary edge cases. A pre-computed national matrix resolves both; it is a one-time compute cost.
+
+---
+
+## Code and Further Reading
+
+The full source is on [GitHub](https://github.com/cchew/meridian-geospatial). The stack is Python 3.12, GeoPandas, PuLP, Streamlit and the [Anthropic Python SDK](https://github.com/anthropics/anthropic-sdk-python).
+
+For the MCLP formulation and its health planning applications, [Church and ReVelle (1974)](https://www.semanticscholar.org/paper/The-maximal-covering-location-problem-Church-Revelle/c3de804bbeb15b0d8570ee3d9f4cbdf432993cfa) is the original paper. [ReVelle and Eiselt (2005)](https://www.semanticscholar.org/paper/Location-analysis:-A-synthesis-and-survey-Revelle-Eiselt/e5018d3b4ed2af7a1e2630114d896e607e7be692) surveys the broader facility location literature.
+
+For Australian PHN geography and health workforce data: [AIHW](https://www.aihw.gov.au/), [Health Workforce Dataset](https://hwd.health.gov.au/) and [Healthdirect service finder](https://www.healthdirect.gov.au/australian-health-services).
+
+---
+
+## AI Tools
+
+Claude Code was used to plan and build the demo. Claude was used to draft the blog post.
