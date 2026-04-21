@@ -7,11 +7,11 @@ summary: 'How I built a two-mode spatial decision support tool that lets health 
 authors: ['chingchew']
 ---
 
-A health planner is asked: "Where should we commission two new GP clinics to maximise coverage for rural communities in Western NSW?" They have a budget, a workforce shortage classification map, and no way to answer the question independently.
+A health planner is asked: "Where should we commission two new GP clinics to maximise coverage for rural communities in Western NSW?" They have a budget and a workforce shortage classification map, but no way to answer the question independently.
 
 So they queue a GIS request. The analyst gets to it in two weeks. The recommendation lands in an email thread. No one is certain the assumptions match current policy. The planning cycle moves on.
 
-This is the problem Meridian is built to solve. It is a two-mode spatial decision support tool for Australian Primary Health Networks: ask a plain-English question about GP coverage gaps, get a map and a briefing-quality narrative in seconds.
+This is the problem Meridian is built to solve. It is a two-mode spatial decision support tool for Australian Primary Health Networks (PHNs): ask a plain-English question about general practitioner (GP) coverage gaps, get a map and a briefing-quality narrative in seconds.
 
 ![Meridian Streamlit interface showing text input, mode toggle and suggested queries](/static/images/meridian-geospatial/app-interface.jpg)
 
@@ -26,7 +26,7 @@ Seven components. Two Claude API calls. One classical optimisation solver.
 1. **Streamlit UI**: text input, mode toggle, clickable suggested queries
 2. **NL Input Layer** (Claude tool use): translates natural language into typed `QueryParams`
 3. **Spatial Data Layer** (GeoPandas + DuckDB/Parquet): population centres, existing GP locations, PHN boundaries, DPA classifications
-4. **Routing Layer** (ArcGIS Online Network Analyst REST API): travel time matrix for demand points vs facility locations; pre-computed and disk-cached as Parquet so the live demo never calls the API
+4. **Routing Layer** (ArcGIS Online Network Analyst REST API): travel time matrix for demand points vs facility locations; pre-computed and disk-cached as Parquet to minimise app response times
 5. **Optimisation Layer** (PuLP, Mode 2 only): Maximal Coverage Location Problem solver finds the `k` candidate sites that maximise covered population
 6. **Output Layer** (Claude API): generates briefing-quality narrative from structured solver results
 7. **Visualisation** (Folium/Plotly): choropleth coverage map, proposed site markers, before/after statistics panel
@@ -140,7 +140,9 @@ Mode 2 overlays the optimised clinic locations on the same map, with proposed si
 
 ![Mode 2 result: map with optimised clinic locations and proposed markers](/static/images/meridian-geospatial/mode2-proposed-sites.jpg)
 
-![Before/after coverage statistics panel](/static/images/meridian-geospatial/before-after-stats.jpg)
+<div className="flex justify-center">
+    <Image src="/static/images/meridian-geospatial/before-after-stats.jpg" alt="Before/after coverage statistics panel" width={600} height={346} />
+</div>
 
 The narrative output reads as a briefing note, not a raw data dump. A policy officer can take it directly into a planning document.
 
@@ -177,7 +179,7 @@ The full source is on [GitHub](https://github.com/cchew/meridian-geospatial). Th
 
 For the MCLP formulation and its health planning applications, [Church and ReVelle (1974)](https://www.tandfonline.com/doi/abs/10.1080/01944367408977906) is the original paper. [ReVelle and Eiselt (2005)](https://www.sciencedirect.com/science/article/pii/S0377221704004065) surveys the broader facility location literature.
 
-For Australian PHN geography and health workforce data: [AIHW](https://www.aihw.gov.au/), [Health Workforce Dataset](https://hwd.health.gov.au/) and [National Health Services Directory](https://www.nhsd.com.au/).
+For Australian PHN geography and health workforce data: [AIHW](https://www.aihw.gov.au/), [Health Workforce Dataset](https://hwd.health.gov.au/) and [Healthdirect service finder](https://www.healthdirect.gov.au/australian-health-services).
 
 ---
 
