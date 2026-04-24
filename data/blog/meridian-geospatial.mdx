@@ -152,7 +152,7 @@ The narrative output reads as a briefing note, not a raw data dump. A policy off
 
 ## What Was Hard
 
-**Data sourcing took longer than the solver.** There is no authoritative, geocoded, regularly updated dataset of GP practice locations in Australia. The Health Workforce Dataset (HWD) provides counts by PHN region, not individual practice coordinates. The approach here supplements with the NHSD (National Health Services Directory) snapshot, geocoded to postcode centroids where precise coordinates are unavailable.
+**Data sourcing took longer than the solver.** GP practice locations are sourced from the Geoscience Australia NHSD MapServer REST API (a Nov 2025 snapshot of the National Health Services Directory), filtered to `General practice service` records. Rural practices without precise coordinates fall back to postcode centroids. There is no single authoritative, geocoded, continuously updated dataset — the NHSD has known gaps in remote areas.
 
 **Candidate site derivation is approximate.** There is no public dataset of "proposed" facility sites. Candidates are derived from ABS localities above a population threshold with no existing facility within the coverage radius, intersected with DPA-classified areas. The straight-line distance pre-filter means some candidates are slightly mis-ranked before the routing layer validates them.
 
@@ -181,7 +181,7 @@ The full source is on [GitHub](https://github.com/cchew/meridian-geospatial). Th
 
 For the MCLP formulation and its health planning applications, [Church and ReVelle (1974)](https://www.semanticscholar.org/paper/The-maximal-covering-location-problem-Church-Revelle/c3de804bbeb15b0d8570ee3d9f4cbdf432993cfa) is the original paper. [ReVelle and Eiselt (2005)](https://www.semanticscholar.org/paper/Location-analysis:-A-synthesis-and-survey-Revelle-Eiselt/e5018d3b4ed2af7a1e2630114d896e607e7be692) surveys the broader facility location literature.
 
-For Australian PHN geography and health workforce data: [AIHW](https://www.aihw.gov.au/), [Health Workforce Dataset](https://hwd.health.gov.au/) and [Healthdirect service finder](https://www.healthdirect.gov.au/australian-health-services).
+For Australian PHN geography and health workforce data: [AIHW](https://www.aihw.gov.au/), [Geoscience Australia NHSD](https://ecat.ga.gov.au/geonetwork/srv/api/records/1d95ca95-8bd7-4f25-835f-d33c0219435e) and [DHDA Distribution Priority Areas](https://www.health.gov.au/topics/rural-health-workforce/classifications/dpa).
 
 ---
 
