@@ -195,7 +195,7 @@ Two test sets, both synthetic. The LLM holdout (queries Claude generated, withhe
 
 Roughly +5pp Recall@1 over the best off-the-shelf baseline (n=20 is too small to claim significance, but the same fine-tuned model also beats the larger `bge-small` baseline that runs at fp32). The directional result is what matters for production: smaller, faster *and* more accurate, because the smaller model knows the domain and the larger one does not.
 
-Recall@1 of 0.85 means one query in seven still misses on the top hit. The dropdown shows top-5 with confidence scores, so a near-miss usually surfaces in slot 2 or 3. The `minScore = 0.3` threshold suppresses results below that. Better to show nothing than to show a confident-looking wrong answer.
+Recall@1 of 0.85 means one query in seven still misses on the top hit. The dropdown shows top-5 with confidence scores, so a near-miss usually surfaces in slot 2 or 3. The `minScore = 0.4` threshold suppresses results below that. Better to show nothing than to show a confident-looking wrong answer.
 
 ---
 
