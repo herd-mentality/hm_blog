@@ -201,7 +201,7 @@ Recall@1 of 0.85 means one query in seven still misses on the top hit. The dropd
 
 ## Lessons learnt
 
-The threshold matters more than the model. `minScore = 0.3` was set by eyeballing the score distribution on the secondary test set. Too high and good matches get suppressed. Too low and the dropdown fills with confident-looking nonsense. This needs revisiting any time the model or corpus shifts.
+The threshold matters more than the model. `minScore = 0.4` was set by eyeballing the score distribution on the secondary test set. Too high and good matches get suppressed. Too low and the dropdown fills with confident-looking nonsense. This needs revisiting any time the model or corpus shifts.
 
 The LLM holdout overstates performance. Recall@1 on it is 0.93, on the secondary test set 0.85. The gap is what the model learned about Claude's verbose conversational phrasing rather than the shorter keyword-style phrasing in the secondary set. The 0.85 is the one worth quoting, and even that is a synthetic proxy until real-user logs exist.
 
