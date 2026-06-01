@@ -1,5 +1,5 @@
 /* eslint-disable react/no-unknown-property */
-import React, { useRef, useEffect, forwardRef, ForwardedRef } from 'react'
+import React, { useRef, useState, useEffect, forwardRef, ForwardedRef } from 'react'
 import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber'
 import { EffectComposer, wrapEffect } from '@react-three/postprocessing'
 import { Effect } from 'postprocessing'
@@ -329,26 +329,53 @@ export default function Dither({
   className,
   style,
 }: DitherProps) {
-  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isVisible, setIsVisible] = useState(true)
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () =>
+      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const onChange = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(([entry]) => setIsVisible(entry.isIntersecting), {
+      threshold: 0,
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const frameloop = isVisible && !prefersReducedMotion ? 'always' : 'never'
+
   return (
-    <Canvas
-      className={`relative h-full w-full ${className ?? ''}`}
-      camera={{ position: [0, 0, 6] }}
-      dpr={dpr}
-      gl={{ antialias: true, preserveDrawingBuffer: true }}
-      style={style}
-    >
-      <DitheredWaves
-        waveSpeed={waveSpeed}
-        waveFrequency={waveFrequency}
-        waveAmplitude={waveAmplitude}
-        waveColor={waveColor}
-        colorNum={colorNum}
-        pixelSize={pixelSize}
-        disableAnimation={disableAnimation}
-        enableMouseInteraction={enableMouseInteraction}
-        mouseRadius={mouseRadius}
-      />
-    </Canvas>
+    <div ref={containerRef} className={`relative h-full w-full ${className ?? ''}`} style={style}>
+      <Canvas
+        className="h-full w-full"
+        camera={{ position: [0, 0, 6] }}
+        dpr={[1, 1.5]}
+        frameloop={frameloop}
+        gl={{ antialias: true, preserveDrawingBuffer: true }}
+      >
+        <DitheredWaves
+          waveSpeed={waveSpeed}
+          waveFrequency={waveFrequency}
+          waveAmplitude={waveAmplitude}
+          waveColor={waveColor}
+          colorNum={colorNum}
+          pixelSize={pixelSize}
+          disableAnimation={disableAnimation}
+          enableMouseInteraction={enableMouseInteraction}
+          mouseRadius={mouseRadius}
+        />
+      </Canvas>
+    </div>
   )
 }
