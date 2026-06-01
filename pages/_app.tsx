@@ -14,7 +14,6 @@ import Head from 'next/head'
 
 import siteMetadata from '@/data/siteMetadata'
 // import { Analytics } from 'pliny/analytics'
-import { SearchProvider } from 'pliny/search'
 import LayoutWrapper from '@/components/LayoutWrapper'
 import { useEffect } from 'react'
 import { useRouter } from 'next/router'
@@ -53,9 +52,7 @@ export default function App({ Component, pageProps }: AppProps) {
         hideHeader={Boolean(PageComponent.hideHeader)}
         fullWidthMain={Boolean(PageComponent.fullWidthMain)}
       >
-        <SearchProvider searchConfig={siteMetadata.search}>
-          <PageComponent {...pageProps} />
-        </SearchProvider>
+        <PageComponent {...pageProps} />
       </LayoutWrapper>
     </ThemeProvider>
   )
