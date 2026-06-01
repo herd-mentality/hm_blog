@@ -11,6 +11,7 @@ import {
   useMatches,
   useRegisterActions,
 } from 'kbar'
+import { kebabCase } from 'pliny/utils/kebabCase'
 
 function Results() {
   const { results } = useMatches()
@@ -127,7 +128,10 @@ function RegisterTagActions({ shouldShowAll }: { shouldShowAll: boolean }) {
       if (!isMounted) return
       const counts = new Map<string, number>()
       docs.forEach((post) => {
-        ;(post.tags || []).forEach((t) => counts.set(t, (counts.get(t) || 0) + 1))
+        ;(post.tags || []).forEach((t) => {
+          const key = kebabCase(t)
+          counts.set(key, (counts.get(key) || 0) + 1)
+        })
       })
       const all = Array.from(counts.entries()).map(([tag, count]) => ({
         id: `tag-${tag}`,

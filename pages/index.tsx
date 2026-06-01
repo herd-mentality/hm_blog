@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react'
 import Masthead from '@/components/Masthead'
 import SectionContainer from '@/components/SectionContainer'
 
-const MAX_DISPLAY = 5
+const MAX_DISPLAY = 10
 
 export const getStaticProps = async () => {
   const sortedPosts = sortedBlogPost(allBlogs) as Blog[]

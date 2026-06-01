@@ -13,6 +13,7 @@ export default function Masthead() {
             colorNum={5}
             pixelSize={2}
             waveFrequency={2.5}
+            enableMouseInteraction={false}
           />
           {/* Enhanced bottom fade for light & dark to match page bg - fixed dark mode to gray-900 */}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-64 bg-gradient-to-b from-transparent via-white/50 to-white dark:hidden" />
