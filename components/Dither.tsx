@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unknown-property */
-import React, { useRef, useEffect, forwardRef, ForwardedRef } from 'react'
-import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber'
+import React, { useRef, useState, useEffect, useCallback, forwardRef, ForwardedRef } from 'react'
+import { Canvas, useFrame, useThree, ThreeEvent, RootState } from '@react-three/fiber'
 import { EffectComposer, wrapEffect } from '@react-three/postprocessing'
 import { Effect } from 'postprocessing'
 import * as THREE from 'three'
@@ -329,14 +329,43 @@ export default function Dither({
   className,
   style,
 }: DitherProps) {
-  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1
+  const observerRef = useRef<IntersectionObserver | null>(null)
+  const [isVisible, setIsVisible] = useState(true)
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () =>
+      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const onChange = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => {
+      mq.removeEventListener('change', onChange)
+      observerRef.current?.disconnect()
+    }
+  }, [])
+
+  const handleCreated = useCallback((state: RootState) => {
+    const el = state.gl.domElement
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    observerRef.current?.disconnect()
+    observerRef.current = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { threshold: 0 }
+    )
+    observerRef.current.observe(el)
+  }, [])
+
   return (
     <Canvas
       className={`relative h-full w-full ${className ?? ''}`}
       camera={{ position: [0, 0, 6] }}
-      dpr={dpr}
+      dpr={[1, 1.5]}
+      frameloop={isVisible ? 'always' : 'never'}
       gl={{ antialias: true, preserveDrawingBuffer: true }}
       style={style}
+      onCreated={handleCreated}
     >
       <DitheredWaves
         waveSpeed={waveSpeed}
@@ -345,7 +374,7 @@ export default function Dither({
         waveColor={waveColor}
         colorNum={colorNum}
         pixelSize={pixelSize}
-        disableAnimation={disableAnimation}
+        disableAnimation={disableAnimation || prefersReducedMotion}
         enableMouseInteraction={enableMouseInteraction}
         mouseRadius={mouseRadius}
       />
