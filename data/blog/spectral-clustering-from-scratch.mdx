@@ -12,6 +12,8 @@ import { Caption, Highlight } from './components/InPostComponents.tsx'
 <TOCInline toc={props.toc} indentDepth={2} />
 <br/>
 
+![](/static/images/spectral-clustering-from-scratch/all-methods.jpg)
+
 The code for this demo is located [here](https://github.com/wongd-hub/spectral-clustering-from-scratch).
 
 # Introduction
@@ -47,7 +49,7 @@ At this stage, we can draw a graph with $N$ vertices representing the observatio
 
 While we can use the result of this matrix without any further modification, we can also decide whether to prune weaker connections to keep computation tractable. 
 
-If we use the unmodified similarity matrix, we keep all similarity scores. Since all nodes are connected at this stage, $c$ does the heavy lifting in controlling which connections actually matter. $c$ becomes the hyperparameter you tune..
+If we use the unmodified similarity matrix, we keep all similarity scores. Since all nodes are connected at this stage, $c$ does the heavy lifting in controlling which connections actually matter. $c$ becomes the hyperparameter you tune.
 We could also use mutual k-nearest neighbours where you only draw an edge between two points if both consider each other a nearest neighbour. Here you’d tune $k$. We’ll go with this option for this demonstration.
 </details>
 
