@@ -85,11 +85,10 @@ input:-webkit-autofill:focus {
 /* Collapsible component */
 details summary {
   font-weight: 700;
-  padding: 0.5rem;
 }
 
 details {
-  @apply dark:bg-neutral-600 !important
+  @apply px-4 py-2 dark:bg-neutral-600 !important;
 }
 
 /* Posts in Series component */
