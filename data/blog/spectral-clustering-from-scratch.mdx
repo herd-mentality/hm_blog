@@ -28,7 +28,7 @@ This post will discuss how spectral clustering works, while implementing the alg
 
 Spectral clustering represents a dataset as an undirected similarity graph that encodes local relationships between observations. Given this similarity graph, clustering becomes a graph partitioning problem where we try to sever the weakest relationships to create isolated but internally well-connected subgraphs which become our clusters.
 
-![](/static/images/spectral-clustering-from-scratch/spectral_clustering10.drawio.png)
+<center>![](/static/images/spectral-clustering-from-scratch/spectral_clustering10.drawio.png)</center>
 
 ## 1. The similarity matrix
 
@@ -105,11 +105,11 @@ data <- as_tibble(spirals_raw$x, .name_repair = ~c('x', 'y')) %>%
 ```
 </details>
 
-![](/static/images/spectral-clustering-from-scratch/spirals-data.jpg)
+<center>![](/static/images/spectral-clustering-from-scratch/spirals-data.jpg)</center>
 
 We can see immediately that K-means would fail to classify these groupings accurately:
 
-![](/static/images/spectral-clustering-from-scratch/kmeans-alone.jpg)
+<center>![](/static/images/spectral-clustering-from-scratch/kmeans-alone.jpg)</center>
 <Caption text="K-means clustering fails to accurately discriminate non-convex shaped clusters."/>
 
 ## 1. The similarity matrix
@@ -223,16 +223,16 @@ embedding <- eig$vectors[, (ncol(eig$vectors) - 2 + 1):ncol(eig$vectors)] %>%
 
 We can see clearly that we have two very small eigenvalues before the first clear eigengap that happens between the second smallest and the third smallest eigenvalues. This indicates that our method has picked up on 2 clear cluster groupings.
 
-![](/static/images/spectral-clustering-from-scratch/smallest-eigenvalues.jpg)
+<center>![](/static/images/spectral-clustering-from-scratch/smallest-eigenvalues.jpg)</center>
 
 If we then take the two eigenvectors corresponding to those two smallest eigenvalues and plot them, we will see our data projected onto the coordinates of the Laplacian. Notice how the data are now clearly separable and that this is now a trivial task for K-means to properly discriminate between the clusters.
 
-![](/static/images/spectral-clustering-from-scratch/projected-on-eigencoordinates.jpg)
+<center>![](/static/images/spectral-clustering-from-scratch/projected-on-eigencoordinates.jpg)</center>
 <Caption text="K-means clustering results shown in blue/red, clusters now trivially separable."/>
 
 Finally, taking the K-means results from being run over the eigenvector rows and applying them to the original data, we see that spectral clustering works well over this dataset:
 
-![](/static/images/spectral-clustering-from-scratch/spectral-clustering-results.jpg)
+<center>![](/static/images/spectral-clustering-from-scratch/spectral-clustering-results.jpg)</center>
 
 # Limitations
 
@@ -248,6 +248,6 @@ Finally, arriving at the $c$ and $k$ parameters for this demo required a grid se
 specc_model <- kernlab::specc(spirals_raw$x, centers = 2)
 ```
 
-![](/static/images/spectral-clustering-from-scratch/all-methods.jpg)
+<center>![](/static/images/spectral-clustering-from-scratch/all-methods.jpg)</center>
 
 [^1]: [Yan, D., Huang, L., & Jordan, M. I. - *Fast Approximate Spectral Clustering*, UC Berkeley.](https://people.eecs.berkeley.edu/~jordan/papers/yan-etal-long.pdf)
