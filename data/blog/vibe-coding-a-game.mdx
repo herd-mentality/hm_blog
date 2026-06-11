@@ -1,0 +1,171 @@
+---
+title  : Vibe coding a game in 2026 as a data engineer
+date   : '2026-06-11'
+tags   : ['AI', 'Vibe coding', 'Web development', 'Games']
+draft  : false
+summary: 'The Ceiling of my vibes: Building a Game with LLMs when you are not a game developer'
+authors: ['christophermortimer']
+---
+
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
+
+<TOCInline toc={props.toc} indentDepth={2} />
+<br />
+
+![](/static/images/vibe-game/vibe-coding-a-game.png)
+
+# The Ceiling of my vibes: Building a Game with LLMs when you are not a game developer
+
+If you read my other blog posts, or know me well enough you know I am not a game developer. In my day job I'm building data pipelines. Recently, I decided to build a kids' game (well my daughter decided I would). 
+
+> "You write computer programs don't you Daddy?". 
+
+The experience certainly wasn't pure magic so I thought I would share how far I pushed "vibe coding" and some things that plain didn't work (at least for me).
+
+The result is live at [https://mortie23.github.io/blockvillie/](https://mortie23.github.io/blockvillie/).
+
+Maybe I wasn't using the right model, maybe I wasn't paying for enough tokens or using the best method to vibe. This isn't a tutorial on how to prompt a game. It’s just me telling me story of what happened when I tried to vibe my way through a genre of programming that I've never touched before, in early 2026.
+
+## My initial architecture
+
+I know enough about web development and hosting web sites and applications so to ensure I at least had some idea of what the LMM generated I decided to have the AI build a web based game. If I didn't know the tech stack at all I thought the complexity would have killed my momentum.
+
+I also wanted to be able to easily and cheaply host the final product and share it with friends. So I decided to get the AI to build the game as a static web site with all logic client side in JavaScript. 
+
+* **Zero Backend:** No databases, no authentication servers, no API Gateways. If I introduced a server, I'd have running costs, maintenance, and other overhead that would have been no value.
+* **No Real State Management:** Everything runs entirely in memory within the browser session. If you refresh, it resets. For a kids' game that only my kids would play, this is perfect.
+
+## The AI vibe developer tooling
+
+I used Google's Antigravity to build the game. At the time, it included these models.
+
+![](/static/images/vibe-game/vibe-game-antigravity-models.png)
+
+The quotas on usage of each of them were different. I was in no rush, so sometimes when I ran out of quota, I just paused the development for a few days until it refreshed.
+
+What I found (and also took advice from others) is that you can save money/token quota but being selective on what model you choose for different tasks.
+
+For example, for the initial scaffolding and set-up of the core game, including:
+- web libraries/frameworks
+- developer tooling
+- game mechanics 
+- data structures
+
+I used the heavy, expensive models.
+
+Once that was all built and I had a development site working, I switched to the cheaper, faster models for new features or bug fixes. 
+
+If a major feature or refactor was required, I switched back to the more expensive models.
+
+## Getting started
+
+A reality check on where a prompt like the following will get us in a single shot:
+
+> 
+> Generate a grid based game. Use Vite and REACT. 
+> 
+> The player can move a character on the grid. 
+> 
+> The theme is Lego, for UI elements such as characters and obstacles use lego based images. 
+> 
+> Controls are with keyboard arrows and movement is to adjacent grid tiles from where the character is. The character can pickup gems and they collect in a counter. 
+> 
+> There is a shop where the character can buy outfits with the gems. 
+> 
+> The character can also pickup outfits and chose to wear or put them in a closet. 
+> 
+> The grid can contain walkable tiles and non-walkable tiles. Tiles can be grass, paving, walls, sand.
+> 
+
+Antigravity (and most vibe coding IDEs) will take from a prompt like this to an "Implementation plan".
+
+![](/static/images/vibe-game/vibe-game-antigravity-implementation-plan.png)
+
+It gives the "vibe developer" the opportunity to add some more context. Let's provide this extra context.
+
+### User Review Required, IMPORTANT:
+
+- Use CSS for the grid tiles (grass, paving, sand, walls) and for gems. Only generate images for characters and outfits.
+
+### Open Questions, NOTE:
+
+1. Maps should be statically defined. The user should be able to select from many maps. Start with two maps, a park and a house. Maps should be a json array of values representing tile types.
+2. Initial specific outfits should be school uniform and pyjamas
+3. Initial grids should start with 40x40
+
+So what did this get us?
+
+![](/static/images/vibe-game/vibe-game-single-shot-game.png)
+
+Amazing we got something bug free. But, gems are aqua coloured balls, and outfits are red squares. The characters are bounded by grey square backgrounds. And if you could play the game, the character movement is not smooth at all.
+
+![](/static/images/vibe-game/vibe-game-single-shot-game-shop.png)
+
+The shop UI is ok, but we are buying completely new characters, not outfits.
+
+![](/static/images/vibe-game/vibe-game-single-shot-game-closet.png)
+
+The closet is not populated with outfits, but with characters.
+
+## Where the vibe stalled, the major issues
+
+This single shot prompt to working game is actually amazing. Even in the early days of LLMs this wasn't possible at all. A total bug free game with one prompt.
+
+But my daughters weren't happy at all. 
+
+> "Daddy, I thought it would look like Minecraft" 
+
+These are the types of comments from my daughter after the first iteration. It needed refinement to be something she would even play once.
+
+### Map generation
+
+The first major wall I hit was map generation. I wanted maps that were sensible layouts, in fact my daughter wanted the maps to represented real spaces she explores in real life. Firstly, left to its own devices, the maps it generated were incredibly boring. I attempted to upload screenshot from Google maps, or house plans and ask it to generate a map based on the image, these were even worse.
+
+To get past this, I stopped asking the AI to build the maps. Instead, I used it to build an **Age of Empires-style Level Creator** directly inside the game space. I shifted from trying to automate the content to automating the *creative tools*. Once the level creator interface was functional, I could sit down and design the maps myself, bringing human intention to the grid.
+
+![](/static/images/vibe-game/vibe-game-map-generator.png)
+
+One tool for converting images to the JSON array of tile identifiers.
+
+![](/static/images/vibe-game/vibe-game-map-editor.png)
+
+One app for manually editing the tiles, and adding objects and gems (diamonds).
+
+### Image generation
+
+This required a more involved process of generating images with Gemini's image generator, however the raw images generate were inherently messy.
+
+Every asset went through Photoshop. I had to manually:
+- mask out backgrounds
+- clean up edges
+- fix alignment artifacts
+  
+Then I could export clean, transparent `.png` files that would map perfectly to a coordinate system.
+
+### Game play
+
+An LLM does not understand what makes a game engaging for a child. It doesn't know what triggers a sense of reward, what is too difficult, or what causes frustration. I brought in the ultimate user experience consultant: a real child.
+
+Every mechanic, win condition, and level progression rule came from my daughters. I watched how they interacted with the screen. When they got bored, we changed the rules. When a level completion didn't feel rewarding, we adjusted the logic.
+
+So we ended up with a cinema map with popcorn you can collect.
+
+![](/static/images/vibe-game/vibe-game-cinema.png)
+
+And a school level with interactions such as a chess game where the pieces move.
+
+![](/static/images/vibe-game/vibe-game-school.png)
+
+## The 2026 Reality Check for me
+
+Being an entrepreneur or building software in 2026 seems like it has never been more accessible. The barrier to technical execution has dropped through the floor.
+
+But the reality is that launching something meaningful is just as difficult as it has ever been. Why? Because while code generation is cheap, human attention and wallets are scarcer, more competitive, and more stressed than ever. You cannot prompt your way into someone's attention span.
+
+## Conclusion: The Pure Joy of Building
+
+I have zero delusions about Blockvillie. I’m not launching a startup, I'm not trying to make money, and I don't even expect my daughters to play it. Real games require immense depth, complex optimization, and narrative layers that go far beyond a few nights of vibe coding up a frontend experiment.
+
+Maybe this is the point. The value I got out of vibe coding wasn't achieving the myth of the automated product to start a business. It’s the joy of learning. Diving into a genre of programming I had zero experience with. Growing from raw prompts into an interactive experience you can touch, play with, and share. 
+
+The code might be generated, but the creative fulfillment is entirely human.
