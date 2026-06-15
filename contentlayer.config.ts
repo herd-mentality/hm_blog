@@ -1,6 +1,7 @@
 import { defineDocumentType, ComputedFields, makeSource } from 'contentlayer/source-files'
 import readingTime from 'reading-time'
 import path from 'path'
+import { visit } from 'unist-util-visit'
 // Remark packages
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
@@ -15,10 +16,38 @@ import rehypeSlug from 'rehype-slug'
 import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 import rehypeKatex from 'rehype-katex'
 import rehypeCitation from 'rehype-citation'
-import rehypePrismPlus from 'rehype-prism-plus'
+import rehypePrettyCode from 'rehype-pretty-code'
 import rehypePresetMinify from 'rehype-preset-minify'
 
 const root = process.cwd()
+
+// Shiki-based syntax highlighting. A single theme is used (rather than a dual
+// light/dark theme) because this project's MDX toolchain (mdx-bundler /
+// @mdx-js/esbuild 2.3.0) drops CSS custom properties from inline styles, which
+// breaks Shiki's `--shiki-light`/`--shiki-dark` variable approach. A single theme
+// emits a normal `color` property that survives compilation. Code blocks render
+// on a dark background in both light and dark site modes, so `night-owl` (which
+// the previous Prism theme was based on) is a natural fit. `keepBackground` is
+// disabled so the existing container styling controls the background.
+const rehypePrettyCodeOptions = {
+  theme: 'night-owl',
+  keepBackground: false,
+  defaultLang: 'plaintext',
+}
+
+// Shiki language IDs are lowercase and case-sensitive (e.g. `r`, not `R`).
+// rehype-prism-plus silently lowercased these, but rehype-pretty-code does not,
+// so fenced blocks like ```R would fall back to plaintext. Lowercase the code
+// language here. This runs AFTER remarkCodeTitles so that titles such as
+// `plumber.R` or `cardList.js` (taken from the original `lang:title` string)
+// keep their original casing.
+function remarkLowercaseCodeLang() {
+  return (tree: any) => {
+    visit(tree, 'code', (node: any) => {
+      if (node.lang) node.lang = node.lang.toLowerCase()
+    })
+  }
+}
 
 const computedFields: ComputedFields = {
   readingTime: { type: 'json', resolve: (doc) => readingTime(doc.body.raw) },
@@ -87,6 +116,7 @@ export default makeSource({
       remarkExtractFrontmatter,
       remarkGfm,
       remarkCodeTitles,
+      remarkLowercaseCodeLang,
       remarkMath,
       remarkImgToJsx,
     ],
@@ -95,7 +125,11 @@ export default makeSource({
       rehypeAutolinkHeadings,
       rehypeKatex,
       [rehypeCitation, { path: path.join(root, 'data') }],
-      [rehypePrismPlus, { ignoreMissing: true }],
+      // Cast to `any`: rehype-pretty-code bundles a newer unified/vfile (hast v9)
+      // generation than the rest of this project (unified 10), so the Transformer
+      // types are nominally incompatible at compile time even though they are
+      // runtime-compatible. The cast avoids a spurious `next build` type error.
+      [rehypePrettyCode as any, rehypePrettyCodeOptions],
       rehypePresetMinify,
     ],
   },
