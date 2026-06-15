@@ -57,7 +57,7 @@ This alone is not entirely useful, we’ve created three tables, the largest of 
 <details>
 	<summary>Number of parameters required to specify an unfactorised joint distribution</summary>
 
-Technically, the number of parameters it takes to represent an unfactorised probability distribution is $(\prod_i\text{Number of States of }X_i) - 1$. Here that’d be $2^3-1=8$.
+Technically, the number of parameters it takes to represent an unfactorised probability distribution is $(\prod_i\text{Number of States of }X_i) - 1$. Here that’d be $2^3-1=7$.
 </details>
 
 <Highlight text="The truly useful bit is if we were clever enough to order variables in the chain rule so that causes come before effects"/>. That way, we can use our domain knowledge to knock out variables from each conditional probability term. Say for example that we know $C$ is a root cause for $A$ and $B$. That means that the value of $C$ wouldn’t depend on the value of $A$ or $B$, so this term $P(C\mid A, B)$ is equivalent to $P(C)$. The joint probability distribution is now:
@@ -355,4 +355,4 @@ If we instead learnt the conditional probabilities using a Bayesian method, we c
 
 BNs have lots of powerful applications in real life beyond structure learning, from anomaly detection (scoring how surprising a new observation is under the model) to causal inference (asking not just what correlates to diabetes, but what causes it). Dynamic Bayesian Networks, which extend this framework to model time series, are a topic for a later post.
 
-[^1]: JuliaWorkshop - [Pima Diabetes Dataset](https://rpubs.com/JuliaWorkshop/Pima_Diabetes_Dataset), RPubs.
+[^1]: [JuliaWorkshop - *Pima Diabetes Dataset*, RPubs.](https://rpubs.com/JuliaWorkshop/Pima_Diabetes_Dataset)
