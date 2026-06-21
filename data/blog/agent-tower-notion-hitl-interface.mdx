@@ -1,33 +1,35 @@
 ---
-title  : When Your Kanban Board Becomes the Cockpit
-date   : '2026-06-17'
+title  : Observing and Steering your AI Agents via Kanban
+date   : '2026-06-21'
 tags   : ['ai', 'agents', 'hitl', 'notion', 'python', 'agentic-ops']
 draft  : false
-summary: 'How a Notion kanban board replaced a custom HITL UI for a four-stage AI incident pipeline: two control patterns, one comment mechanism, phase-reset without a full restart.'
+summary: 'How to use your existing Notion kanban board as the cockpit to manage your running AI agents, demonstrating human intervention and agent memory across runs.'
 authors: ['chingchew']
 ---
 
-A multi-agent pipeline with four stages in flight has an observation problem. Each agent writes to a terminal. As the fleet grows there is no glass cockpit, no ambient surface where an operator can see who is doing what, catch a wrong hypothesis in stage two and let stages three and four continue.
+Imagine multiple AI agents running in an organisation and the user needs to keep track of what each agent is doing, guide the agents that have gone off course and review the outputs of agents that have completed. The current "wall of text" across multiple Claude Code tabs that most of us see is not the best user experience.
 
-LangGraph and similar frameworks solve the mechanism: pause, persist state, resume. What they do not solve is the interface. Every HITL demo ends with "and then you build a UI for the human."
-
-Agent Tower skips the custom UI. The Notion kanban board your team already uses becomes the cockpit. One card per incident run. Comments are the control channel.
+In this post, I show you that you don't need to build a custom human-in-the-loop (HITL) user interface to manage multiple AI agents. The kanban board your team already uses can do the job.
 
 ![Notion kanban board with four incident pipeline stages visible, one card in 'Needs Review'](/static/images/agent-tower-notion-hitl-interface/kanban-fleet.jpg)
+
+The screenshot above shows multiple AI agents operating across a multi-stage pipeline: searching the corporate knowledge base, checking system logs, adjusting behaviour based on user input and surfacing all agent decisions in a familiar user interface.
+
+**Card status** tracks pipeline progress. **Card comments** carry agent outputs and operator notes. The comment API is the HITL channel: any board with one (Jira, Azure DevOps Boards, GitHub Projects) fits the same pattern.
 
 ---
 
 ## Architecture
 
-Four stages: Triage, Investigation, Remediation and Comms. Each stage is a [Hermes Agent](https://github.com/NousResearch/hermes) session, configured here to run Claude. `pipeline.py` sequences the stages, updates Notion card status and implements two HITL patterns via comment polling.
+Four stages: Triage, Investigation, Remediation and Comms. Each stage is a [Hermes Agent](https://github.com/NousResearch/hermes) session, configured here to run Claude. Hermes was chosen for its built-in FTS5 (SQLite full-text search; phrase-sensitive) session memory, which the three-layer memory architecture (see below) depends on. `pipeline.py` sequences the stages, updates Notion card status and implements two HITL patterns via comment polling.
 
 ![Four-stage incident pipeline with HITL pattern annotations and memory-layer callouts per stage](/static/images/agent-tower-notion-hitl-interface/pipeline-flow.svg)
 
-**Pattern B** (Investigation): the agent posts its findings to the card as a comment, then polls for 20 seconds. If the operator leaves a comment during that window, the stage re-runs with the operator note injected. No comment: auto-advance.
+**Steer** (Investigation): the agent posts its findings to the card as a comment, then polls for 20 seconds (in production, tune `hitl_window_s` to match your incident response SLA as 20 seconds is a demo value.). If the operator leaves a comment during that window, the stage re-runs with the operator note injected. No comment means to auto-advance. This is the steer-while-moving pattern: catch a wrong hypothesis before it propagates to the next stage.
 
-**Pattern A** (Comms): the agent posts a draft and moves the card to "Needs Review," then polls indefinitely. A keyword approval ("lgtm", "approved", "ship it") sends the brief unchanged. Anything else is a redirect: the stage re-runs with the note applied.
+**Gate** (Comms): the agent posts a draft and moves the card to "Needs Review," then polls indefinitely. A keyword approval ("lgtm", "approved", "ship it") sends the brief unchanged. Anything else is a redirect: the stage re-runs with the note applied. Comms is the external-facing deliverable; a human approves it before it leaves the pipeline.
 
-Both patterns use the same `_poll_for_new_comment` function and the same Notion comments API. The difference is the timeout and the approval gate.
+Both patterns use the same `_poll_for_new_comment` function and the same Notion comments API. The difference is the timeout and the approval keyword check.
 
 ---
 
@@ -62,32 +64,32 @@ elif decision == "escalate":
     return 0
 ```
 
-The Triage prompt has an explicit constraint: do not name root causes. Triage classifies symptoms and finds matching KB runbooks; Investigation owns diagnosis. Passing a pre-formed hypothesis to Investigation anchors it before it has read the logs. The `notes_for_next_stage` field is timeline facts only — observable signals, no causal claims.
+The Triage prompt has an explicit constraint: do not name root causes. Triage classifies symptoms and finds matching KB runbooks; Investigation owns diagnosis. Passing a pre-formed hypothesis to Investigation anchors it before it has read the logs. The `notes_for_next_stage` field is timeline facts only: observable signals, no causal claims.
 
 ![Triage stage YAML structured output: severity, class, KB match and decision](/static/images/agent-tower-notion-hitl-interface/triage-yaml.jpg)
 
 ### Two patterns, one mechanism
 
-Both HITL patterns work by detecting a new comment via `_poll_for_new_comment`, then calling `_build_prompt` with `operator_note` appended. The STAGES config makes pattern assignment explicit:
+Both HITL patterns work by detecting a new comment via `_poll_for_new_comment`, then calling `_build_prompt` with `operator_note` appended. The STAGES config is explicit about which pattern applies to each stage:
 
 ```python
 STAGES: list[dict] = [
-    {"name": "Triage",        "hitl": None,       ...},
-    {"name": "Investigation", "hitl": "pattern_b", "hitl_window_s": 20.0, ...},
-    {"name": "Remediation",   "hitl": None,       ...},
-    {"name": "Comms",         "hitl": "pattern_a", ...},
+    {"name": "Triage",        "hitl": None,      ...},
+    {"name": "Investigation", "hitl": "steer",   "hitl_window_s": 20.0, ...},
+    {"name": "Remediation",   "hitl": None,      ...},
+    {"name": "Comms",         "hitl": "gate",    ...},
 ]
 ```
 
-Triage and Remediation have no HITL window. Investigation gets Pattern B (time-bounded). Comms gets Pattern A (indefinite gate with keyword approval).
+Triage and Remediation have no HITL window. Investigation gets Steer (time-bounded, 20 seconds). Comms gets Gate (indefinite, with keyword approval).
 
 ### Phase-reset: one stage, not the whole run
 
 When the operator leaves a note, `pipeline.py` re-runs only the affected stage. Prior outputs are preserved and passed in as `PRIOR STAGE OUTPUT(S)`. Triage's KB retrieval and Investigation's log analysis do not re-run.
 
 ```python
-# Pattern B: Investigation — poll after completion
-if hitl == "pattern_b" and not dry_run:
+# Steer: Investigation — poll after completion
+if hitl == "steer" and not dry_run:
     _post_comment(card_id, trimmed, label=name)
     known_comment_ids = _comment_ids(_get_comments(card_id))
     comment = _poll_for_new_comment(card_id, known_comment_ids, timeout_s=window_s)
@@ -104,7 +106,7 @@ if hitl == "pattern_b" and not dry_run:
 
 ### Operator notes as durable memory
 
-Pattern A introduces a subtlety: the operator's formatting instruction from Run 1 should apply to Run 2 automatically, without re-stating it. That is the difference between a demo and a system.
+Gate introduces a subtlety: the operator's formatting instruction from Run 1 should apply to Run 2 automatically, without re-stating it. The Comms agent retrieves that correction on the next run and applies it without being told again.
 
 The Comms prompt handles this in Step 1. Before drafting, the Comms agent searches past Hermes sessions via FTS5 for prior operator corrections:
 
@@ -112,13 +114,24 @@ The Comms prompt handles this in Step 1. Before drafting, the Comms agent search
 BEFORE drafting, search past Comms sessions for prior operator corrections.
 Use session search with these queries:
 - "Applied operator note"
-- "operator note 3 bullets customer impact"
+- "operator override format"
+- "Comms — Revised"
 ```
 
-When a prior correction is found, the agent opens its response with a marker:
+When Run 2 searches, Hermes finds the Run 1 session and returns a match like this:
 
 ```
-[Applied prior guidance: 3 bullets, lead with customer impact — recalled from prior session]
+Prior guidance found. Session 20260617_134017_0a8bd2 contains the marker:
+
+[Applied operator note: Use 3 bullet points, lead with customer impact — from current pipeline OPERATOR NOTE]
+
+No current OPERATOR NOTE in this pipeline input overrides it. Applying the 3-bullet customer-impact-first format now.
+```
+
+The agent then opens its response with a marker:
+
+```
+[Applied prior guidance: Use 3 bullet points, lead with customer impact — recalled from prior session]
 ```
 
 This marker is the contract. Memory only earns its keep when the prompt actively asks for it and the retrieval result is checkable. If the Comms agent silently changed its output style between runs, there would be no way to know whether memory fired or whether the model just happened to produce a different format.
@@ -127,59 +140,49 @@ The three-layer memory architecture makes this possible:
 
 ![Three-layer memory: Knowledge (Confluence KB), Operational (Hermes FTS5), Workflow (Notion kanban)](/static/images/agent-tower-notion-hitl-interface/three-layer-memory.svg)
 
-Confluence holds static knowledge: KB articles created by the Doco Agent from past Slack threads. Hermes FTS5 holds operational memory: per-session outputs that agents can search across. Notion holds workflow state: card status, agent outputs as comments, operator corrections. Conflating any two of these layers is the common mistake. The Comms agent querying Confluence for formatting guidance, or Triage querying Hermes sessions for KB articles, would produce noise. Each layer has a distinct access pattern.
+Confluence holds static knowledge: KB articles created by the [Doco Agent](https://herdmentality.xyz/blog/documentation-agent) from past Slack threads. Hermes FTS5 holds operational memory: per-session outputs that agents can search across. Notion holds workflow state: card status, agent outputs as comments, operator corrections. The knowledge layer comes from an upstream agent; the next operationalises it. One agent captures organisational knowledge. The next searches it.
+
+Conflating any two layers is the common mistake. The Comms agent querying Confluence for formatting guidance, or Triage querying Hermes sessions for KB articles, would produce noise. Each layer has a distinct access pattern.
 
 ---
 
 ## Results
 
-**Run 1**: the pipeline runs all four stages. Triage matches a connection-pool KB runbook (medium confidence) and routes to Investigation. Investigation posts findings; the operator catches a wrong hypothesis — network was the assumed cause — and leaves a comment redirecting it to disk I/O. Investigation re-runs with the correction. Comms drafts a verbose brief; the operator leaves "use 3 bullets, lead with customer impact." Comms re-runs and applies the format.
+**Run 1**: the pipeline runs all four stages. Triage matches a connection-pool KB runbook (medium confidence) and routes to Investigation. Investigation posts findings; the operator catches a wrong hypothesis (network was the assumed cause) and leaves a comment redirecting it to disk I/O. Investigation re-runs with the correction. Comms drafts a verbose brief; the operator leaves "use 3 bullets, lead with customer impact." Comms re-runs and applies the format.
+
+![Run 1 Comms draft: verbose default format before operator correction](/static/images/agent-tower-notion-hitl-interface/comms-run1-brief.jpg)
 
 ![Operator comment on Comms card: 'use 3 bullets lead with customer impact'](/static/images/agent-tower-notion-hitl-interface/pattern-a-comment.jpg)
 
-![Run 1 Comms draft — verbose default format before operator correction](/static/images/agent-tower-notion-hitl-interface/comms-run1-brief.jpg)
-
 **Run 2**: a different incident. No operator interaction at any stage. The Comms agent queries Hermes FTS5, finds the Run 1 correction and auto-applies the 3-bullet format. The instruction was never repeated.
 
-![Run 2 Comms output — 3-bullet format auto-recalled from prior session without operator prompt](/static/images/agent-tower-notion-hitl-interface/comms-run2-brief.jpg)
+![Run 2 Comms output: 3-bullet format auto-recalled from prior session without operator prompt](/static/images/agent-tower-notion-hitl-interface/comms-run2-brief.jpg)
 
-Both runs, both patterns, via kanban comments. No custom UI. No tool changes between runs.
-
----
-
-## What Was Hard
-
-**HITL window timing.** Twenty seconds for Pattern B felt tight during demos. Too short and the operator misses it; too long and the audience watches a progress indicator. There is no principled answer — 20 seconds was the best tradeoff for a 30-minute talk. A production system would make this configurable per incident class.
-
-**Hermes echoes the full prompt.** Each stage's stdout starts with the entire prompt text, including prior stage outputs, before the agent response. Extracting the NOTION summary line and the response body required finding the last "Initializing agent..." marker in stdout and scanning only what follows. Naive substring search returns the prior stage's NOTION line, not the current one.
-
-**FTS5 retrieval finds the prompt itself.** The Comms prompt contains the search query strings it will run. On first execution those same terms appear in the session that was just created. The prompt had to explicitly instruct the agent to ignore hits that contain query strings but no `[Applied operator note: ...]` marker. Without that instruction, the agent retrieves its own prompt as prior guidance.
-
-**Phase-reset from mid-pipeline.** `--from-stage Investigation` is supported for demo re-runs without re-running Triage. `pipeline.py` reads prior stage outputs from `.run/` on disk to reconstruct prior context. Getting file-naming conventions consistent across live runs, dry runs and fixture replays was the majority of the debugging time.
+Two runs, both patterns, via kanban comments. No custom UI. No tool changes between runs. The audit trail (every agent output, every operator correction, every redirect) lives in the card comments.
 
 ---
 
 ## Where It Goes Next
 
-**Mem0 for operational memory.** Hermes FTS5 works for exact-phrase search but struggles when the prior operator correction was phrased differently from the search query. Mem0 or a vector store would handle semantic retrieval without rewriting the pipeline structure.
+Agent Tower is the pattern. These are the tools that ship it in production.
 
-**Langfuse or LangSmith for observability.** The current build has no tracing layer. What did the agent decide? That lives only in Notion comments. A proper observability layer would surface stage outputs, token counts and latency without opening the terminal. This is the sharpest gap between demo and production.
+For execution engines: [LangGraph](https://langchain-ai.github.io/langgraph/) is the strongest OSS choice if you want Steer and Gate as first-class primitives, with production-grade checkpointing, interrupt/resume and Python-native state management. If you are in an Azure environment, [AutoGen v0.4+](https://github.com/microsoft/autogen) is worth considering; the v0.2 multi-agent conversation API is deprecated and v0.4 is a full rewrite. [Dify](https://dify.ai) gives you a visual builder with built-in HITL approval flows and is the lowest-code entry point if you want to avoid orchestration Python.
 
-**Mixed human/agent board.** The natural extension is not a technical upgrade; it is a conceptual one. If a kanban card can represent an agent run, it can equally represent a human task. Both post comments, both steer the pipeline, both show as status changes on the same board. The surface for mixed human/agent coordination already exists.
+For control planes: if your team runs on Jira, [Atlassian Rovo](https://www.atlassian.com/rovo) ships Jira-native agents with ticket comments as the HITL channel. Notion shipped [Custom Agents](https://www.notion.com/releases/2026-02-24) in February 2026, which automate recurring workflows directly inside your workspace; if your team is already there, their agents are the lower-friction path. If you are in a Microsoft 365 environment, [Copilot Studio](https://www.microsoft.com/en-au/microsoft-copilot/microsoft-copilot-studio) provides fleet-level agent visibility and governance across the tenant.
+
+**Observability gap.** The current build has no tracing layer. What did the agent decide? That lives only in Notion comments. [Langfuse](https://langfuse.com) is the most straightforward drop-in for Python-based agent pipelines to surface stage outputs, token counts and latency without opening the terminal.
+
+**Memory quality.** Hermes FTS5 works for exact-phrase search but struggles when prior operator corrections were phrased differently from the search query. [Mem0](https://mem0.ai) or a vector store would handle semantic retrieval without rewriting the pipeline structure.
+
+**Mixed human/agent board.** The natural extension is not a technical upgrade. It is a conceptual one. If a kanban card can represent an agent run, it can equally represent a human task. Both post comments, both steer the pipeline, both show as status changes on the same board. The surface for mixed human/agent coordination already exists.
 
 ![Future-state mixed kanban: humans and agents coordinating on the same board surface](/static/images/agent-tower-notion-hitl-interface/mixed-board.svg)
-
-This is the direction Notion 3.3 (February 2026) moved when it shipped native agent orchestration. Reusing the collaboration layer rather than building a control UI turned out to be where the platform went. Reading that six months early was the validation.
 
 ---
 
 ## Code and Further Reading
 
 The full source is on [GitHub](https://github.com/cchew/agent-tower). The stack is Python 3.12, [Hermes Agent](https://github.com/NousResearch/hermes) (Nous Research), Notion REST API and httpx.
-
-For observability, [Langfuse](https://langfuse.com) is the most straightforward drop-in for Python-based agent pipelines.
-
-For replacing FTS5 memory with semantic retrieval, [Mem0](https://mem0.ai) integrates with most Python agent frameworks without changing the pipeline structure.
 
 ---
 
