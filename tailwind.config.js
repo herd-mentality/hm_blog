@@ -31,6 +31,7 @@ module.exports = {
       fontFamily: {
         sans: ['Inter', ...fontFamily.sans],
         grotesk: ['"Space Grotesk Variable"', 'Space Grotesk', ...fontFamily.sans],
+        mono: ['"Fira Code Variable"', ...fontFamily.mono],
       },
       colors: {
         primary: colors.teal,
