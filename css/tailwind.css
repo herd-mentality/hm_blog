@@ -50,6 +50,15 @@ h1, h2, h3, #hm-title {
   font-family: 'DM Mono', sans-serif;
 }
 
+/* Code fonts: Fira Code (variable, with ligatures) for fenced blocks + inline
+   code. Overrides the @tailwindcss/typography default mono stack. */
+.prose code,
+.prose pre {
+  font-family: 'Fira Code Variable', ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-feature-settings: 'calt' 1, 'liga' 1;
+}
+
 .tag-link:hover {
   @apply text-primary-600 dark:text-primary-400
 }
