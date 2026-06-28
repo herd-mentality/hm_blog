@@ -18,7 +18,7 @@ The code for this demo can be found [here](https://github.com/wongd-hub/bn-struc
 
 # Introduction
 
-Bayesian Networks (BNs) are a tool for building a probabilistic model of a dataset, providing a way to encode prior knowledge in the process. BNs are directed acyclic graphs (DAGs) that represent independence assumptions amongst variables. Their key property is that a variable is independent of all other variables that don't descend from it, once you know the values of its parents.
+Bayesian Networks (BNs) are a tool for building a probabilistic model of a dataset, providing a way to encode prior knowledge in the process. BNs are directed acyclic graphs (DAGs) that represent independence assumptions amongst variables. Their key property is that a variable is independent of all other variables that don't descend from it, once you know the values of its parents. Unlike many modelling approaches, BNs are highly interpretable: the graph itself is the explanation, showing explicitly how each variable influences the others. 
 
 With this graph in hand, we can infer conditional and marginal independence properties as well as results of other probability operations through graph manipulations. We can also perform what-if reasoning, e.g. if I observe high `Glucose`, what does that tell me about the probability of someone having `Diabetes`?
 
