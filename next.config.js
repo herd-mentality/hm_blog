@@ -13,7 +13,7 @@ const ContentSecurityPolicy = `
   media-src 'none';
   connect-src * https://www.google-analytics.com/ www.google-analytics.com/ https://stats.g.doubleclick.net;
   font-src 'self';
-  frame-src https://giscus.app/;
+  frame-src 'self' https://giscus.app/;
 `
 
 const securityHeaders = [
@@ -30,7 +30,7 @@ const securityHeaders = [
   // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
   {
     key: 'X-Frame-Options',
-    value: 'DENY',
+    value: 'SAMEORIGIN',
   },
   // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options
   {
