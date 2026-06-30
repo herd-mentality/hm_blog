@@ -5,7 +5,8 @@ const siteMetadata = {
   title: 'The Herd Mentality',
   author: 'Herd Mentality',
   headerTitle: 'The Herd Mentality',
-  description: 'See the latest posts from the Herd',
+  description:
+    'The Herd Mentality is a technical blog on data science, statistics, machine learning, R, and software engineering, with hands-on tutorials and write-ups.',
   language: 'en-us',
   theme: 'system', // system, dark or light
   siteUrl: 'https://www.herdmentality.xyz',
