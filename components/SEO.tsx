@@ -15,6 +15,7 @@ interface CommonSEOProps {
       }[]
   twImage: string
   canonicalUrl?: string
+  noindex?: boolean
 }
 
 const CommonSEO = ({
@@ -24,12 +25,13 @@ const CommonSEO = ({
   ogImage,
   twImage,
   canonicalUrl,
+  noindex = false,
 }: CommonSEOProps) => {
   const router = useRouter()
   return (
     <Head>
       <title>{title}</title>
-      <meta name="robots" content="follow, index" />
+      <meta name="robots" content={noindex ? 'noindex, follow' : 'follow, index'} />
       <meta name="description" content={description} />
       <meta property="og:url" content={`${siteMetadata.siteUrl}${router.asPath}`} />
       <meta property="og:type" content={ogType} />
@@ -85,6 +87,7 @@ export const TagSEO = ({ title, description }: PageSEOProps) => {
         ogType="website"
         ogImage={ogImageUrl}
         twImage={twImageUrl}
+        noindex
       />
       <Head>
         <link

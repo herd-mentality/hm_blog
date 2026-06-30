@@ -12,6 +12,7 @@ import siteMetadata from '@/data/siteMetadata'
 import ScrollTopAndComment from '@/components/ScrollTopAndComment'
 import MultiPartTracker from '@/components/MultiPartTracker'
 import RBloggersSidebar from '@/components/RBloggersSidebar'
+import RelatedPosts from '@/components/RelatedPosts'
 
 const editUrl = (path) => `${siteMetadata.siteRepo}/blob/master/data/${path}`
 const discussUrl = (path) =>
@@ -168,6 +169,7 @@ export default function PostLayout({
                     </div>
                   </div>
                 )}
+                <RelatedPosts currentPath={path} tags={tags} allPosts={allPosts} />
                 {(next || prev) && (
                   <div className="flex justify-between py-4 xl:block xl:space-y-8 xl:py-8">
                     {prev && (
