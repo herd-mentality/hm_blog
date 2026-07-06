@@ -1,0 +1,650 @@
+---
+title  : Neural networks from scratch
+date   : '2026-07-06'
+tags   : ['neural-networks', 'deep-learning', 'R']
+draft  : false
+summary: 'Creating a neural network using base R'
+authors: ['darrenwong']
+---
+
+import { Caption, Highlight } from './components/InPostComponents.tsx'
+
+<TOCInline toc={props.toc} indentDepth={2} />
+<br/>
+
+<center>![](/static/images/neural-networks-from-scratch/nn-weights-momentum.jpg)</center>
+
+The code for this demonstration may be found [here](https://github.com/wongd-hub/nns-from-scratch).
+
+# Introduction
+
+Inspired by [this post](https://iamtrask.github.io/2015/07/12/basic-python-network/) by *iamtrask*, I wanted to create a neural network from scratch with nothing but base (R) language capabilities. The goal here was for me to get a better intuition for how backpropagation updates a neural network’s weights. While my network isn’t quite as terse as *iamtrask*’s is, I think it’s quite manageable and does a good job at demonstrating how simply we can pull off backprop using linear algebra.
+
+For other sources, I’d highly recommend a read of this blog post: [Backprop Explainer](https://xnought.github.io/backprop-explainer/), which is great for visual learners and aims to build intuitive understanding. Before we dive into backprop, a quick refresher on neural networks…
+
+# Neural networks
+
+Neural networks at their simplest are a layered arrangement of nodes with three main types: input, hidden, and output. The first layer of nodes captures the input to the network, those inputs are fed into the next layer of hidden nodes, and then on to the output nodes.
+
+Each hidden node is a linear combination of all the values in the previous layer, with coefficients called *weights* and a possible intercept called a *bias*. <Highlight text="The act of training a neural network is the act of finding the best weights and biases we can."/>{' '}Upon computing this value, it is *activated* with an *activation function*. These are how neural networks can learn non-linear shapes, and common activation functions are the sigmoid function, the Rectified Linear Unit (ReLU), or its smooth version, the Gaussian Error Linear Unit (GELU). 
+
+<center>![](/static/images/neural-networks-from-scratch/nn.drawio.png)</center>
+
+In our demonstration, we’ll be using the sigmoid function since it squashes its output to between 0 and 1 which is perfect for us since we’ll be tackling a binary classification task. It’s defined as $\sigma(x)=\frac{1}{1 + e^{-x}}$. Its derivative is also pretty convenient, we can calculate it from the result of the sigmoid: $\sigma'(x)=\sigma(x)(1 - \sigma(x))$.
+
+# How backpropagation works
+
+Backpropagation is the algorithm that neural networks use to update their weights, and at its core is the concept of gradient descent. However, before we start, we need to measure how wrong our model is so we know whether we’re improving it or not.
+
+## The loss function
+
+To quantify how wrong our model is, we can simply sum our error across all observations in our dataset. Note we square our errors so that positive and negative errors don’t cancel each other out.
+
+$$
+\begin{aligned}
+E(\mathbf{w}) = \frac{1}{2} \sum_{\underbrace{t=1}_{\text{all training samples}}}^{n} \sum_{\underbrace{k=1}_{\text{all outputs}}}^{K} \underbrace{(y_{tk} - \hat{y}_{tk})^2}_{\text{error in the } k^{th} \text{ output}}
+\end{aligned}
+$$
+
+Where $\hat{y}_{tk}$ is a function of $\mathbf{w}$ - since the neural network computes $\hat{y}$ by pushing the input through those weights.
+
+As you can imagine, $\mathbf{w}$ is not convex and is instead a complex function with potentially many local minima. We’ll use gradient descent to navigate this function into one of those minima.
+
+## Gradient descent
+
+<Highlight text="Gradients (i.e. derivatives) tell us how steep a function is at a given point."/>{' '}That means we can use them to figure out which direction we should step in to gain the biggest drop in the loss function. So if we:
+
+- Initialise our weights randomly  
+- Compute the partial derivatives of our loss function  
+- Use those to find the direction of the steepest decrease  
+- Step in that direction, then repeat
+
+We’ll generally reach a local minimum at some point, assuming our steps aren’t so big that we end up stepping back and forth around the actual minimum.
+
+Conveniently, the gradient vector of a function at a given point ($\nabla$) gives us the direction of the largest increase in the function at that point. So to step in the direction of the largest _decrease_, we step in the direction of $-\nabla$.
+
+<details open> 
+  <summary>Formally…</summary>
+
+More precisely, in the example of a 2D space, the gradient vector of a function $f(x_1, x_2)$ w.r.t. to $x$ is $\nabla f(x)=\Big(\frac{\partial f}{\partial x_1}, \frac{\partial f}{\partial x_2}\Big)$. The vector $\nabla f(x)$ tells us - at $x=(x_1,x_2)$ - what direction will produce the steepest increase in $f$. 
+
+</details>
+
+Backpropagation makes heavy use of this concept to update the weights of each node.
+
+## Backpropagation algorithm
+
+Backpropagation is how a neural network efficiently computes gradients for all weights. The general idea is to:
+
+- Run our inputs through the network so that we can get initial results  
+- Calculate how wrong those results are, then propagate that error signal backwards through the network, updating weights as we go  
+- <Highlight text="Nodes that contribute the most to the error get updated the most"/>
+
+To get more detailed, at each node, we calculate something along the lines of $\text{error}\times\text{sensitivity}\times\text{activity}=\text{how much value there is in updating this weight}$, where $\text{error}$ is our error signal, $\text{sensitivity}$ tells us how much the output would change if we nudged this weight (it’s the derivative of the node’s activation function), and $\text{activity}$ quantifies how large the input into this node is.
+
+If you’re interested in the calculus:
+
+<details> 
+  <summary>Calculation of hidden layer to output weights</summary>
+
+**What our objective is**
+
+Recall that we want to find the gradient of our error function $E_t(w)$ for a given training sample where (given $K$ output nodes):
+
+$$
+E_t(w)=\frac{1}{2}\sum^K_{k=1}(\hat{y}_k-y_k)^2
+$$
+
+Our gradient descent rule states that to update one of the output weights $w^o_{jk}$, we need to perform:
+
+$$
+w^o_{jk}\leftarrow w^o_{jk}-\eta\frac{\partial E_t(w)}{\partial w^o_{jk}}
+$$
+
+But how do we find this derivative $\frac{\partial E_t(w)}{\partial w^o_{jk}}$?
+
+**Calculating the derivative of the error function w.r.t. an output weight**
+
+We need to perform some calculus trickery and split up the calculation using the chain rule. First, we’ll let $\bar{y}_k$ be the unactivated argument value at output node $\hat{y}_k$ - i.e. $\hat{y}_k=\sigma(\bar{y}_k)$. Then we can say that:
+
+$$
+\frac{\partial E_t(w)}{\partial w^o_{jk}}
+= \underbrace{\frac{\partial E_t}{\partial \bar{y}_k}}_{(1)}
+\times
+\underbrace{\frac{\partial \bar{y}_k}{\partial w^o_{jk}}}_{(2)}
+$$
+
+(1) For the derivative of the error function w.r.t. the unactivated output at output node $k$, we need to use the chain rule again:
+
+$$
+\frac{\partial E_t}{\partial \bar{y}_k}=\underbrace{\frac{\partial E_t}{\partial \hat{y}_k}}_{(1\text{a})}\times\underbrace{\frac{\partial \hat{y}_k}{\partial \bar{y}_k}}_{(1\text{b})}
+$$
+
+(1a) We already have $E_t(w)=\frac{1}{2}\sum^K_{k=1}(\hat{y}_k-y_k)^2$, so differentiating this w.r.t. $\hat{y}_k$ yields:
+
+$$
+\frac{\partial E_t}{\partial \hat{y}_k}=-(y_k-\hat{y}_k)
+$$
+
+(1b) In our example, $\hat{y}_k$ is the sigmoid function, so:
+
+$$
+\begin{align*}
+\frac{d\sigma(Z)}{dZ}&=\sigma(Z)(1-\sigma(Z)) \\
+\therefore \frac{\partial \hat{y}_k}{\partial \bar{y}_k}&=\hat{y}_k(1-\hat{y}_k)
+\end{align*}
+$$
+
+(1 contd.) So we get the following which we often abbreviate as $-\delta^o_k$:
+
+$$
+\frac{\partial E_t}{\partial \bar{y}_k}=\frac{\partial E_t}{\partial \hat{y}_k}\times\frac{\partial \hat{y}_k}{\partial \bar{y}_k}=-(y_k-\hat{y}_k)\hat{y}_k(1-\hat{y}_k)=-\delta_k^o
+$$
+
+(2) Now, since $\bar{y}_k=\sum_j w^o_{jk}z_j$ (the weighted sum of all nodes $z_j$ in the previous layer), and we only want this derivative w.r.t. $w^o_{jk}$, we end up with:
+
+$$
+\frac{\partial \bar{y}_k}{\partial w^o_{jk}}=z_j
+$$
+
+So we end up with:
+
+$$
+\therefore\frac{\partial E_t(w)}{\partial w^o_{jk}}=-\delta^o_kz_j=-(y_k-\hat{y}_k)\hat{y}_k(1-\hat{y}_k)z_j
+$$
+
+Where,
+
+- $(y_k-\hat{y}_k)=(\hat{y}_k-y_k)$ tells us how wrong output $k$ is
+- $\hat{y}_k(1-\hat{y}_k)$ tells us how much the unit’s output would change if we nudged it
+- $z_j$ is the only part of this equation that relies on a given hidden node $j$. If hidden unit $j$ isn’t outputting a large value, then changing $w^o_{jk}$ won’t help that much.
+
+Our weight update rule is the following
+
+$$
+w^o_{jk}\leftarrow w^o_{jk}-\eta\frac{\partial E_t(w)}{\partial w^o_{jk}}\quad\equiv\quad w^o_{jk}\leftarrow w^o_{jk}+\eta\delta^o_kz_j
+$$
+
+</details>
+
+<br/>
+
+<details> 
+  <summary>Calculation of input to hidden layer weights</summary>
+
+**What our objective is**
+
+Given the same error function:
+
+$$
+E_t(w)=\frac{1}{2}\sum^K_{k=1}(\hat{y}_k-y_k)^2
+$$
+
+But now instead of thinking about the output of the output nodes represented by $\hat{y}$, we think about the output of the hidden layer nodes represented by $z_j=\sigma(\bar{z}_j)$, where $\bar{z}_j$ is the weighted sum of all the input nodes (i.e. the unactivated value of this neuron):
+
+$$
+\bar{z}_j=\sum^M_{i=1}x_iw^h_{ij}
+$$
+
+The gradient descent update rule states that we should update our weights along the following lines:
+
+$$
+w_{ij}^h\leftarrow w^h_{ij}-\eta \frac{\partial E_t(w)}{\partial w_{ij}^h}
+$$
+
+**Calculating the derivative of the error function w.r.t. an input weight**
+
+Again, we break apart this derivative with the chain rule:
+
+$$
+\frac{\partial E_t(w)}{\partial w_{ij}^h}=\underbrace{\frac{\partial E_t}{\partial \bar{z}_j}}_{(3)}\times\underbrace{\frac{\partial \bar{z}_j}{\partial w_{ij}^h}}_{(4)}
+$$
+
+(3) We’ll break this down by the chain rule again to:
+
+$$
+\frac{\partial E_t}{\partial \bar{z}_j}=\underbrace{\frac{\partial E_t}{\partial z_j}}_{(3\text{a})}\times\underbrace{\frac{\partial z_j}{\partial \bar{z}_j}}_{(3\text{b})}
+$$
+
+(3a) We’ll break down this term with the chain rule one more time. However, we’ll introduce $k$ to do this, and therefore we need to sum over all possible $k$ as well.
+
+$$
+\frac{\partial E_t}{\partial z_j}=\sum^K_{k=1}\underbrace{\frac{\partial E_t}{\partial \bar{y}_k}}_{(3\text{aa})}\times\underbrace{\frac{\partial \bar{y}_k}{\partial z_j}}_{(3\text{ab})}
+$$
+
+(3aa) We already calculated this term when computing the derivatives of the output weights:
+
+$$
+\frac{\partial E_t}{\partial \bar{y}_k}=-(y_k-\hat{y}_k)\hat{y}_k(1-\hat{y}_k)=-\delta_k^o
+$$
+
+(3ab) Since $\bar{y}_k=\sum_j w^o_{jk}z_j$, this is just:
+
+$$
+\frac{\partial \bar{y}_k}{\partial z_j}=w^o_{jk}
+$$
+
+(3b) This is just the sigmoid function again, so
+
+$$
+\frac{\partial z_j}{\partial \bar{z}_j}=z_j(1-z_j)
+$$
+
+(3 contd.) So overall, this term becomes:
+
+$$
+\frac{\partial E_t}{\partial \bar{z}_j}=-\delta^h_j=-z_j(1-z_j)\sum^K_{k=1}w_{jk}^o\delta^o_k
+$$
+
+(4) Since $\bar{z}_j=\sum^M_{i=1}x_iw^h_{ij}$:
+
+$$
+\frac{\partial \bar{z}_j}{\partial w_{ij}^h}=x_i
+$$
+
+So we get:
+
+$$
+\therefore\frac{\partial E_t(w)}{\partial w_{ij}^h}=-\delta^h_jx_i=-z_j(1-z_j)x_i\sum^K_{k=1}w_{jk}^o\delta^o_k
+$$
+
+Where,
+
+- $\sum_kw_{jk}^o\delta_k^o$ gives us the backpropagated error from the outputs - and gives us the error for $j$ based on the extent that it influences wrong outputs via large outgoing weights to outputs with bigger deltas.
+- $-z_j(1-z_j)$ gives us the sensitivity, how much the output would change if we nudged the weights leading to this node.
+- Further, if $x_i$ (the input) is small, then adjusting $w^h_{ij}$ will have little effect - this gives us the activity.
+
+Our weight update equation is then:
+
+$$
+w_{ij}^h\leftarrow w^h_{ij}-\eta \frac{\partial E_t(w)}{\partial w_{ij}^h}\quad\equiv\quad w^h_{ij}\leftarrow w^h_{ij}+\eta\delta^h_jx_i
+$$
+
+</details>
+
+Let’s get into the implementation.
+
+# Implementation
+
+## Input data
+
+We’ll be using the example of XOR (exclusive OR) data as our input dataset. <Highlight text="This pattern is non-linear, so cannot be learnt by a linear model such as logistic regression - however our neural network will handle it just fine."/>{' '}To our two main input columns, I’ll be adding a bias (a column of 1s, which the network will need to learn XOR), and a white noise column since it’ll be interesting to see how the network minimises the weight of this column by the end of training.
+
+<details> 
+  <summary>Dataset creation</summary>
+
+```R
+.n_train <- 30
+
+# Data ----
+# Need to define our input data and target
+set.seed(24601)
+
+#  2 input cols, our XOR inputs - with an extra random noise column
+input_mtx <- cbind(
+  sample(c(0, 1), .n_train, replace = TRUE),
+  sample(c(0, 1), .n_train, replace = TRUE),
+  1, # Bias column, which we can't learn XOR without
+  runif(.n_train, -1, 1)
+)
+
+#  Output is XOR of the first two cols
+target_mtx <- xor(input_mtx[, 1], input_mtx[, 2]) |> as.integer()
+```
+
+</details>
+
+<center>![](/static/images/neural-networks-from-scratch/xor-data.jpg)</center>
+<Caption text="Delightfully non-linear"/>
+
+```R
+cbind(input_mtx, target_mtx) |> 
+  data.frame() |> 
+  setNames(c('V1', 'V2', 'Bias', 'Noise', 'Target')) |>
+  head()
+#>   V1 V2 Bias      Noise Target
+#> 1  1  0    1  0.1184642      1
+#> 2  1  1    1 -0.1949854      0
+#> 3  0  0    1  0.3469756      0
+#> 4  0  1    1  0.3771357      1
+#> 5  0  0    1 -0.4886959      0
+#> 6  0  0    1  0.6804348      0
+```
+
+## Setup
+
+I want to set up the dimensions of this neural network so we can use them when defining our weight matrices. Our weight matrices are composed of a column for each node in the layer, and a row for each node in the previous layer. The result at each node within the layer is then the matrix multiplication of the previous layers values and this weight matrix.
+
+These weight matrices actually fully define our neural network, these and the input data are all we need to get started.
+
+$$
+\begin{array}{c|cccc}
+ & j=1 & j=2 & \cdots & j=N \\
+\hline
+i=1 & w_{11} & w_{12} & \cdots & w_{1N} \\
+i=2 & w_{21} & w_{22} & \cdots & w_{2N} \\
+\vdots & \vdots & \vdots & \ddots & \vdots \\
+i=M & w_{M1} & w_{M2} & \cdots & w_{MN}
+\end{array}
+$$
+
+
+```R
+nn_dim <- list(layers = 1, nodes_per_layer = 3)
+
+init_weights <- function(rows, cols) {
+  matrix(runif(rows * cols, -0.5, 0.5), nrow = rows, ncol = cols)
+}
+
+# 4 nodes in input, so 4 rows. 3 nodes in H1, so 3 cols.
+w_ih1 <- init_weights(rows = ncol(input_mtx), cols = nn_dim$nodes_per_layer)
+
+# 3 + 1 (bias) nodes in H1, so 4 rows. 1 output, so 1 col.
+w_h1o <- init_weights(rows = nn_dim$nodes_per_layer + 1, cols = 1)
+```
+
+We should also define our activation function and its derivative:
+
+```R
+# Using a sigmoid/logistic function here. Its derivative uses the result of the
+# activation function itself which is computationally convenient.
+activation_func <- \(x) 1 / (1 + exp(-x))
+activation_func_deriv <- \(x) activation_func(x) * (1 - activation_func(x))
+```
+
+## The main training loop
+
+Our training loop for this neural network consists of two passes:
+
+- A forward propagation pass where we push each row of the input data through our neural network, computing weighted sums using the randomly initialised weights.  
+  - At the end of this, we calculate the *loss*, i.e. the size of the error.  
+- A backward propagation pass where we take that loss and pass it backwards through the network, deciding which nodes contributed the most to that error - and therefore which nodes to update the most.
+
+```R showLineNumbers
+.epochs  <- 1000000
+.n_train <- 30
+.eta     <- 0.001 # Learning rate
+.verbose <- TRUE
+
+results <- list()
+
+# For each epoch...
+for ( epoch in seq_len(.epochs) ) {
+  
+  if ( .verbose & (epoch %% 1000) == 0 ) message(paste('Epoch:', epoch))
+
+  epoch_results <- list(loss = 0)
+
+  # ... and each training example ....
+  for ( obs in seq_len(nrow(input_mtx)) ) {
+
+    ## Forward propagation ----
+    # First, perform forward propagation, run the input through the weights and:
+    # - Cache the activation function results for use in backpropagation
+    # - Record the overall outputs so we know how wrong we are, also for backpropagation
+
+    x_i <- matrix(input_mtx[obs, ], nrow = 1)
+    y_i <- target_mtx[obs]
+
+    # The value at each node is the activated weighted sum of the inputs,
+    #  z_1 = input_1 * w_1 + input_2 * w_2 + input_3 * w_3
+    z1   <- activation_func(x_i %*% w_ih1)
+    z1b  <- cbind(1, z1) # We need a bias node for layer 1 too
+    yhat <- activation_func(z1b %*% w_h1o)
+
+    # Calculate loss and add it to the overall loss for the epoch
+    epoch_results[['loss']] <- epoch_results[['loss']] + (y_i - yhat)^2
+
+    ## Backpropagation ----
+
+    # This gives us the direction in which to update our weights - i.e. which
+    # direction should we step in to yield the largest decrease in loss.
+
+    # Output to last hidden layer backprop
+    # error * sensitivity * activity = (y - y_hat) * [y_hat * (1 - y_hat)] * z_j
+    #                                = (y - y_hat) * activation_func_deriv(y_hat) * z_j
+    delta_o <- (y_i - yhat) * activation_func_deriv(yhat)
+
+    # First hidden layer to input layer backprop
+    delta_h1_full <- activation_func_deriv(z1b) * (delta_o %*% t(w_h1o))
+    delta_h1      <- delta_h1_full[, -1, drop = FALSE]   # drop bias column
+
+
+    ## Weight updates ----
+
+    # w = w + η * δ * activity_of_sending_node
+
+    w_h1o <- w_h1o + .eta * (t(z1b) %*% delta_o)
+    w_ih1 <- w_ih1 + .eta * (t(x_i) %*% delta_h1)
+
+  }
+
+  # Assign this epoch's loss back to results list
+  # Capture mean absolute weight per input column, alongside loss
+  results[[epoch]] <- data.frame(
+    epoch        = epoch,
+    loss         = 0.5 * epoch_results[['loss']]
+  )
+
+  if ( .verbose & (epoch %% 1000) == 0 ) cat(paste(' | Loss:', 0.5 * epoch_results[['loss']]), '\n')
+
+}
+
+loss_df <- do.call(rbind, results)
+```
+
+Let’s walk through this block by block.
+
+## Lines 1–4
+```R
+.epochs  <- 1000000
+.eta     <- 0.001 # Learning rate
+.verbose <- TRUE
+```
+
+In this block we’re defining a few hyperparameters:
+- An epoch is one full pass through the entire training dataset. We’re running 1 million of them here.
+- Eta ($\eta$) is the learning rate, i.e. how big are the gradient descent steps we take after each training example is backpropagated through the network
+- `.verbose` is just an internal argument I’m using to decide whether or not to log out epoch numbers whilst training
+
+## Lines 6–16
+```R
+results <- list()
+
+# For each epoch...
+for ( epoch in seq_len(.epochs) ) {
+  
+  if ( .verbose & (epoch %% 1000) == 0 ) message(paste('Epoch:', epoch))
+
+  epoch_results <- list(loss = 0)
+
+  # ... and each training example ....
+  for ( obs in seq_len(nrow(input_mtx)) ) {
+```
+
+Here we set up the loop structure of the training process. For each of the 1 million epochs, we run the inner-loop training process for each row of the training data. And to avoid finding ourselves in the [R inferno](https://www.burns-stat.com/pages/Tutor/R_inferno.pdf), we define a results list at the start to capture our outputs.
+
+## Lines 18–33
+```R
+   ## Forward propagation ----
+    # First, perform forward propagation, run the input through the weights and:
+    # - Cache the activation function results for use in backpropagation
+    # - Record the overall outputs so we know how wrong we are, also for backpropagation
+
+    x_i <- matrix(input_mtx[obs, ], nrow = 1)
+    y_i <- target_mtx[obs]
+
+    # The value at each node is the activated weighted sum of the inputs,
+    #  z_1 = input_1 * w_1 + input_2 * w_2 + input_3 * w_3
+    z1   <- activation_func(x_i %*% w_ih1)
+    z1b  <- cbind(1, z1) # We need a bias node for layer 1 too
+    yhat <- activation_func(z1b %*% w_h1o)
+
+    # Calculate loss and add it to the overall loss for the epoch
+    epoch_results[['loss']] <- epoch_results[['loss']] + (y_i - yhat)^2
+```
+
+Forward propagation is all about sending our inputs through the neural network with our current weights and biases and getting the outputs out at the end. 
+- `x_i` is one row of our training dataset. `y_i` is the corresponding true class label for that row.
+- `z1` is a vector of our activated weighted sums, i.e. these are the inputs combined with their weights, biases, and activation function to get the value of the neural net at each node in the first hidden layer. This lends itself well to matrix multiplication:
+
+$$
+\mathbf{x}_i \mathbf{W}^h =
+\begin{bmatrix} x_1 & x_2 & \text{bias} & \text{noise} \end{bmatrix}
+\begin{bmatrix}
+w_{11} & w_{12} & w_{13} \\
+w_{21} & w_{22} & w_{23} \\
+w_{31} & w_{32} & w_{33} \\
+w_{41} & w_{42} & w_{43}
+\end{bmatrix}
+$$
+
+$$
+= \begin{bmatrix}
+x_1 \cdot w_{11} + x_2 \cdot w_{21} + \text{bias} \cdot w_{31} + \text{noise} \cdot w_{41} \\[4pt]
+x_1 \cdot w_{12} + x_2 \cdot w_{22} + \text{bias} \cdot w_{32} + \text{noise} \cdot w_{42} \\[4pt]
+x_1 \cdot w_{13} + x_2 \cdot w_{23} + \text{bias} \cdot w_{33} + \text{noise} \cdot w_{43}
+\end{bmatrix}^T
+$$
+
+- `z1b` is the above vector with a 1 pre-pended to act as our bias node.
+- `y_hat` is the output of pushing our inputs through the network. This is just the values of the first layer of hidden nodes matrix multiplied against the weights from H1 to the output layer, then activated.
+- Finally, we add the loss of this training example to the tally for the epoch.
+
+## Lines 35–47
+```R
+   ## Backpropagation ----
+
+    # This gives us the direction in which to update our weights - i.e. which
+    # direction should we step in to yield the largest decrease in loss.
+
+    # Output to last hidden layer backprop
+    # error * sensitivity * activity = (y - y_hat) * [y_hat * (1 - y_hat)] * z_j
+    #                                = (y - y_hat) * activation_func_deriv(y_hat) * z_j
+    delta_o <- (y_i - yhat) * activation_func_deriv(yhat)
+
+    # First hidden layer to input layer backprop
+    delta_h1_full <- activation_func_deriv(z1b) * (delta_o %*% t(w_h1o))
+    delta_h1      <- delta_h1_full[, -1, drop = FALSE]   # drop bias column
+```
+
+Recall that we are trying to minimise $E(w)=\frac{1}{2}\sum^n_{t=1}\sum^K_{k=1}(y_{tk}-\hat{y}_{tk})^2$. Based on gradient descent, our update rule will be $w_i = w_i-\eta\frac{\partial E_t(w)}{\partial w_i}$. 
+
+Our equation for that derivative when going from the output node back to the last hidden layer is this: $\frac{\partial E_t(w)}{\partial w^o_{jk}}=-\delta^o_kz_j=-(y_k-\hat{y}_k)\hat{y}_k(1-\hat{y}_k)z_j$ (see the calculus dropdowns above for the derivation).
+
+- `delta_o` is the error for this training example multiplied by the derivative of the activation function, this is the $(y_k-\hat{y}_k)\hat{y}_k(1-\hat{y}_k)$ part of that equation. Note there’s no leading negative here since that belongs to the full derivative $\frac{\partial E_t(w)}{\partial w^o_{jk}}$, not to $\delta^o_k$ itself. That negative cancels against the one in the gradient descent step.
+
+Given the same error function, our goal is to now update weights between the input and the hidden layer, $w_{ij}^h$. Gradient descent states that our update equation is $w_{ij}^h\leftarrow w^h_{ij}-\eta \frac{\partial E_t(w)}{\partial w_{ij}^h}$. Our equation for that derivative is $\frac{\partial E_t(w)}{\partial w_{ij}^h}=-\delta^h_jx_i=-z_j(1-z_j)x_i\sum^K_{k=1}w_{jk}^o\delta^o_k$.
+
+- $z_j(1-z_j)$ is just the derivative of the sigmoid function at node $j$, which is what we use `activation_func_deriv(z1b)` for.
+- $\sum^K_{k=1}w_{jk}^o\delta^o_k$ gives us the backpropagated error from the outputs - and gives us the error for $j$ based on the extent that it influences wrong outputs via large outgoing weights to outputs with bigger deltas. Here this is done by multiplying the matrix `delta_o` by the transpose of the weight matrix of H1 to the output: `delta_o %*% t(w_h1o)`.
+
+
+$$
+\boldsymbol{\delta}^o (\mathbf{W}^o)^T =
+\begin{bmatrix} \delta_1^o & \delta_2^o & \cdots & \delta_K^o \end{bmatrix}
+\begin{bmatrix}
+w_{11}^o & w_{21}^o & \cdots & w_{J1}^o \\
+w_{12}^o & w_{22}^o & \cdots & w_{J2}^o \\
+\vdots & \vdots & \ddots & \vdots \\
+w_{1K}^o & w_{2K}^o & \cdots & w_{JK}^o
+\end{bmatrix}
+$$
+
+$$
+= \begin{bmatrix}
+\sum_{k=1}^K w_{1k}^o \delta_k^o \\[4pt]
+\sum_{k=1}^K w_{2k}^o \delta_k^o \\[4pt]
+\vdots \\[4pt]
+\sum_{k=1}^K w_{Jk}^o \delta_k^o
+\end{bmatrix}^T
+$$
+
+- $x_i$ is the input to the node. If it is small then adjusting this weight won’t have much effect on the output. We’ll multiply by this in the next step.
+
+## Lines 50–55
+```R
+   ## Weight updates ----
+
+    # w = w + η * δ * activity_of_sending_node
+
+    w_h1o <- w_h1o + .eta * (t(z1b) %*% delta_o)
+    w_ih1 <- w_ih1 + .eta * (t(x_i) %*% delta_h1)
+```
+This block finishes computing $\delta^o_k z_j$ and $\delta^h_j x_i$ (the ingredients for our weight update) by multiplying by `t(z1b)` and `t(x_i)` respectively. We then multiply by our learning rate `.eta` and add to the existing weight matrix to complete the weight update. Thats it - backpropagation for this training example is complete!
+
+## Lines >59
+```R
+ # Assign this epoch's loss back to results list
+  # Capture mean absolute weight per input column, alongside loss
+  results[[epoch]] <- data.frame(
+    epoch        = epoch,
+    loss         = 0.5 * epoch_results[['loss']]
+  )
+
+  if ( .verbose & (epoch %% 1000) == 0 ) cat(paste(' | Loss:', 0.5 * epoch_results[['loss']]), '\n')
+
+}
+
+loss_df <- do.call(rbind, results)
+```
+
+Here we capture a few stats from the training process, the epoch, the total loss from this epoch, and the average weight assigned to each of the input columns.
+
+# Results
+
+We can watch our loss descend as each epoch passes by plotting those stats we captured. We can see that loss doesn’t actually start dropping significantly until after the 1000th epoch, after which it reaches a plateau then starts to drop drastically, reaching 0 by the 1 millionth epoch. The early plateaus are likely a result of the small and static learning rate; loss improves by a small amount until a breakthrough is reached. 
+
+<center>![](/static/images/neural-networks-from-scratch/nn-loss.jpg)</center>
+
+While this works in the end, it’s not efficient: we spend a long time with very little movement. To fix this, we can implement something called _momentum_. Before we apply the weight update, we blend in a percentage of the previous step’s weight update. This helps the network pick up speed and maintain a downward trend. With this implemented, by epoch 239k we already reach a loss of < 0.001.
+
+<details> 
+  <summary>Momentum implementation</summary>
+
+```R
+# We add a hyperparameter, the percentage of the previous step we blend in
+.momentum <- 0.9
+
+# Define velocity matrices for momentum implementation
+v_h1o <- matrix(0, nrow = nrow(w_h1o), ncol = ncol(w_h1o))
+v_ih1 <- matrix(0, nrow = nrow(w_ih1), ncol = ncol(w_ih1))
+
+# Then we update our weight change step to output the intermediate raw update,
+# apply our momentum to it, then finally update the weight
+for (each epoch) {
+
+  for (each training sample) {
+
+    ...
+
+    ## Weight updates ----
+
+    # w = w + η * δ * activity_of_sending_node
+
+    # This epoch's raw update, before momentum
+    grad_h1o <- t(z1b) %*% delta_o
+    grad_ih1 <- t(x_i) %*% delta_h1
+
+    # Momentum, blend in 90% of the previous weight's update before applying
+    v_h1o <- .momentum * v_h1o + grad_h1o
+    v_ih1 <- .momentum * v_ih1 + grad_ih1
+
+    w_h1o <- w_h1o + .eta * v_h1o
+    w_ih1 <- w_ih1 + .eta * v_ih1
+
+  }
+
+}
+```
+
+</details>
+
+<center>![](/static/images/neural-networks-from-scratch/nn-loss-momentum.jpg)</center>
+<Caption text="We can see that loss decreases much faster than when we didn't use momentum."/>
+
+Finally, we can visualise our neural network (using the `ggraph` and `tidygraph` packages I used in [this previous post](https://www.herdmentality.xyz/blog/bn-structure-learning)). <Highlight text="Mapping the magnitude of the weights to the edges, we can see that the network places the most weight on the first and second columns, and barely any weight on the noise column which is what we expected."/>
+
+<center>![](/static/images/neural-networks-from-scratch/nn-weights-momentum.jpg)</center>
+
+As *iamtrask*’s post mentions, there are plenty of ways we can extend and optimise this implementation (regularisation, dropout, batch normalisation) \- but I might leave those for a future post.
