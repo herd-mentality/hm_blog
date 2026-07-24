@@ -1,0 +1,150 @@
+---
+title  : Grounding Inspector: Does Your LLM Know When It's Lying?
+date   : '2026-07-24'
+tags   : ['ai', 'llm', 'hallucination', 'evaluation', 'python']
+draft  : false
+summary: 'A decompose-then-verify pipeline that checks each claim in an AI output against its source document, and an honest look at what the RAGTruth numbers actually say about it.'
+authors: ['chingchew']
+---
+
+At the last few AI presentations I've been to, someone in Q&A always asks a version of the same question: we're told we can use AI, but we're still accountable for what it produces. So how do we check that without re-reading the entire document ourselves?
+
+There isn't a good answer to that question yet. AI-generated summaries of long documents can state things that sound entirely plausible but aren't actually backed by the source. If you're accountable for the output and have no way to check individual claims, you either trust the summary blindly or manually re-verify everything, which defeats the point of using AI in the first place.
+
+Grounding Inspector checks each claim in an AI output against its source document, and shows which claims are grounded, partially grounded or unsupported, claim by claim, not as a single document-wide verdict.
+
+![Two-pane inspector: claims on the left, source document on the right](/static/images/grounding-inspector/two-pane-viewer.jpg)
+
+---
+
+## Architecture
+
+Five stages. One document pair in (source document, AI output), claim-level verdicts out.
+
+![Component flow: source document and AI output through decompose, verify, label, localise, to two-pane inspector](/static/images/grounding-inspector/component-flow.svg)
+
+1. **Decompose**: split the AI output into individual, atomic claims
+2. **Verify**: score each claim against the full source document using [MiniCheck](https://github.com/Liyan06/MiniCheck), an entailment model: does the source text entail the claim, contradict it, or say nothing about it? No retrieval step narrows the search first, so no chunk is silently skipped
+3. **Label**: aggregate the sub-claim verdicts into `grounded`, `partial` or `unsupported` for the displayed claim
+4. **Localise**: map grounded and partial claims back to their source span and page number
+5. **Inspect**: browse the result in a two-pane viewer, claims on the left, source on the right, click a claim to see its evidence
+
+No custom retrieval index, no vector store. The engine reads the whole document every time.
+
+---
+
+## Implementation
+
+### Decompose-then-verify over hierarchical RAG
+
+Retrieval optimises for finding the most relevant chunk. Grounding evaluation has to check every claim against everything, so a claim whose evidence lives in a chunk the retriever didn't fetch gets silently marked unsupported, not because it isn't grounded, but because the wrong index missed it. That's the opposite failure mode of what this tool exists to catch.
+
+```python
+def verify_subclaim(subclaim: str, doc_chunks: list[str], scorer) -> tuple[bool, float]:
+    """MiniCheck: score sub-claim against every chunk, max-pool. No retrieval gate."""
+    if not doc_chunks:
+        raise ValueError("doc_chunks must not be empty")
+    labels, probs, *_ = scorer.score(docs=doc_chunks, claims=[subclaim] * len(doc_chunks))
+    best = max(probs) if probs else 0.0
+    return best >= 0.5, float(best)
+```
+
+Every chunk gets scored, the best match wins. That trades cost and latency at longer document lengths for exhaustive recall: validated on short-to-medium documents (PDS-length, a few pages). A 100+ page document would need a retrieval pre-filter, which isn't built or benchmarked here.
+
+### MiniCheck (local, free) vs Claude Haiku (cloud, paid)
+
+The pipeline supports two verifier backends behind the same interface, an explicit recall/cost trade-off rather than a single "best" choice:
+
+| Mode | Verifier | Cost | Recall | Agreement (κ) |
+|---|---|---|---|---|
+| MiniCheck (default) | flan-t5-large, local | Free | 0.69 | 0.195 |
+| Claude Haiku | claude-haiku-4-5, API | ~$0.03/doc | 0.90 | 0.331 |
+
+κ (Cohen's kappa), not raw accuracy, because it corrects for chance agreement with a human labeller. Both numbers come from [RAGTruth](https://arxiv.org/abs/2401.00396), a published benchmark of labelled hallucinations in AI-generated summaries, not a self-labelled test set (n=300, seed=0). Recall is the metric this tool actually optimises for: a missed hallucination costs more than a false alarm when someone downstream is accountable for the output.
+
+```python
+def verify_subclaim_claude(subclaim: str, doc_chunks: list[str], client, model: str = "claude-haiku-4-5-20251001") -> bool:
+    """Claude: send all chunks as one context, return True if supported."""
+    context = "\n\n".join(doc_chunks)
+    msg = client.messages.create(
+        model=model,
+        max_tokens=10,
+        system=_VERIFY_SYSTEM,
+        messages=[{"role": "user", "content": f"CLAIM: {subclaim}\n\nDOCUMENT CONTEXT:\n{context}"}],
+    )
+    return msg.content[0].text.strip().upper().startswith("SUPPORTED")
+```
+
+Same call signature as the MiniCheck path, swapped at runtime. Neither verifier changes the decompose, label or localise stages.
+
+### Numeric-consistency as a deterministic pre-pass
+
+NLI models tolerate span substitution when sentence structure matches, so a transposed number can still score as entailed: MiniCheck can't do arithmetic, only pattern-match phrasing. A claim stating "$4,000" against evidence stating "$3,000" reads as structurally identical to the model. That gap doesn't get patched into the verifier; it gets caught by a separate, deterministic check that runs after labelling.
+
+```python
+def numeric_mismatch(claim_text: str, evidence_text: str) -> float | None:
+    """Return the claim's asserted number if it does not appear anywhere in
+    the evidence text's number set, else None.
+
+    Conservative by design: only flags when the claim states exactly one
+    number and that number is entirely absent from the evidence.
+    """
+    claim_nums = extract_numbers(claim_text)
+    evidence_nums = extract_numbers(evidence_text)
+    if len(claim_nums) != 1 or not evidence_nums:
+        return None
+    claim_value = claim_nums[0]
+    if claim_value in evidence_nums:
+        return None
+    return claim_value
+```
+
+If a mismatch is found, the label is downgraded (`grounded` to `unsupported`, `partial` stays `partial`) and the claim gets an honest, factual rationale rather than a rationale that reads like the verifier reasoned about the number, because it didn't.
+
+---
+
+## Results
+
+The Budget Direct fixture scores 63/100: 2 claims grounded, 1 partial, 1 unsupported.
+
+![Scorecard: 63/100, 2 grounded, 1 partial, 1 unsupported](/static/images/grounding-inspector/scorecard.jpg)
+
+The unsupported claim states that COVID-19 cancellations are covered on the same basis as any other unforeseen event. The source PDS's pandemic-exclusion clause explicitly excludes exactly that. Click the claim and the inspector shows no matching span, because there isn't one to show, alongside a plain-language evidence note pointing at the clause that contradicts it.
+
+![Unsupported claim: no matching span found, evidence note explains why](/static/images/grounding-inspector/example-claim-unsupported.jpg)
+
+That's the actual payoff: with recall 0.69 (CI 0.59-0.78) and κ=0.195 in hand, the reading burden shrinks from the whole document to the handful of flagged claims. That's a stronger position than "I read it and it seemed fine," which has no error rate at all, because nobody measured it.
+
+---
+
+## What Was Hard
+
+κ=0.195 is "slight agreement" on the Landis & Koch scale, not a number I'd want to present without the caveat above it. The Haiku alternative gets to 0.331 ("fair agreement") at roughly $0.03 per document, and that trade-off table exists precisely so nobody mistakes the free default for the accurate one.
+
+MiniCheck also doesn't do arithmetic, which is why numeric-consistency exists as a bolt-on rather than something the verifier itself catches. And the RAGTruth numbers are a benchmark-distribution result: measured on general AI summarisation, not on insurance, legal or regulatory text specifically. The travel-insurance PDS fixtures shown here are illustrative, not a validated domain.
+
+Entity and citation substitution is the other known gap, and it's the same structural issue as the numeric one: an NLI verifier tolerates a substituted name or citation as long as the sentence shape matches. That's not unique to this build. It's a field-wide limitation with its own emerging reference architectures ([Proof-Carrying Numbers](https://arxiv.org/abs/2509.06902), [HalluGraph](https://arxiv.org/abs/2512.01659)), named here rather than hidden.
+
+On "why not just use an existing eval harness": Grounding Inspector ships as a custom [UK AISI Inspect](https://github.com/UKGovernmentBEIS/inspect_ai) `Scorer`, extending Inspect's task runner rather than competing with it.
+
+---
+
+## Where It Goes Next
+
+The pipeline is a pattern, not just a travel-insurance tool. The same decompose-then-verify shape applies anywhere a long document and an AI-generated output need to be checked claim by claim.
+
+![Pattern flow: long document plus AI output through decompose-then-verify to claim-level verdicts, applied across domains](/static/images/grounding-inspector/pattern-flow.svg)
+
+Regulatory submissions (TGA AusPARs, similar public disclosure corpora) and legislative or policy text are the two most direct extensions: same accountability problem, different document type.
+
+The IMDA's Model AI Governance Framework for Agentic AI (January 2026) names explainability and auditability as requirements for responsible deployment. Decompose-then-verify is one concrete way to satisfy both: decomposition makes the verification unit small enough to audit, and MiniCheck's entailment judgement is interpretable: you can read why a claim was flagged. This wasn't designed to the framework; it happens to fit because the framework describes what good engineering looks like anyway.
+
+---
+
+## Code and Further Reading
+
+The full source is on [GitHub](https://github.com/cchew/grounding-inspector) (MIT). The engine is Python with [MiniCheck](https://github.com/Liyan06/MiniCheck); the viewer is Hono and Vue 3. The live demo currently sits behind an access gate; if you'd like to try it, reach out via LinkedIn and I'll set you up.
+
+## AI Tools
+
+Claude Code was used to build the pipeline and viewer, and Claude was used to draft this post.
