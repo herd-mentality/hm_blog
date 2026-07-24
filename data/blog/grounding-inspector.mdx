@@ -7,9 +7,9 @@ summary: 'A decompose-then-verify pipeline that checks each claim in an AI outpu
 authors: ['chingchew']
 ---
 
-At the last few AI presentations I've been to, someone in Q&A always asks a version of the same question: we're told we can use AI, but we're still accountable for what it produces. So how do we check that without re-reading the entire document ourselves?
+At the last few AI presentations I've been to, someone in Q&A always asks a version of the same question: you're told you can use AI, but you're still accountable for what it produces. How do you check that without re-reading the entire document yourself?
 
-There isn't a good answer to that question yet. AI-generated summaries of long documents can state things that sound entirely plausible but aren't actually backed by the source. If you're accountable for the output and have no way to check individual claims, you either trust the summary blindly or manually re-verify everything, which defeats the point of using AI in the first place.
+AI-generated summaries of long documents can state things that sound entirely plausible but aren't actually backed by the source. With no way to check individual claims, you either trust the summary blindly or manually re-verify everything, which defeats the point of using AI at all.
 
 Grounding Inspector checks each claim in an AI output against its source document, and shows which claims are grounded, partially grounded or unsupported, claim by claim, not as a single document-wide verdict.
 
@@ -24,7 +24,7 @@ Five stages. One document pair in (source document, AI output), claim-level verd
 ![Component flow: source document and AI output through decompose, verify, label, localise, to two-pane inspector](/static/images/grounding-inspector/component-flow.svg)
 
 1. **Decompose**: split the AI output into individual, atomic claims
-2. **Verify**: score each claim against the full source document using [MiniCheck](https://github.com/Liyan06/MiniCheck), an entailment model: does the source text entail the claim, contradict it, or say nothing about it? No retrieval step narrows the search first, so no chunk is silently skipped
+2. **Verify**: score each claim against the full source document using [MiniCheck](https://github.com/Liyan06/MiniCheck), an entailment model: does the source text entail the claim, contradict it or say nothing about it? No retrieval step narrows the search first, so no chunk is silently skipped
 3. **Label**: aggregate the sub-claim verdicts into `grounded`, `partial` or `unsupported` for the displayed claim
 4. **Localise**: map grounded and partial claims back to their source span and page number
 5. **Inspect**: browse the result in a two-pane viewer, claims on the left, source on the right, click a claim to see its evidence
@@ -49,7 +49,7 @@ def verify_subclaim(subclaim: str, doc_chunks: list[str], scorer) -> tuple[bool,
     return best >= 0.5, float(best)
 ```
 
-Every chunk gets scored, the best match wins. That trades cost and latency at longer document lengths for exhaustive recall: validated on short-to-medium documents (PDS-length, a few pages). A 100+ page document would need a retrieval pre-filter, which isn't built or benchmarked here.
+Every chunk gets scored, the best match wins against MiniCheck's own default 0.5 threshold, not a value tuned for this project. That trades cost and latency at longer document lengths for exhaustive recall: validated on short-to-medium documents (PDS-length, a few pages). A 100+ page document would need a retrieval pre-filter, which isn't built or benchmarked here.
 
 ### MiniCheck (local, free) vs Claude Haiku (cloud, paid)
 
@@ -58,9 +58,9 @@ The pipeline supports two verifier backends behind the same interface, an explic
 | Mode | Verifier | Cost | Recall | Agreement (κ) |
 |---|---|---|---|---|
 | MiniCheck (default) | flan-t5-large, local | Free | 0.69 | 0.195 |
-| Claude Haiku | claude-haiku-4-5, API | ~$0.03/doc | 0.90 | 0.331 |
+| Claude Haiku | claude-haiku-4-5, API | ~A$0.05/doc | 0.90 | 0.331 |
 
-κ (Cohen's kappa), not raw accuracy, because it corrects for chance agreement with a human labeller. Both numbers come from [RAGTruth](https://arxiv.org/abs/2401.00396), a published benchmark of labelled hallucinations in AI-generated summaries, not a self-labelled test set (n=300, seed=0). Recall is the metric this tool actually optimises for: a missed hallucination costs more than a false alarm when someone downstream is accountable for the output.
+κ (Cohen's kappa), not raw accuracy, because it corrects for chance agreement with a human labeller. Both numbers come from [RAGTruth](https://arxiv.org/abs/2401.00396), a published benchmark of labelled hallucinations, not a self-labelled test set (n=300, seed=0, drawn evenly across RAGTruth's summarisation, question-answering and data-to-text task types). Recall is the metric this tool actually optimises for: a missed hallucination costs more than a false alarm when someone downstream is accountable for the output.
 
 ```python
 def verify_subclaim_claude(subclaim: str, doc_chunks: list[str], client, model: str = "claude-haiku-4-5-20251001") -> bool:
@@ -119,9 +119,9 @@ That's the actual payoff: with recall 0.69 (CI 0.59-0.78) and κ=0.195 in hand, 
 
 ## What Was Hard
 
-κ=0.195 is "slight agreement" on the Landis & Koch scale, not a number I'd want to present without the caveat above it. The Haiku alternative gets to 0.331 ("fair agreement") at roughly $0.03 per document, and that trade-off table exists precisely so nobody mistakes the free default for the accurate one.
+κ=0.195 is "slight agreement" on the Landis & Koch scale, not a number I'd want to present without the caveat above it. The Haiku alternative gets to 0.331 ("fair agreement") at roughly A$0.05 per document (Anthropic bills in USD; this is an approximate conversion), and that trade-off table exists precisely so nobody mistakes the free default for the accurate one.
 
-MiniCheck also doesn't do arithmetic, which is why numeric-consistency exists as a bolt-on rather than something the verifier itself catches. And the RAGTruth numbers are a benchmark-distribution result: measured on general AI summarisation, not on insurance, legal or regulatory text specifically. The travel-insurance PDS fixtures shown here are illustrative, not a validated domain.
+MiniCheck also doesn't do arithmetic, which is why numeric-consistency exists as a bolt-on rather than something the verifier itself catches. And the RAGTruth numbers are a benchmark-distribution result: measured across summarisation, question-answering and data-to-text tasks, not on insurance, legal or regulatory text specifically. The travel-insurance PDS fixtures shown here are illustrative, not a validated domain.
 
 Entity and citation substitution is the other known gap, and it's the same structural issue as the numeric one: an NLI verifier tolerates a substituted name or citation as long as the sentence shape matches. That's not unique to this build. It's a field-wide limitation with its own emerging reference architectures ([Proof-Carrying Numbers](https://arxiv.org/abs/2509.06902), [HalluGraph](https://arxiv.org/abs/2512.01659)), named here rather than hidden.
 
@@ -137,13 +137,15 @@ The pipeline is a pattern, not just a travel-insurance tool. The same decompose-
 
 Regulatory submissions (TGA AusPARs, similar public disclosure corpora) and legislative or policy text are the two most direct extensions: same accountability problem, different document type.
 
-The IMDA's Model AI Governance Framework for Agentic AI (January 2026) names explainability and auditability as requirements for responsible deployment. Decompose-then-verify is one concrete way to satisfy both: decomposition makes the verification unit small enough to audit, and MiniCheck's entailment judgement is interpretable: you can read why a claim was flagged. This wasn't designed to the framework; it happens to fit because the framework describes what good engineering looks like anyway.
+Decomposition makes the verification unit small enough to audit, and MiniCheck's entailment judgement is interpretable: you can read why a claim was flagged. None of that was built to satisfy an external framework, but it happens to line up with one: the IMDA's Model AI Governance Framework for Agentic AI (January 2026) names explainability and auditability as requirements for responsible deployment. It's what defensible engineering looks like anyway.
 
 ---
 
 ## Code and Further Reading
 
-The full source is on [GitHub](https://github.com/cchew/grounding-inspector) (MIT). The engine is Python with [MiniCheck](https://github.com/Liyan06/MiniCheck); the viewer is Hono and Vue 3. The live demo currently sits behind an access gate; if you'd like to try it, reach out via LinkedIn and I'll set you up.
+The full source is on [GitHub](https://github.com/cchew/grounding-inspector) (MIT). The engine is Python with [MiniCheck](https://github.com/Liyan06/MiniCheck); the viewer is Hono and Vue 3.
+
+The live demo is gated for now. Ping me on LinkedIn and I'll get you access.
 
 ## AI Tools
 
