@@ -1,5 +1,5 @@
 ---
-title  : Grounding Inspector: Does Your LLM Know When It's Lying?
+title  : "Grounding Inspector: Does Your LLM Know When It's Lying?"
 date   : '2026-07-24'
 tags   : ['ai', 'llm', 'hallucination', 'evaluation', 'python']
 draft  : false
@@ -7,11 +7,11 @@ summary: 'A decompose-then-verify pipeline that checks each claim in an AI outpu
 authors: ['chingchew']
 ---
 
+Grounding Inspector checks each claim in an AI-generated summary against its source document, and shows which claims are grounded, partially grounded or unsupported, claim by claim, not as a single document-wide verdict.
+
 At the last few AI presentations I've been to, someone in Q&A always asks a version of the same question: you're told you can use AI, but you're still accountable for what it produces. How do you check that without re-reading the entire document yourself?
 
 AI-generated summaries of long documents can state things that sound entirely plausible but aren't actually backed by the source. With no way to check individual claims, you either trust the summary blindly or manually re-verify everything, which defeats the point of using AI at all.
-
-Grounding Inspector checks each claim in an AI output against its source document, and shows which claims are grounded, partially grounded or unsupported, claim by claim, not as a single document-wide verdict.
 
 ![Two-pane inspector: claims on the left, source document on the right](/static/images/grounding-inspector/two-pane-viewer.jpg)
 
@@ -29,7 +29,7 @@ Five stages. One document pair in (source document, AI output), claim-level verd
 4. **Localise**: map grounded and partial claims back to their source span and page number
 5. **Inspect**: browse the result in a two-pane viewer, claims on the left, source on the right, click a claim to see its evidence
 
-No custom retrieval index, no vector store. The engine reads the whole document every time.
+No custom retrieval index, no vector store. Every chunk of the document is scored against each claim, not just the one a retriever thinks is relevant.
 
 ---
 
@@ -37,7 +37,7 @@ No custom retrieval index, no vector store. The engine reads the whole document 
 
 ### Decompose-then-verify over hierarchical RAG
 
-Retrieval optimises for finding the most relevant chunk. Grounding evaluation has to check every claim against everything, so a claim whose evidence lives in a chunk the retriever didn't fetch gets silently marked unsupported, not because it isn't grounded, but because the wrong index missed it. That's the opposite failure mode of what this tool exists to catch.
+Retrieval optimises for finding the most relevant chunk. Grounding evaluation has to check every claim against everything, so that we don't incorrectly flag a claim as "unsupported" just because the RAG didn't retrieve the evidence.
 
 ```python
 def verify_subclaim(subclaim: str, doc_chunks: list[str], scorer) -> tuple[bool, float]:
@@ -62,6 +62,8 @@ The pipeline supports two verifier backends behind the same interface, an explic
 
 κ (Cohen's kappa), not raw accuracy, because it corrects for chance agreement with a human labeller. Both numbers come from [RAGTruth](https://arxiv.org/abs/2401.00396), a published benchmark of labelled hallucinations, not a self-labelled test set (n=300, seed=0, drawn evenly across RAGTruth's summarisation, question-answering and data-to-text task types). Recall is the metric this tool actually optimises for: a missed hallucination costs more than a false alarm when someone downstream is accountable for the output.
 
+The two rows aren't equally reproducible. MiniCheck's numbers are stamped into every fixture's scorecard with a pipeline commit hash, so they can be traced back to the exact code that produced them. Claude Haiku's numbers came from a real run of the project's benchmark script, but its output directory is gitignored by design (it holds API-derived data) and no longer exists locally, so that specific run isn't independently reproducible from what's in the repo today. The trade-off table above is accurate; the paper trail behind one row of it is thinner than the other.
+
 ```python
 def verify_subclaim_claude(subclaim: str, doc_chunks: list[str], client, model: str = "claude-haiku-4-5-20251001") -> bool:
     """Claude: send all chunks as one context, return True if supported."""
@@ -75,11 +77,11 @@ def verify_subclaim_claude(subclaim: str, doc_chunks: list[str], client, model: 
     return msg.content[0].text.strip().upper().startswith("SUPPORTED")
 ```
 
-Same call signature as the MiniCheck path, swapped at runtime. Neither verifier changes the decompose, label or localise stages.
+Same call signature as the MiniCheck path, swapped at runtime. Neither verifier changes the decompose, label or localise stages. The two aren't fully symmetric, though: MiniCheck scores each chunk independently and keeps the best match, while Claude Haiku sees every chunk concatenated into one prompt and answers once, trading exhaustive per-chunk scoring for a single call over the full context.
 
 ### Numeric-consistency as a deterministic pre-pass
 
-NLI models tolerate span substitution when sentence structure matches, so a transposed number can still score as entailed: MiniCheck can't do arithmetic, only pattern-match phrasing. A claim stating "$4,000" against evidence stating "$3,000" reads as structurally identical to the model. That gap doesn't get patched into the verifier; it gets caught by a separate, deterministic check that runs after labelling.
+NLI models tolerate span substitution when sentence structure matches, so a transposed number can still score as entailed: MiniCheck can't do arithmetic, only pattern-match phrasing. A claim stating "\$4,000" against evidence stating "\$3,000" reads as structurally identical to the model. That gap doesn't get patched into the verifier; it gets caught by a separate, deterministic check that runs after labelling. That check is scoped to dollar figures specifically ($-prefixed numbers); percentages, dates and other counts aren't covered by this pre-pass.
 
 ```python
 def numeric_mismatch(claim_text: str, evidence_text: str) -> float | None:
@@ -125,6 +127,8 @@ MiniCheck also doesn't do arithmetic, which is why numeric-consistency exists as
 
 Entity and citation substitution is the other known gap, and it's the same structural issue as the numeric one: an NLI verifier tolerates a substituted name or citation as long as the sentence shape matches. That's not unique to this build. It's a field-wide limitation with its own emerging reference architectures ([Proof-Carrying Numbers](https://arxiv.org/abs/2509.06902), [HalluGraph](https://arxiv.org/abs/2512.01659)), named here rather than hidden.
 
+A third gap sits above both of those: grounding only evaluates claims that are present in the output. It has no mechanism to flag what should have been said but wasn't. [NOHARM](https://arxiv.org/abs/2512.01241), a Stanford/Harvard ARISE Network benchmark of 31 LLMs on medical consultation tasks, found errors of omission account for more than 80% of severe errors, not commission. Fact-checking a claim against a source is a different problem to noticing a claim's absence, and no amount of tuning the verifier closes that gap; it's structural to the paradigm.
+
 On "why not just use an existing eval harness": Grounding Inspector ships as a custom [UK AISI Inspect](https://github.com/UKGovernmentBEIS/inspect_ai) `Scorer`, extending Inspect's task runner rather than competing with it.
 
 ---
@@ -137,16 +141,22 @@ The pipeline is a pattern, not just a travel-insurance tool. The same decompose-
 
 Regulatory submissions (TGA AusPARs, similar public disclosure corpora) and legislative or policy text are the two most direct extensions: same accountability problem, different document type.
 
-Decomposition makes the verification unit small enough to audit, and MiniCheck's entailment judgement is interpretable: you can read why a claim was flagged. None of that was built to satisfy an external framework, but it happens to line up with one: the IMDA's Model AI Governance Framework for Agentic AI (January 2026) names explainability and auditability as requirements for responsible deployment. It's what defensible engineering looks like anyway.
+The legislative extension isn't hypothetical. The Dept of Finance's GovCMS DXP team is already building this whole-of-government: [search.gov.au](https://search.gov.au) (alpha) ingests all in-force Australian legislation plus content from roughly 5,000 government websites into one semantically chunked, authority-graphed corpus. A verification stream they call "Scrutiny" checks AI-generated answers against that corpus using a hierarchical multi-agent review pipeline, the same decompose-then-verify shape as this tool, running at whole-of-government scale on GovAI. ([Government content is AI food](https://www.youtube.com/watch?v=X5UAWFl7-FE), APS Digital Profession Innovation Month, July 2026.)
+
+Decomposition makes the verification unit small enough to audit, and MiniCheck's entailment judgement is interpretable: you can read why a claim was flagged. None of that was built to satisfy an external framework, but it happens to line up with one: the IMDA's [Model AI Governance Framework for Agentic AI](https://www.imda.gov.sg/-/media/imda/files/about/emerging-tech-and-research/artificial-intelligence/mgf-for-agentic-ai.pdf) (January 2026) names explainability and auditability as requirements for responsible deployment. It's what defensible engineering looks like anyway.
+
+### How does this compare internationally?
+
+Australia isn't alone in treating government content as AI's training and retrieval diet, but the shape of each country's response differs. The UK's [GOV.UK Chat](https://insidegovuk.blog.gov.uk/2026/03/16/5-things-we-learned-testing-gov-uk-chat-an-ai-assistant-for-government) is the most shipped comparator: a Claude-based RAG chatbot live across the GOV.UK app, answering from a single 700,000-page domain, with accuracy climbing from 76% to 90% across its pilots. Singapore's [Pair Search](https://www.tech.gov.sg/products-and-services/for-government-agencies/productivity-and-marketing/pair/) indexes legislation, court judgments and parliamentary debates for public officers, and GovText runs whole-of-government topic modelling. Estonia's [Bürokratt](https://www.kratid.ee/en/burokratt) is the most mature cross-agency service-delivery chatbot ecosystem, now extending to digital identities for AI agents. None of these, as far as public documentation shows, pairs an authority graph (which agency is the legal source of truth for a given claim) with claim-level verification the way search.gov.au's Find/Align/Verify streams do. GOV.UK Chat ships a live product; it doesn't appear to run a per-claim grounding check comparable to decompose-then-verify. That's the gap this tool, and search.gov.au's Scrutiny pipeline, both sit in.
 
 ---
+
+## AI Tools
+
+Claude Code was used to build the pipeline and viewer, and Claude was used to draft this post.
 
 ## Code and Further Reading
 
 The full source is on [GitHub](https://github.com/cchew/grounding-inspector) (MIT). The engine is Python with [MiniCheck](https://github.com/Liyan06/MiniCheck); the viewer is Hono and Vue 3.
 
-The live demo is gated for now. Ping me on LinkedIn and I'll get you access.
-
-## AI Tools
-
-Claude Code was used to build the pipeline and viewer, and Claude was used to draft this post.
+The live demo is gated for now. Ping me on [LinkedIn](https://www.linkedin.com/in/cchew/) and I'll get you access.
