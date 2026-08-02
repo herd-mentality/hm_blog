@@ -7,7 +7,7 @@ summary: 'Building a public, judged AI tool against an 11-day deadline surfaced 
 authors: ['chingchew']
 ---
 
-Commonwealth legislation defines the same everyday term differently across different Acts, and there's no queryable index of where or how they diverge. "Personal information" means one thing in the Privacy Act 1988. Other Acts cross-reference it, narrow it to a specific section, or point somewhere else entirely. Finding out which is which means opening every relevant Act by hand and comparing definitions line by line.
+"Personal information" means one thing in the Privacy Act 1988. Other Acts cross-reference it, narrow it to a specific section, or point somewhere else entirely. This isn't unusual: Commonwealth legislation defines the same everyday term differently across different Acts constantly, and there's no queryable index of where or how they diverge. Finding out which is which means opening every relevant Act by hand and comparing definitions line by line.
 
 Act Alike does that comparison for you. Type a term, and it lines up every Act that defines it, side by side, sourced straight from the legislation, with a plain-language summary of how they differ.
 
@@ -117,7 +117,7 @@ return DifferenceSummary(summary=summary, differences=verified)
 
 `summary` passes through untouched as long as at least one underlying difference verified. It could, structurally, misstate the comparison ("Act A is broader than Act B" the wrong way round) even when every quote it's built from checks out. This was found through a separate grounding research pass, not live testing: the individual-claim verification catches numeric transposition and citation substitution, but the free-text sentence stitching those claims together is a synthesis step no NLI-style verifier reaches.
 
-A concrete fix was scoped: a regex check flagging when `summary` contains a number or figure absent from every verified quote. It was never built. Days before the deadline, with API quota running low, this was consciously left open rather than rushed in. It ships as a documented known limitation, not a hidden one; the in-app "How this works" modal states it directly.
+A concrete fix was scoped: a regex check flagging when `summary` contains a number or figure absent from every verified quote. It was never built. Days before the deadline, with API quota running low, this was left open rather than rushed in. It's tracked as a known limitation in the project's internal documentation, but the in-app "How this works" modal, which lists corpus coverage as the only known limitation, hasn't caught up to it yet. That's a real gap, and this post is what closes it.
 
 ![The "How Act Alike works" modal, showing the pipeline, accuracy approach and known limitations](/static/images/act-alike/disclaimer-modal.jpg)
 
