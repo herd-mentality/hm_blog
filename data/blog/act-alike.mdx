@@ -1,0 +1,164 @@
+---
+title  : "Act Alike: Grounding an LLM Against Legislation, Layer by Layer"
+date   : '2026-08-03'
+tags   : ['ai', 'claude', 'legislation', 'python', 'fastapi', 'grounding']
+draft  : false
+summary: 'Building a public, judged AI tool against an 11-day deadline surfaced two different grounding failure modes: one where verification was too strict, and one where it was not strict enough.'
+authors: ['chingchew']
+---
+
+Commonwealth legislation defines the same everyday term differently across different Acts, and there's no queryable index of where or how they diverge. "Personal information" means one thing in the Privacy Act 1988. Other Acts cross-reference it, narrow it to a specific section, or point somewhere else entirely. Finding out which is which means opening every relevant Act by hand and comparing definitions line by line.
+
+Act Alike does that comparison for you. Type a term, and it lines up every Act that defines it, side by side, sourced straight from the legislation, with a plain-language summary of how they differ.
+
+![Act Alike comparing "personal information" across Commonwealth Acts, with the AI-generated difference summary and quote-highlighted source text](/static/images/act-alike/personal-information-comparison.jpg)
+
+It exists because of a deadline. Act Alike started as an entry to IM2026 "Build a Bureaucrat Bot", an Australian Public Service innovation challenge judged live by five Chief AI and Data Officers, entered under the Complexity Tamer category. No second take, judged by people who see through AI theatre for a living, built in roughly 11 days. That constraint shaped almost every decision in the build, most of all how strictly the AI layer was allowed to talk about the law.
+
+This isn't a hypothetical problem invented for a competition. An independent 2025 paper found the same class of issue in US tax law (arXiv:2511.11954): inconsistent definitions across a body of legislation, undetected because nothing indexes them against each other. A peer-reviewed study found it in Australian animal protection law too. Any domain with a large, evolving body of documents that individually define their own terms has this problem; legislation just makes it easy to see.
+
+---
+
+## Architecture
+
+![Component flow: Vue frontend to FastAPI on Modal to DefinitionResolver to Claude API and back](/static/images/act-alike/component-flow.svg)
+
+1. **Vue frontend**: takes a search term, renders the comparison, deployed to Netlify
+2. **FastAPI backend on Modal**: a thin wrapper, no extraction logic of its own
+3. **DefinitionResolver**: an already-shipped, already-tested component from `lex-au-graph`, a prior project that turns Commonwealth legislation into a queryable definition graph
+4. **Claude API**: writes the plain-language difference summary, restricted to describing textual differences and quote-verified before anything is shown
+5. Response flows back to the frontend with every claim linked to its source Act
+
+No new extraction engine. The FastAPI layer exists to call `DefinitionResolver.find_all_definitions(term)` and hand the results to an LLM under a tight prompt contract. That decision generalises past legislation: if you already have a reliable retrieval layer over your domain corpus, whatever it is, don't rebuild it to add an AI layer on top. Wrap it.
+
+The trade-off is coupling. `DefinitionResolver` was safely reusable because it already had test coverage and a stable API from having shipped once before. But a bug in it surfaces directly here, with no independent extraction layer to catch it. One did: a definition-truncation bug in the upstream corpus pipeline, found and fixed mid-build.
+
+---
+
+## Implementation
+
+### Grounding by restriction, then verification
+
+The system prompt does not ask the model to be accurate. It restricts what the model is allowed to talk about at all:
+
+```python
+_SYSTEM_PROMPT = (
+    "You are assisting a legislative research tool that compares how a legal term is "
+    "defined across different Commonwealth Acts of Parliament. "
+    "Describe ONLY observable differences already present in the definition text provided "
+    "(different thresholds, different tests, different reference points, different scope). "
+    "Do NOT speculate on legislative intent, drafting history, or policy rationale. "
+    "Do NOT draw any eligibility or compliance conclusion. "
+    "Quote evidence verbatim from the definition text you were given. "
+    "Return ONLY valid JSON — no markdown fences, no commentary."
+)
+```
+
+Every claimed difference then has to prove itself against the source text before it's shown:
+
+```python
+def verify_quote(quote: str, source_text: str) -> bool:
+    """Check a quoted passage exists (whitespace/punctuation-insensitive) in source_text."""
+    normalised_quote = _normalise(quote)
+    return bool(normalised_quote) and normalised_quote in _normalise(source_text)
+```
+
+```python
+verified: list[VerifiedDifference] = []
+for diff in data.get("differences", []):
+    source = by_act.get(diff.get("act_title", ""))
+    quote = diff.get("quote", "")
+    if source and verify_quote(quote, source.definition_text):
+        verified.append(VerifiedDifference(
+            act_title=diff.get("act_title", ""),
+            quote=quote,
+            note=diff.get("note", ""),
+        ))
+
+if not verified:
+    return None
+```
+
+An unverified claim is dropped individually, not the whole response. If nothing verifies at all, the whole summary is dropped and the caller falls back to something deterministic. This pattern, restrict what the model can claim, then check each claim independently, transfers directly to any RAG-shaped system: support docs, internal wikis, product specs, anything where an LLM synthesises across retrieved passages.
+
+### Where strict grounding bit back
+
+Six days before the deadline, an independent review of the live site found that this verification was strict enough to break the product on any term outside the two rehearsed demo terms. Type "entity" or "child" and the summary silently came back empty: no error, no explanation, just nothing, right when a judge deviated from the script.
+
+The fix wasn't to loosen the verification bar. It was a deterministic fallback that never claims more than the data supports:
+
+```python
+def _fallback_summary(definitions: list[DefinitionOut]) -> str | None:
+    """Deterministic, LLM-free fallback headline for when no verified LLM summary
+    exists. Mirrors summarise_differences' own "nothing to compare" cutoff — a
+    single-Act term never gets a fallback message implying a comparison happened.
+    """
+    ...
+    if substantive_count >= 2:
+        return f"{substantive_count} distinct definition texts found across {act_count} Acts — see below."
+    return f"Definitions found in {act_count} Acts, but full text wasn't extracted for this term — see Known limitations."
+```
+
+A visible disclaimer went in at the same time. Until that review, there was none anywhere in the app: a real gap against a competition rule requiring the tool not present itself as an authoritative government service.
+
+### The layer verification didn't cover
+
+Every item in the `differences` list is quote-verified individually. The one-sentence `summary` shown most prominently to the user, built by the model from those differences, was not:
+
+```python
+summary = data.get("summary")
+if not summary:
+    return None
+
+return DifferenceSummary(summary=summary, differences=verified)
+```
+
+`summary` passes through untouched as long as at least one underlying difference verified. It could, structurally, misstate the comparison ("Act A is broader than Act B" the wrong way round) even when every quote it's built from checks out. This was found through a separate grounding research pass, not live testing: the individual-claim verification catches numeric transposition and citation substitution, but the free-text sentence stitching those claims together is a synthesis step no NLI-style verifier reaches.
+
+A concrete fix was scoped: a regex check flagging when `summary` contains a number or figure absent from every verified quote. It was never built. Days before the deadline, with API quota running low, this was consciously left open rather than rushed in. It ships as a documented known limitation, not a hidden one; the in-app "How this works" modal states it directly.
+
+![The "How Act Alike works" modal, showing the pipeline, accuracy approach and known limitations](/static/images/act-alike/disclaimer-modal.jpg)
+
+Grounding isn't a single switch. It has to be applied at every layer a model touches, and even a scoped, deadline-pressured build can show both what that costs (a strict-verification false negative that broke the demo) and where it's still incomplete (a synthesis layer no per-claim check reaches).
+
+![Verification flow: individual claims are quote-checked, the summary sentence bypasses the same gate](/static/images/act-alike/grounding-flow.svg)
+
+---
+
+## Results
+
+"Child" is a good non-flagship example, because it's genuinely inconsistent across Acts, not just differently worded. Most Acts put the age threshold at under 18. The Income Tax Assessment Act 1936 puts it at under 16. Some Acts don't define it at all and instead cross-reference another Act's definition, which the tool renders as a distinct card style rather than folding it into the same list.
+
+![Cross-reference cards for "child": plain definitions alongside Acts that adopt another Act's definition, including the genuine 16-vs-18 age variance](/static/images/act-alike/cross-reference-cards.jpg)
+
+By the time of submission the underlying corpus (`lex-au`, a separate open legislative parsing project) covered 2,942 Acts and 28,746 defined terms; both numbers keep growing as ingestion continues, so treat them as a snapshot rather than a current count.
+
+---
+
+## What Was Hard
+
+The AI grounding work above was the least surprising part of the build. Two other things ate more time than expected.
+
+The first-visit product tour (built with `driver.js` 1.7.0) had two real library bugs, found empirically rather than in the docs. It stamps invalid `aria-expanded`/`aria-haspopup` attributes on highlighted elements regardless of whether they're actually interactive widgets, which an accessibility scan flags as a critical violation. Its `onDestroyed`/`onCloseClick` hooks also don't fire on Escape or the close button, only on the tour's own final "Done" button. Both were worked around without touching the library: an `onHighlighted` cleanup pass for the ARIA issue, and a `MutationObserver` watching the popover's own DOM removal instead of trusting the library's advertised close hooks.
+
+The project's original working title was "Legal Lookalike". It got renamed to "Act Alike" after realising "lookalike" already carries a specific legal meaning, trademark and counterfeit lookalikes, that would confuse rather than clarify in front of a legal-savvy judging panel.
+
+---
+
+## Where It Goes Next
+
+The reuse-restrict-verify pattern, and the specific gap in it, generalise past legislation. Any tool that puts an LLM in front of a structured domain corpus, whether that's legal text, internal policy documents, product specs or support knowledge bases, faces the same two questions this build answered the hard way: what happens when your verification is strict enough to silently break the product on an unscripted input, and what layer of your pipeline doesn't have a verifier at all yet.
+
+The unbuilt summary-verification fix is the obvious next step here specifically. More generally, the corpus itself still has gaps: a term-registry scoping problem (some Acts genuinely use the same word for different things within the one Act) is logged but deferred, and corpus coverage is partial by design, growing as the underlying legislative parsing pipeline ingests more Acts.
+
+---
+
+## Code and Further Reading
+
+The full source is on [GitHub](https://github.com/cchew/act-alike), live at [act-alike.netlify.app](https://act-alike.netlify.app). The legislative parsing and definition-graph layer it wraps is a separate open project, [lex-au-graph](https://github.com/cchew/lex-au-graph).
+
+For the underlying research on why claim-level verification alone isn't sufficient for numeric and entity grounding, Proof-Carrying Numbers (arXiv:2509.06902) and HalluGraph (arXiv:2512.01659) are the two reference architectures behind the framing used here.
+
+## AI Tools
+
+Claude Code was used to plan and build the app, and Claude and Google Gemini were used in drafting supporting material for the competition entry.
