@@ -308,7 +308,7 @@ Neither companion document has actually been published as a technical implementa
 
 ## Code and Further Reading
 
-lex-au-search is public on [GitHub](https://github.com/cchew/lex-au-search). Clone it, point `ApplyGuardrail` at your own guardrail, and check whether your ANONYMIZE and tag-scoping assumptions hold up the same way mine didn't.
+[lex-au-search](https://github.com/cchew/lex-au-search) is the application this compliance architecture is being built for, and it's public on GitHub. The guardrails testing itself is a five-minute `ApplyGuardrail` call against your own guardrail ID: point it at yours and check whether your ANONYMIZE and tag-scoping assumptions hold up the same way mine didn't.
 
 For the underlying APIs: [Bedrock Guardrails](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html), [ApplyGuardrail](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_agent-runtime_ApplyGuardrail.html) and [AgentCore Policy](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html).
 
