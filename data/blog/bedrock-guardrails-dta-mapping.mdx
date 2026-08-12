@@ -19,9 +19,9 @@ That mapping didn't exist anywhere I could find, so I built it myself. This post
 
 ## What the DTA actually asks for
 
-On 15 June 2026 the [DTA](https://www.dta.gov.au/articles/trustworthy-ai-agents-new-technical-guidance) made its first agentic AI requirement mandatory: any APS agency running an agentic system needs a completed [AI Impact Assessment](https://www.digital.gov.au/ai/impact-assessment-tool/introduction) before it goes live. The rest of the technical and operational controls become mandatory in December 2026.
+The [DTA](https://www.dta.gov.au/articles/trustworthy-ai-agents-new-technical-guidance)'s updated AI policy made an internal register of in-scope AI use cases mandatory from 15 June 2026. The [AI Impact Assessment](https://www.digital.gov.au/ai/impact-assessment-tool/introduction) requirement, which agencies must complete for every in-scope use case (agentic systems included) before deployment, follows on 15 December 2026. The [agentic AI addendum](https://www.digital.gov.au/policy/ai/agentic-ai-addendum-background) itself sits alongside this policy as best-practice technical guidance and doesn't carry a separate compliance date of its own.
 
-The [addendum](https://www.digital.gov.au/policy/ai/agentic-ai-addendum-background) sorts human oversight into three modes:
+The addendum sorts human oversight into three modes:
 
 - **HITL** (human-in-the-loop): a person signs off before anything high-stakes or irreversible happens, like an entitlement decision or a payment.
 - **HOTL** (human-on-the-loop): a person watches continuously and can pause or override.
@@ -29,16 +29,16 @@ The [addendum](https://www.digital.gov.au/policy/ai/agentic-ai-addendum-backgrou
 
 For my tool, where the AI produces advice and a human practitioner acts on it, HOTL is the right mode. The agent never submits data or applications to any government agency; the practitioner does.
 
-> **Building a HOTL interface?** [Agent Tower](https://www.herdmentality.xyz/blog/agent-tower-notion-hitl-interface) walks through a working example: a Notion kanban board as the human-oversight cockpit for a running agent pipeline. Its "Steer" pattern (agent posts findings, waits on a timeout for an operator note, auto-advances if none) is a HOTL-style watch-and-override loop; the post also covers a stricter "Gate" pattern for mandatory sign-off, closer to HITL.
+> **Interested in HOTL?** My [Agent Tower](https://www.herdmentality.xyz/blog/agent-tower-notion-hitl-interface) blog post walks through an example HOTL interface: a Notion kanban board as the human-oversight cockpit for a running agent pipeline. Its "Steer" pattern (agent posts findings, waits on a timeout for an operator note, auto-advances if none) is a HOTL-style watch-and-override loop; the post also covers a stricter "Gate" pattern for mandatory sign-off, closer to HITL.
 
-Past oversight mode, the addendum asks for:
+Past oversight mode, the addendum's lifecycle stages point to (paraphrased from the [full PDF](https://www.digital.gov.au/sites/default/files/documents/2026-06/Addendum-Agentic-AI.pdf), not a verbatim requirements list):
 
-- Audit trails for every agent decision and action
-- PII protection across multi-step workflows
-- Controls against prompt injection (explicitly named as an "unauthorised actions" risk)
-- Anomaly detection after deployment
-- Rollback and failsafe mechanisms for high-impact actions
-- A staged rollout, with stability demonstrated before expanding
+- Audit trails and observability: "logs, metrics, and audit trails" to detect issues and support governance, in the addendum's own words
+- Data minimisation and sensitive-information exposure limits across memory and multi-step workflows
+- Controls against injection attacks, named directly under the Integrate stage (typed interfaces, input/output validation)
+- Continuous monitoring for drift and anomalies, under the Monitor stage
+- Rollback and kill-switch mechanisms, under the Decommission stage
+- Controlled, accountable deployment rather than "uncontrolled or inconsistent deployments... across the organisation"
 
 Bedrock Guardrails handles four of those out of the box. The other two live at the application layer, outside anything AWS provides.
 
@@ -107,7 +107,7 @@ The same regex fires identically on the model's response, not just the user's in
 
 ### Prompt injection controls
 
-The DTA calls this "unauthorised actions" risk rather than naming prompt injection directly, but it's the same thing: block attempts to hijack the model with injected instructions.
+The DTA addendum names this directly as "injection attacks" under its Integrate stage: block attempts to hijack the model with injected instructions. The addendum's own treatment is one line (typed interfaces, input/output validation); it lists ASD's guidance on securing agentic AI as a related standard for the implementation depth it doesn't cover itself.
 
 <details>
 <summary>The design assumption that didn't survive testing</summary>
@@ -154,7 +154,7 @@ Record what the guardrail did, every time it did it.
 <details>
 <summary>The logging isn't on by default, and one API path skips it entirely</summary>
 
-Model invocation logging is off out of the box. You have to call `PutModelInvocationLoggingConfiguration` and point it at a CloudWatch log group before any content-level audit trail exists at all.
+[Model invocation logging is off out of the box](https://docs.aws.amazon.com/bedrock/latest/userguide/model-invocation-logging.html). You have to call `PutModelInvocationLoggingConfiguration` and point it at a CloudWatch log group before any content-level audit trail exists at all.
 
 There's also a scope limit that isn't obvious until you hit it: per-call *content* logs are only produced by `InvokeModel` and `Converse`. If you're calling standalone `ApplyGuardrail` (which is what I used for most of the tests in this post, since it's the simplest way to probe a guardrail directly), you get aggregate CloudWatch metrics and CloudTrail API audit, but no content. If you want to know exactly what was blocked and why on that path, you have to self-log the API response yourself.
 
@@ -188,7 +188,7 @@ Confirmed the gap directly: a marked `ApplyGuardrail` call run with logging acti
 
 ### Anomaly detection
 
-The DTA calls for anomaly detection. What Bedrock ships is a starting point, not the full thing.
+The addendum's Monitor stage calls for detecting drift and anomalies. What Bedrock ships is a starting point, not the full thing.
 
 <details>
 <summary>The distinction that matters here</summary>
@@ -220,12 +220,12 @@ Classic-tier semantic topic matching is running broader than the topic definitio
 
 Flags responses that aren't grounded in the retrieved legislation.
 
-> **Want claim-level grounding instead of one pass/fail score?** [Grounding Inspector](https://www.herdmentality.xyz/blog/grounding-inspector) decomposes a response into individual claims and checks each one against the source document separately, rather than a single grounding score for the whole response. Same underlying question (is this grounded in the source?), a finer-grained answer.
+> **Want claim-level grounding instead of one pass/fail score?** My [Grounding Inspector](https://www.herdmentality.xyz/blog/grounding-inspector) blog post describes how you can decompose a response into individual claims and check each one against the source document separately, rather than a single grounding score for the whole response. Same underlying question (is this grounded in the source?), a finer-grained answer.
 
 <details>
 <summary>What "grounded" actually measures, and what it doesn't</summary>
 
-AWS documents that conversational or multi-turn use cases aren't supported for this filter. For a practitioner assistant that builds context across turns, that means grounding scores may not be reliable in production. Also worth internalising: grounding checks that the response matches the retrieved text. It says nothing about whether that text is current or correct.
+[AWS documents](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-contextual-grounding-check.html) that conversational or multi-turn use cases aren't supported for this filter. For a practitioner assistant that builds context across turns, that means grounding scores may not be reliable in production. Also worth internalising: grounding checks that the response matches the retrieved text. It says nothing about whether that text is current or correct.
 
 It does work as designed on a single-turn test. Source: a real Age Pension income-threshold clause. A correct answer scores 1.0 on both grounding and relevance and isn't blocked. Swap in a fabricated figure ($1,200 for the source's actual $360) and it drops to 0.0/0.02 and gets blocked:
 
@@ -248,9 +248,9 @@ One integration trap I got wrong on my first read of the qualifier names: I expe
 
 ---
 
-**On tier choice.** Bedrock Guardrails has a Standard tier for prompt-attack detection that adds prompt-leakage as a third sub-type, beyond jailbreaks and injections. Standard tier requires cross-Region inference, meaning your request might get processed outside `ap-southeast-2`. That directly conflicts with the reason this whole architecture is pinned to Sydney in the first place: APS data sovereignty. Everything in this post uses **Classic tier**, which stays fully regional. If your workload genuinely needs data residency, check tier availability and inference routing before flipping Standard on. It's not a trade-off the console makes obvious.
+**On tier choice.** Bedrock Guardrails has a [Standard tier](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-prompt-attack.html) for prompt-attack detection that adds prompt-leakage as a third sub-type, beyond jailbreaks and injections. [AWS states](https://aws.amazon.com/about-aws/whats-new/2025/06/amazon-bedrock-guardrails-tiers-content-filters-denied-topics/) that "to access the Standard tier's capabilities, customers must explicitly opt in to [cross-Region inference](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-cross-region.html)", meaning your request might get processed outside `ap-southeast-2`. That directly conflicts with the reason this whole architecture is pinned to Sydney in the first place: APS data sovereignty. Everything in this post uses **Classic tier**, which stays fully regional. If your workload genuinely needs data residency, check tier availability and inference routing before flipping Standard on. It's not a trade-off the console makes obvious.
 
-**On which API to call.** AWS shipped [`InvokeGuardrailChecks`](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeGuardrailChecks.html) in June 2026, a resourceless API that runs individual safeguards on demand and returns numeric scores without blocking anything. Handy for quick exploration. For the APS compliance case I used `ApplyGuardrail` and `Converse` with a versioned guardrail resource instead, for two reasons: a resource-based guardrail gets a stable ARN that shows up in CloudTrail, and it actually blocks rather than just scoring. `InvokeGuardrailChecks` is detect-only. It can't satisfy the DTA's audit trail requirement by itself.
+**On which API to call.** AWS [shipped](https://aws.amazon.com/about-aws/whats-new/2026/06/amazon-bedrock-guardrails-api-ai/) [`InvokeGuardrailChecks`](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeGuardrailChecks.html) in June 2026, a resourceless API that runs individual safeguards on demand and returns numeric scores without blocking anything. Handy for quick exploration. For the APS compliance case I used `ApplyGuardrail` and `Converse` with a versioned guardrail resource instead, for two reasons: a resource-based guardrail gets a stable ARN that shows up in CloudTrail, and it actually blocks rather than just scoring. `InvokeGuardrailChecks` is detect-only. It can't satisfy the DTA's audit trail requirement by itself.
 
 ---
 
@@ -258,9 +258,9 @@ One integration trap I got wrong on my first read of the qualifier names: I expe
 
 Guardrails filters what the model says. It has nothing to say about what the model is allowed to *do*, which tools it can call and under what conditions. The addendum requires least-privilege tool access, which maps to a different service entirely.
 
-AgentCore Policy (GA 3 March 2026, Guardrails support added 17 June 2026) runs on [Cedar](https://aws.amazon.com/about-aws/whats-new/2023/05/cedar-open-source-language-access-control) under the hood: you write policies in natural language and AWS converts them to Cedar, its open-source policy language. Enforcement happens at the AgentCore Gateway boundary, before a tool call completes.
+[AgentCore Policy](https://aws.amazon.com/about-aws/whats-new/2026/03/policy-amazon-bedrock-agentcore-generally-available/) (GA 3 March 2026, [Guardrails support added](https://aws.amazon.com/about-aws/whats-new/2026/06/amazon-bedrock-agentcore-policy-guardrails-generally-available/) 17 June 2026) runs on [Cedar](https://aws.amazon.com/about-aws/whats-new/2023/05/cedar-open-source-language-access-control) under the hood: you write policies in natural language and AWS converts them to Cedar, its open-source policy language. Enforcement happens at the AgentCore Gateway boundary, before a tool call completes.
 
-One scope limit worth knowing about: AgentCore Policy only governs MCP tool calls routed through the AgentCore Gateway. It doesn't intercept direct Bedrock Knowledge Base queries or SDK calls that bypass the Gateway. If your architecture is a hybrid of Gateway-routed tools and direct Knowledge Base access, that's partial least-privilege coverage, not full.
+One scope limit worth knowing about: [AWS documents](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/use-gateway-with-policy.html) that Policy evaluation applies only to MCP tools routed through the AgentCore Gateway. It doesn't intercept direct Bedrock Knowledge Base queries or SDK calls that bypass the Gateway (Knowledge Base access routed through the Gateway as a target type is covered; direct access isn't). If your architecture is a hybrid of Gateway-routed tools and direct Knowledge Base access, that's partial least-privilege coverage, not full.
 
 For my application, this is what restricts search queries to Acts in scope and denies calls to legislation outside scope. Put together, the layers are:
 
@@ -292,13 +292,13 @@ For the lex-au-search application, the pre-build compliance stack looks like thi
 4. **CloudWatch**: invocation logging explicitly turned on, a threshold alarm on intervention rate, and CloudWatch Anomaly Detection for the ML-based version
 5. **Data currency**: a version-pinned corpus with explicit last-updated metadata per Act, and a staleness warning surfaced in the UI
 
-Technical controls aren't the whole job. The DTA's AI Impact Assessment, mandatory since 15 June, also wants documented governance: the assessment artefact itself, the HOTL review process, and evidence of a staged rollout. This architecture answers the PII, oversight mode and audit sections. The process documentation sits outside it, and that's a separate piece of work.
+Technical controls aren't the whole job. The DTA's AI Impact Assessment, mandatory from 15 December 2026, also wants documented governance: the assessment artefact itself, the HOTL review process, and evidence of a controlled, accountable deployment. This architecture answers the PII, oversight mode and audit sections. The process documentation sits outside it, and that's a separate piece of work.
 
 ---
 
 ## The gap nobody's filled yet
 
-The DTA addendum defers prompt injection guidance to [ASD/ACSC](https://www.cyber.gov.au/business-government/secure-design/artificial-intelligence/careful-adoption-of-agentic-ai-services). Singapore's [MAIGF](https://www.imda.gov.sg/-/media/imda/files/about/emerging-tech-and-research/artificial-intelligence/mgf-for-agentic-ai.pdf), a voluntary principles-based framework rather than a mandatory one, points to the same gap via the CSA's ["Securing Agentic AI" companion paper](https://www.csa.gov.sg/resources/publications/addendum-on-securing-ai-systems/).
+The DTA addendum points to [ASD/ACSC](https://www.cyber.gov.au/business-government/secure-design/artificial-intelligence/careful-adoption-of-agentic-ai-services)'s guidance as a related standard rather than providing its own implementation depth on injection attacks. Singapore's [MAIGF](https://www.imda.gov.sg/-/media/imda/files/about/emerging-tech-and-research/artificial-intelligence/mgf-for-agentic-ai.pdf), a voluntary principles-based framework rather than a mandatory one, points to the same gap via the CSA's ["Securing Agentic AI" companion paper](https://www.csa.gov.sg/resources/publications/addendum-on-securing-ai-systems/).
 
 Neither companion document has actually been published as a technical implementation guide. Bedrock Guardrails with prompt attack detection at HIGH is the closest available real-world implementation of the control both frameworks describe, and it's cited in neither. If you're filling out an AI Impact Assessment right now, this is the technical control worth documenting, with the honest caveat that it only covers the input vector, and its effectiveness against more sophisticated injection techniques (encoding tricks, slow multi-turn injection) hasn't been independently benchmarked.
 
