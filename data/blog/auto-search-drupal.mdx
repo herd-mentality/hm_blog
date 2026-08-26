@@ -169,16 +169,18 @@ Selecting a result navigates to the item and highlights it, same as the JVM vers
 
 ## Two deployment modes
 
-`ankane/onnxruntime-php` needs `libonnxruntime.so` on the server. On self-hosted Drupal, that is one Dockerfile line. On managed Drupal SaaS, GovCMS included, it is not available.
+`ankane/onnxruntime-php` needs `libonnxruntime.so` on the server. GovCMS, the Australian government's Drupal hosting platform, actually offers two different services here, and only one of them is an ONNX question.
 
-| | Self-hosted Drupal | GovCMS SaaS |
+**GovCMS PaaS** is self-managed: the agency owns its own Docker image, built and deployed via Lagoon on Kubernetes. Custom modules are fully supported, and `libonnxruntime.so` is exactly as available as it is on any self-hosted Drupal install, because the agency controls the container.
+
+**GovCMS SaaS** is fully managed with a fixed, approved module and theme set. Custom modules aren't permitted at all, independent of what they do. Auto Search, or any bespoke module, needs PaaS or self-hosted, and that isn't a limitation of the ONNX approach specifically. It is true of any custom code on SaaS.
+
+| | Self-hosted / GovCMS PaaS | GovCMS SaaS |
 |---|---|---|
-| `libonnxruntime.so` | Install in one line | Not available |
-| Embedding at query time | In the PHP process | Thin sidecar required |
-| Model size | 22 MB | 22 MB |
-| Ollama? | No | No |
+| Custom modules at all | Yes, agency controls the container | Not permitted, approved module set only |
+| `libonnxruntime.so` | Install it, same as self-hosted | Moot, custom code isn't an option here |
 
-Even the sidecar path stays small: 22 MB and a single HTTP call, no GPU, no Ollama. The primary demo here runs self-hosted, and for a government audience with a strong GovCMS contingent, naming this trade-off directly beats leaving it for someone to discover in production.
+For a government audience with a strong GovCMS contingent, naming SaaS's real constraint (no custom code at all) is more useful than an ONNX-specific workaround that does not reflect how SaaS actually works.
 
 ---
 
