@@ -153,7 +153,7 @@ public function search(array $queryVector, int $topK = 5): array {
 
 Three hundred and fifty vectors, cosine similarity as a dot product because they are L2-normalised at embed time. No vector database. Same reasoning as the JVM version: at this scale, an operational dependency would buy nothing.
 
-One honest caveat the JVM version does not have to answer: stock `mod_php` (which is what `drupal:10-php8.3-apache` runs) is share-nothing per request, unlike a long-lived Spring Boot process. The tokenizer vocab, the item embeddings and the ONNX session are all rebuilt from disk on every search request that hits a fresh worker, not loaded once at boot. `lazy: true` defers that cost to the first search request instead of every page load; it does not make the model persist across requests. No latency numbers for the PHP path are in this post yet: that is the next thing to measure before calling this production-ready.
+One caveat the JVM version does not have to answer: stock `mod_php` (which is what `drupal:10-php8.3-apache` runs) is share-nothing per request, unlike a long-lived Spring Boot process. The tokenizer vocab, the item embeddings and the ONNX session are all rebuilt from disk on every search request that hits a fresh worker, not loaded once at boot. `lazy: true` defers that cost to the first search request instead of every page load; it does not make the model persist across requests. No latency numbers for the PHP path are in this post yet: that is the next thing to measure before calling this production-ready.
 
 The module shows up in Drupal exactly like any other custom module, because it is one:
 
