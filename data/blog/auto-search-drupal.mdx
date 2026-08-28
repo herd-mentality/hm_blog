@@ -1,0 +1,213 @@
+---
+title  : 'ONNX-Native Fine-Tuned Semantic Search in Drupal'
+date   : '2026-08-27'
+tags   : ['ai', 'semantic-search', 'embeddings', 'php', 'drupal', 'onnx', 'ffi']
+draft  : false
+summary: 'Porting a fine-tuned sentence embedding model into a Drupal 10 module, running ONNX inference in-process via PHP FFI. No Ollama, no external API, no vector DB.'
+authors: ['chingchew']
+---
+
+Users searching a reports catalogue know the concept they want ("how many doctors do we have") but rarely the exact name a data modeller gave it ("GP FTE"). Keyword search fails because the query and the item share zero tokens. A sentence embedding model, fine-tuned on the domain's vocabulary and exported to ONNX, closes that gap by comparing meaning instead of strings, and it runs inside a Drupal 10 module using PHP 8.3, with no new software to install and no external API to call.
+
+This post covers the PHP port: what it took to run ONNX inference in-process via FFI, and the GovCMS hosting trade-offs that come with it. For the fine-tuning details and model performance, see [Auto Search: Semantic Search Inside the JVM](https://www.herdmentality.xyz/blog/auto-search).
+
+![Keyword search returns nothing for a natural-language query, running inside Drupal](/static/images/auto-search-drupal/drupal-keyword-miss.jpg)
+
+---
+
+## The Drupal ecosystem's answer today
+
+Every "local" AI search option in Drupal currently means one of three things:
+
+- [AI Search](https://www.drupal.org/project/ai_search) with an Ollama provider: a second service running alongside Drupal, 5 to 15 GB of RAM for a typical embedding model.
+- [AI Search](https://www.drupal.org/project/ai_search) or [Semantic Search](https://www.drupal.org/project/semantic_search) with OpenAI, Anthropic or Gemini: an external API call per query, a key to manage, and a cost that scales with traffic.
+- [Search API Embeddings](https://www.drupal.org/project/search_api_embeddings): genuinely in-process, but built on Word2Vec (2013).
+
+One new entrant has appeared since this project was scoped. [Scolta](https://www.tag1.com/scolta/) builds a static lexical index at publish time with [Pagefind](https://pagefind.app/) and runs it entirely client-side in the browser, with an AI layer for query expansion and summaries. It is the closest thing to a "no search server" pitch, but there is no vector math and no model: it rewrites the query with an LLM and searches a lexical index, not a semantic one.
+
+None of these run the embedding model inside the PHP process itself. For a small fine-tuned model, an INT8-quantised `all-MiniLM-L6-v2` fine-tune is about 22 MB, this is entirely viable. Nobody in the Drupal ecosystem is doing it.
+
+![Semantic search finds the right item, same query, same Drupal module](/static/images/auto-search-drupal/drupal-semantic-hit.jpg)
+
+---
+
+## What porting to PHP actually required
+
+The Vue 3 frontend needed no changes. It is compiled into the module directory and served as a Drupal library, exactly the pattern from an [earlier Vue.js-in-Drupal talk](https://github.com/cchew/building-vue.js). The interesting work is entirely on the backend.
+
+![Runtime flow: Vue SearchBar through the PHP module to the ONNX model and back](/static/images/auto-search-drupal/drupal-runtime-flow.svg)
+
+### The tokenizer is the hard part
+
+The exported ONNX model takes pre-tokenized `input_ids` and `attention_mask`, not raw text. Java has [DJL HuggingFace Tokenizers](https://djl.ai/extensions/tokenizers/). PHP has no equivalent battle-tested library, so the WordPiece tokenizer got hand-ported, validated token-for-token against the Java and Python implementations:
+
+```php
+public function encode(string $text): array {
+  $normalized = $this->normalize($text);
+  $words = $this->preTokenize($normalized);
+  $ids = [self::CLS_ID];
+  foreach ($words as $word) {
+    foreach ($this->wordPiece($word) as $id) {
+      $ids[] = $id;
+      if (count($ids) >= self::MAX_LENGTH - 1) {
+        break 2;
+      }
+    }
+  }
+  $ids[] = self::SEP_ID;
+
+  $len = count($ids);
+  return [
+    'input_ids'      => $ids,
+    'attention_mask' => array_fill(0, $len, 1),
+    'token_type_ids' => array_fill(0, $len, 0),
+  ];
+}
+```
+
+`wordPiece()` is the classic longest-match-first algorithm against the BERT vocabulary, with a `##` continuation prefix for subword pieces:
+
+```php
+private function wordPiece(string $word): array {
+  $chars = $this->mbStrSplit($word);
+  $ids = [];
+  $start = 0;
+  $totalChars = count($chars);
+
+  while ($start < $totalChars) {
+    $end = $totalChars;
+    $found = NULL;
+
+    while ($start < $end) {
+      $substr = implode('', array_slice($chars, $start, $end - $start));
+      $lookup = ($start > 0) ? (self::CONTINUATION_PREFIX . $substr) : $substr;
+
+      if (isset($this->vocab[$lookup])) {
+        $found = $this->vocab[$lookup];
+        break;
+      }
+      $end--;
+    }
+
+    if ($found === NULL) {
+      return [self::UNK_ID];
+    }
+
+    $ids[] = $found;
+    $start = $end;
+  }
+
+  return $ids;
+}
+```
+
+### Inference runs through FFI
+
+[`ankane/onnxruntime-php`](https://github.com/ankane/onnxruntime-php) wraps `libonnxruntime.so` via PHP's FFI extension. The class doing inference is `OnnxRuntime\InferenceSession`, not `Session`, the first of several small naming surprises:
+
+```php
+public function embed(string $text): array {
+  $enc = $this->tokenizer->encode($text);
+  $session = $this->session();
+
+  $inputs = [
+    'input_ids'      => [$enc['input_ids']],
+    'attention_mask' => [$enc['attention_mask']],
+    'token_type_ids' => [$enc['token_type_ids']],
+  ];
+
+  $result = $session->run(NULL, $inputs);
+  $hidden = $result[0][0];
+
+  return $this->meanPoolAndNormalize($hidden, $enc['attention_mask']);
+}
+```
+
+Masked mean pooling and L2 normalisation are hand-written, the same as the Java version, because PHP has no `sentence-transformers` equivalent either. Similarity is a for-loop, identical in shape to the Java `SimilarityService`:
+
+```php
+public function search(array $queryVector, int $topK = 5): array {
+  $scored = [];
+  foreach ($this->items() as $item) {
+    $scored[] = [
+      'group_id' => $item['group_id'],
+      'item_id'  => $item['item_id'],
+      'name'     => $item['name'],
+      'score'    => $this->dot($queryVector, $item['embedding']),
+    ];
+  }
+
+  usort($scored, fn($a, $b) => $b['score'] <=> $a['score']);
+
+  $results = [];
+  foreach (array_slice($scored, 0, $topK) as $s) {
+    if ($s['score'] < $this->minScore) {
+      break;
+    }
+    $results[] = $s;
+  }
+
+  return $results;
+}
+```
+
+Three hundred and fifty vectors, cosine similarity as a dot product because they are L2-normalised at embed time. No vector database. Same reasoning as the JVM version: at this scale, an operational dependency would buy nothing.
+
+One caveat the JVM version does not have to answer: stock `mod_php` (which is what `drupal:10-php8.3-apache` runs) is share-nothing per request, unlike a long-lived Spring Boot process. The tokenizer vocab, the item embeddings and the ONNX session are all rebuilt from disk on every search request that hits a fresh worker, not loaded once at boot. `lazy: true` defers that cost to the first search request instead of every page load; it does not make the model persist across requests. No latency numbers for the PHP path are in this post yet: that is the next thing to measure before calling this production-ready.
+
+The module shows up in Drupal exactly like any other custom module, because it is one:
+
+![The Auto Search module listed on Drupal's Extend page](/static/images/auto-search-drupal/drupal-module-page.jpg)
+
+Selecting a result navigates to the item and highlights it, same as the JVM version:
+
+![The matched item highlighted after navigation](/static/images/auto-search-drupal/drupal-highlight-after-navigation.jpg)
+
+---
+
+## Two deployment modes
+
+`ankane/onnxruntime-php` needs `libonnxruntime.so` on the server. GovCMS, the Australian government's Drupal hosting platform, actually offers two different services here, and only one of them will support ONNX.
+
+**GovCMS PaaS** is self-managed: the agency owns its own Docker image, built and deployed via Lagoon on Kubernetes. Custom modules are fully supported, and `libonnxruntime.so` is exactly as available as it is on any self-hosted Drupal install, because the agency controls the container.
+
+**GovCMS SaaS** is fully managed with a fixed, approved module and theme set. A custom module can only ship if it joins that shared distribution and passes GovCMS's own review process, which explicitly screens for things like distribution bloat, so a module shipping its own native `.so` binary via FFI has no realistic path through it. Auto Search, or any bespoke module in this shape, needs PaaS or self-hosted. That isn't a limitation of the ONNX approach specifically, it is true of any custom code on SaaS.
+
+This demo also skips production hardening that a real deployment would need regardless of hosting mode: all five routes currently allow anonymous access, and there is no scoped permission, config schema, uninstall hook or CSRF protection yet. More on that below.
+
+| | Self-hosted / GovCMS PaaS | GovCMS SaaS |
+|---|---|---|
+| Custom modules at all | Yes, agency controls the container | Not permitted, approved module set only |
+| `libonnxruntime.so` | Install it, same as self-hosted | Moot, custom code isn't an option here |
+
+---
+
+## Lessons learnt
+
+**FFI extension gaps bite on managed PHP images.** `drupal:10-php8.3-apache` does not compile in the `ffi` or `intl` extensions by default. Both are required (FFI for the ONNX binding, `intl`'s `IntlChar` for Unicode normalisation in the tokenizer) and both need adding to the Dockerfile explicitly. On a managed host without root access to the PHP build, this is a hosting-provider conversation before it is a code change.
+
+**Lazy service proxies break constructor type hints.** Drupal generates proxy classes for services marked `lazy: true`, so the model only loads on the first actual search request instead of every page load. Those proxies do not extend the concrete class, so any constructor expecting `EmbeddingService` or `SimilarityService` by name gets a type error. The fix is typing the constructor parameter as `object` instead.
+
+---
+
+## Where it goes next
+
+**Hybrid BM25 plus vector search.** Rare or out-of-vocabulary tokens, acronyms and proper nouns the embedding model has not seen, underperform with pure vector search. A keyword fallback merged with vector scores would handle these gracefully.
+
+**Score calibration.** The `min_score` threshold was set empirically, the same as the JVM version. A calibration step against a held-out query set would turn raw cosine similarity into something closer to a real confidence level.
+
+**Production hardening.** Flagged above: scoped permissions, config schema, an uninstall hook that cleans up generated proxy classes, and CSRF protection if the module ever handles writes.
+
+---
+
+## Code and Further Reading
+
+The Drupal module lives on the [`drupal` branch of the Auto Search repo](https://github.com/cchew/auto-search/tree/drupal). The stack is PHP 8.3, `ankane/onnxruntime-php`, PHP FFI, Drupal 10; the model and training pipeline are unchanged from the [JVM version](https://www.herdmentality.xyz/blog/auto-search).
+
+For the PHP ONNX binding, [`ankane/onnxruntime-php`](https://github.com/ankane/onnxruntime-php) is well maintained with CI and 148 stars at the time of writing.
+
+If your Drupal site has a search bar that fails on intent and adding a sidecar is not an option, swap in your own `corpus.json` and model artefacts and try it. That covers the search mechanics; field mapping, schema and reindexing for your own content are still on you.
+
+## AI Tools
+
+Claude Code was used to plan and build the Drupal module, including porting the tokenizer and embedding pipeline from Java to PHP. Claude was used to draft this post.
