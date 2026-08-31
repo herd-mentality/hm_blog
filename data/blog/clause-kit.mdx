@@ -7,9 +7,9 @@ summary: 'ClauseKit runs five bodies of law through an LLM extraction pipeline. 
 authors: ['chingchew']
 ---
 
-The majority of Rules-as-Code (RaC) are handwritten. ClauseKit is an experiment to automate the generation of RaC, run across five bodies of law from the EU AI Act to Australian social security.
+Rules-as-Code (RaC) is mostly written by hand today. ClauseKit is an experiment to automate the generation of RaC, run across five bodies of law from the EU AI Act to Australian social security.
 
-The ClauseKit pipeline turns legislation into [JSON Logic](https://jsonlogic.com/) conditions over a typed fact schema, keeps a reference from each rule back to its source provision and evaluates the rules against facts you enter. Of the 262 rules it extracted across the five domains, 171 never reach the engine: this is because the provision is a judgment call, not a mechanical test. That number, and what changes when the model reads structured input instead of plain text, are what the experiment is about.
+The ClauseKit pipeline turns legislation into [JSON Logic](https://jsonlogic.com/) conditions over a typed fact schema, keeps a reference from each rule back to its source provision and evaluates the rules against facts you enter. Of the 262 rules it extracted across the five domains, 171 never reach the engine, because the provision is a judgment call, not a mechanical test. That number, and what changes when the model reads structured input instead of plain text, are what the experiment is about.
 
 ![ClauseKit sandbox: EU AI Act rules evaluated against a facial-recognition scenario](/static/images/clause-kit/sandbox-matched-rules.jpg)
 
