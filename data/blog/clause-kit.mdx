@@ -133,7 +133,7 @@ Every rule carries a `docref`. The pipeline verifies it in two steps.
 
 `verify_docref` normalises the rule's cited article label and checks it appears in a source chunk. This confirms the citation points at something real, but it is a loose substring match, not a check that the chunk actually supports the rule.
 
-`verify_numeric_grounding` was added after a rule stated "13 days" where the source said "30 days" and still passed, because the citation was correct. It now extracts every day, month and year figure from a rule's obligation text and requires each one to appear verbatim in the matched chunk.
+`verify_numeric_grounding` was added after a review found a rule could state "13 days" where the source says "30 days" and still pass, because the citation itself was correct. It now extracts every day, month and year figure from a rule's obligation text and requires each one to appear verbatim in the matched chunk.
 
 ```python
 _NUMERIC_SPAN = re.compile(r"\d+\s*(?:day|month|year)s?", re.IGNORECASE)
