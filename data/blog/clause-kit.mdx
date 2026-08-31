@@ -7,9 +7,9 @@ summary: 'ClauseKit runs five bodies of law through an LLM extraction pipeline. 
 authors: ['chingchew']
 ---
 
-Point a model at an Act and most of its conditions will compile to something executable. The provisions that will not are the interesting output. ClauseKit is an experiment in finding where that line falls, run across five bodies of law from the EU AI Act to Australian social security.
+The majority of Rules-as-Code (RaC) are handwritten. ClauseKit is an experiment to automate the generation of RaC, run across five bodies of law from the EU AI Act to Australian social security.
 
-The pipeline turns provisions into [JSON Logic](https://jsonlogic.com/) conditions over a typed fact schema, keeps a reference from each rule back to its source provision, and evaluates the rules against facts you enter. Of the 262 rules it extracted across the five domains, 171 never reach the engine: the provision is a judgment call, not a mechanical test. That number, and what changes when the model reads structured input instead of plain text, are what the experiment is about.
+The ClauseKit pipeline turns legislation into [JSON Logic](https://jsonlogic.com/) conditions over a typed fact schema, keeps a reference from each rule back to its source provision and evaluates the rules against facts you enter. Of the 262 rules it extracted across the five domains, 171 never reach the engine: this is because the provision is a judgment call, not a mechanical test. That number, and what changes when the model reads structured input instead of plain text, are what the experiment is about.
 
 ![ClauseKit sandbox: EU AI Act rules evaluated against a facial-recognition scenario](/static/images/clause-kit/sandbox-matched-rules.jpg)
 
@@ -85,7 +85,7 @@ Each rule that comes back is a `docref` plus a condition plus the model's own re
 }
 ```
 
-The schema is a hard boundary. The model can only write conditions over the variables it was given. A provision whose trigger depends on something not in the schema comes back as `codifiability: "low"` with a null condition. That constraint is deliberate: it separates "the legislation is genuinely vague here" from "the schema did not model enough facts", which are different problems with different fixes.
+The schema is a hard boundary; the model can only write conditions over the variables it was given. A provision whose trigger depends on something not in the schema comes back as `codifiability: "low"` with a null condition. That constraint is deliberate: it separates "the legislation is genuinely vague here" from "the schema did not model enough facts", which are different problems with different fixes.
 
 ---
 
@@ -183,7 +183,7 @@ The AKN path returned four, one rated `high`:
 
 The plain-text second rule invents a `likely_recipient` constraint that s.26WA does not require. The AKN path isolates a clean trigger over all three incident types and keeps the "reasonable person" test as its own null-condition rule.
 
-Two things to be honest about. `extract_rules_from_chunk` truncates input at 8000 characters, and XML tag overhead means that on a section longer than this fixture the two arms are not seeing the same amount of legal text. And a single pair of runs is an anecdote. What it suggests is that section boundaries and cross-references in the XML give the model something to follow instead of prose to guess at. The sandbox lets you run the comparison yourself, and toggle the raw corpus XML behind any AKN-sourced rule.
+Two things to be honest about. `extract_rules_from_chunk` truncates input at 8000 characters, and XML tag overhead means that on a section longer than this fixture the two arms are not seeing the same amount of legal text. And a single pair of runs is an anecdote. What it suggests is that section boundaries and cross-references in the XML give the model something to follow instead of prose to guess at. The sandbox lets you run the comparison yourself and toggle the raw corpus XML behind any AKN-sourced rule.
 
 ![The AKN source toggle showing the raw lex-au corpus XML behind a Privacy APP rule](/static/images/clause-kit/akn-source-toggle.jpg)
 
@@ -246,6 +246,15 @@ The shape generalises to any regulation with a bounded set of facts: a complianc
 ## Code and further reading
 
 The source is on [GitHub](https://github.com/cchew/clause-kit) and the sandbox is live at [clause-kit.netlify.app](https://clause-kit.netlify.app). The stack is Python 3.12, FastAPI, Pydantic v2, `json-logic` and Vue 3.
+
+**Legislation used:**
+
+- EU AI Act: [Regulation (EU) 2024/1689](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689) on EUR-Lex (Articles 5, 6, Annex I, Annex III)
+- NDB scheme and Privacy APPs: [Privacy Act 1988 (Cth)](https://www.legislation.gov.au/C2004A03712) on legislation.gov.au (NDB: ss.26WA to 26WR; APPs: Schedule 1)
+- SSA bereavement: [Social Security Act 1991 (Cth)](https://www.legislation.gov.au/C2004A04121) on legislation.gov.au (bereavement provisions)
+- SIS death benefits: [Superannuation Industry (Supervision) Act 1993 (Cth)](https://www.legislation.gov.au/C2004A04633) on legislation.gov.au (ss.55A to 55C, 68AA to 68AAF)
+
+**Standards and libraries:**
 
 - [JSON Logic](https://jsonlogic.com/) for the condition format
 - [Akoma Ntoso](https://docs.oasis-open.org/legaldocml/akn-core/v1.0/akn-core-v1.0.html) and the [European Legislation Identifier](https://eur-lex.europa.eu/eli-register/about.html) for the provision URIs
