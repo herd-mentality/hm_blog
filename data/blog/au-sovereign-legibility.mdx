@@ -7,13 +7,13 @@ summary: 'au-radar is a RADAR-consistent benchmark of how well AI describes and 
 authors: ['chingchew']
 ---
 
-An AI agent can describe an Australian government service accurately: what the payment is, who is eligible, roughly what the steps are. It cannot reach one. Ask it to get to the form a real person would fill in and it stalls at a hover-only menu it cannot open or a login wall it must not cross.
+An AI agent can describe an Australian government service accurately: what the payment is, who is eligible, roughly what the steps are. Ask it to get to the form a real person would fill in and it stalls at a hover-only menu it cannot open or a login wall it must not cross.
 
-In Australia, 21% of people report using generative AI to find information about government services, rising to 29% among daily AI users ([Publicis Sapient's 2025 Digital Citizen Report](https://www.publicissapient.com/resources/research/citizen-insights-hub), also cited in RADAR below). So this is a channel problem, not a hypothetical.
+In Australia, 21% of people report using generative AI to find information about government services, rising to 29% among daily AI users ([Publicis Sapient's 2025 Digital Citizen Report](https://www.publicissapient.com/resources/research/citizen-insights-hub), also cited in RADAR below). So this is a real issue that will likely become more common as more citizens adopt AI, not a hypothetical.
 
 The World Bank measured that gap across 166 countries in a July 2026 preprint called [RADAR](https://agenticstate.org/projects/radar.html) (Readiness for AI Discovery and Agentic Reach). It found a positive guidance-to-reach gap in every one: AI describes public services better than it operates them, by an average of 2.37 points on a 0 to 10 scale. Australia scored 7.24 overall, rank 27 of 166, under RADAR's own methodology (four models, cross-model judging, chat plus DOM plus visual analysis).
 
-[au-radar](https://github.com/cchew/au-radar) is a RADAR-consistent replication against a federal-only Australian service basket, not a like-for-like one: it runs a single model, a service subset and a different overall weighting. It also extends the method into a domain RADAR never tested, looking up the current text of legislation. This post covers how the harness works, what it produced and the two findings specific to Australia.
+[au-radar](https://github.com/cchew/au-radar) is a RADAR-consistent replication against a federal-only Australian service basket, not a like-for-like one: it runs a single model, a service subset and a different overall weighting. It also extends the method into a domain RADAR never tested: looking up the current text of legislation. This post covers how the harness works, what it produced and the two findings specific to Australia.
 
 ![Guidance-to-reach gap for the four au-radar agent tasks](/static/images/au-sovereign-legibility/guidance-to-reach-gap.jpg)
 
@@ -25,13 +25,13 @@ The World Bank measured that gap across 166 countries in a July 2026 preprint ca
 
 Two harnesses, both scored 0 to 10 by an LLM judge:
 
-**Chat mode (informational legibility).** A three-turn citizen-style conversation per service: state a need in plain language, ask about online availability, probe a specific detail like cost or timeline. RADAR's four-dimension rubric is carried over verbatim: verifiability (0 to 3), specificity and actionability (0 to 3), depth and completeness (0 to 3), transparency and non-invention (0 to 1). The judge scores the answer text and its cited sources only, does not fill in facts from its own knowledge and treats broken or circular links as non-verifiable.
+1. **Chat mode (informational legibility).** A three-turn citizen-style conversation per service: state a need in plain language, ask about online availability, probe a specific detail like cost or timeline. RADAR's four-dimension rubric is carried over verbatim: verifiability (0 to 3), specificity and actionability (0 to 3), depth and completeness (0 to 3), transparency and non-invention (0 to 1). The judge scores the answer text and its cited sources only, does not fill in facts from its own knowledge and treats broken or circular links as non-verifiable.
 
-**Agent mode (operability).** The agent is a Claude tool-use loop driving Playwright. It has `navigate`, `click`, `type_text`, `read_page` and `finish`, nothing else, and it tries to reach a service's entry point. Runs stop at any login boundary. The harness never authenticates, and the tasks target entry points rather than completing a transaction, so no run logs in or submits a form to a [myGov](https://my.gov.au), Centrelink or [ATO](https://www.ato.gov.au) flow.
+2. **Agent mode (operability).** The agent is a Claude tool-use loop driving Playwright. It has `navigate`, `click`, `type_text`, `read_page` and `finish`, nothing else, and it tries to reach a service's entry point. Runs stop at any login boundary. The harness never authenticates, and the tasks target entry points rather than completing a transaction, so no run logs in or submits a form to a [myGov](https://my.gov.au), Centrelink or [ATO](https://www.ato.gov.au) flow.
 
 The bundled basket consists of 15 chat services and 4 agent tasks. Several of RADAR's original 20 services are state matters in Australia's federation (driver's licence, marriage certificate, school enrolment) and are excluded rather than remapped, since they fall outside the federal scope this basket measures. A separate legislation extension applies both rubrics to a fifth object: retrieving a named legislative provision, tested against [lex-au](https://github.com/cchew/lex-au), the [Federal Register of Legislation](https://www.legislation.gov.au) and [AustLII](https://www.austlii.edu.au).
 
-One model does all the work here. Claude generates the responses and Claude judges them. RADAR used four models specifically so that no model scored its own output; au-radar has no such control, so chat-mode scores carry a self-evaluation bias that the rubric ("judge only the answer text and its cited sources") constrains but does not remove. Agent-mode outcomes lean on facts that are harder to rationalise: did the run reach a login wall, how many steps did it take, did the portal serve a bot challenge. Weight the agent numbers accordingly.
+One model does all the work here. Claude generates the responses and Claude judges them. RADAR used four models specifically so that no model scored its own output; au-radar has no such control, so chat-mode scores carry a self-evaluation bias that the rubric ("judge only the answer text and its cited sources") constrains but does not remove. Agent-mode outcomes lean on facts that are harder to rationalise: did the run reach a login wall, how many steps did it take, did the portal serve a bot challenge. If that self-judging worries you, lean on the agent numbers over the chat ones.
 
 ![au-radar --list showing the bundled catalogue](/static/images/au-sovereign-legibility/au-radar-list.jpg)
 
@@ -80,13 +80,13 @@ def _page_has_login_field(page) -> bool:
     return False
 ```
 
-Three things make this hold up against real government sites.
+Three things make this hold up against real government sites:
 
-It walks every frame, not just the main document. Australian government SSO widgets commonly render inside an embedded iframe, so a main-frame-only check misses them.
+1. It walks every frame, not just the main document. Australian government SSO widgets commonly render inside an embedded iframe, so a main-frame-only check misses them.
 
-It matches the parsed URL, not raw substrings. `_url_looks_like_auth` checks the hostname against known identity providers (`login.microsoftonline.com`, `okta.com`, `auth0.com`, `myid.gov.au`, `login.my.gov.au`) and the path against OIDC and SAML markers (`/oauth2/authorize`, `/connect/authorize`, `/saml2/idp`, `/protocol/openid-connect/auth`), plus `SAMLRequest=` in the query. An earlier version matched raw substrings and false-positived on an IdP-hosted information page and on a developer doc that merely quoted an OAuth URL.
+2. It matches the parsed URL, not raw substrings. `_url_looks_like_auth` checks the hostname against known identity providers (`login.microsoftonline.com`, `okta.com`, `auth0.com`, `myid.gov.au`, `login.my.gov.au`) and the path against OIDC and SAML markers (`/oauth2/authorize`, `/connect/authorize`, `/saml2/idp`, `/protocol/openid-connect/auth`), plus `SAMLRequest=` in the query. An earlier version matched raw substrings and false-positived on an IdP-hosted information page and on a developer doc that merely quoted an OAuth URL.
 
-It settles before it reads. After each action the harness waits a 500ms baseline, then polls every 250ms up to 2000ms for a login field that appears late, returning the instant one is seen. A fixed single wait could be outrun by a slow SSO redirect. The settle also runs when an action raised an exception, because a failed click can still have started a redirect to a slow auth page.
+3. It settles before it reads. After each action the harness waits a 500ms baseline, then polls every 250ms up to 2000ms for a login field that appears late, returning the instant one is seen. A fixed single wait could be outrun by a slow SSO redirect. The settle also runs when an action raised an exception, because a failed click can still have started a redirect to a slow auth page.
 
 The guardrail check sits at the top of the agent loop, before the model is asked for its next move:
 
