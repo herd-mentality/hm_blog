@@ -1,0 +1,189 @@
+---
+title  : How Executable Is Legislation as Code? An Experiment
+date   : '2026-08-31'
+tags   : ['ai', 'claude', 'python', 'legal-tech', 'rules-as-code', 'json-logic']
+draft  : false
+summary: 'ClauseKit runs five bodies of law through an LLM extraction pipeline to find out how much of legislation actually reduces to executable yes/no rules and where it stops working.'
+authors: ['chingchew']
+---
+
+Rules as code is usually pitched as an engineering problem: point a model at the Act, get conditions out, wire them to a form. The stock answer to "how much of the legislation can we automate" is "most of it, given enough effort".
+
+ClauseKit is an experiment to test that answer. It runs five bodies of law, from the EU AI Act to Australian social security, through a single extraction pipeline that turns provisions into [JSON Logic](https://jsonlogic.com/) conditions over a typed fact schema. Each rule keeps a reference back to the provision it came from. You set some facts, and it tells you which rules fire.
+
+The interesting output is not the rules. It is where the pipeline refuses to produce one, and what changes when structured input replaces plain text.
+
+![ClauseKit sandbox: EU AI Act rules evaluated against a facial-recognition scenario](/static/images/clause-kit/sandbox-matched-rules.jpg)
+
+---
+
+## The apparatus
+
+Five stages, two input formats.
+
+![Pipeline: source HTML or AKN XML, ingest, extract with Claude, verify provenance, rules JSON, FastAPI, Vue sandbox](/static/images/clause-kit/component-flow.svg)
+
+1. **ingest.py**: chunks the source by article (EUR-Lex HTML, legislation.gov.au EPUB) or by section and schedule clause (Akoma Ntoso XML from the [lex-au](https://github.com/cchew/lex-au) corpus)
+2. **extract.py**: sends each chunk to Claude Opus 4.8 with a per-domain fact schema and asks for a JSON array of rules
+3. **provenance.py**: checks each rule's citation against the source chunks
+4. **rules/{domain}.json**: the committed rule set, plus a `{domain}.REVIEW.md` grounding report
+5. **api.py** and **web/**: a FastAPI service and a Vue 3 sandbox that evaluates rules against facts you enter
+
+There is no tool use and no function calling. The model returns a JSON array. The code strips any markdown fence, parses it, then validates each object into a `Rule` with Pydantic v2. A malformed rule fails on parse rather than reaching the engine.
+
+---
+
+## Extraction: the fact schema is the contract
+
+Every domain declares its fact variables before any extraction runs.
+
+```python
+DOMAIN_FACT_SCHEMAS = {
+    "ndb": """
+Fact variables for NDB scheme:
+- incident_type: "unauthorised_access"|"loss"|"unauthorised_disclosure"
+- data_categories: array of "health"|"financial"|"identity"|"biometric"|"sensitive"
+- encryption_status: "encrypted"|"partial"|"unencrypted"
+- individuals_affected: "1-10"|"10-100"|"100-1000"|"1000+"
+- likely_recipient: "unknown"|"specific_individual"|"criminal"|"broad_public"
+- individual_vulnerability: "general"|"elderly"|"children"|"health_patients"
+""",
+    # ... one block per domain
+}
+```
+
+The system prompt is the same for every domain:
+
+```
+You extract legislative rules into structured JSON.
+Return a JSON array of rule objects. Each rule must use only the provided fact schema variables in conditions.
+If a rule cannot be expressed as a deterministic condition (vague standard, judgment call), set condition to null and codifiability to "low".
+Use JSON Logic format for conditions.
+```
+
+The schema is a hard boundary. The model can only write conditions over the variables it was given. A provision whose trigger depends on something not in the schema cannot be expressed, so it comes back as `codifiability: "low"` with a null condition. That constraint is deliberate: it separates "the legislation is genuinely vague here" from "the schema did not model enough facts", which are different problems with different fixes.
+
+---
+
+## Finding 1: most provisions are not yes/no questions
+
+`codifiability` is a first-class field on every rule, with three values:
+
+- **high**: fully machine-evaluable as JSON Logic
+- **medium**: partially evaluable, some conditions need context
+- **low**: a vague standard ("reasonable steps", "frivolous or vexatious") that cannot be reduced to a mechanical test
+
+![ClauseKit help modal: rule status, codifiability legend and known limitations](/static/images/clause-kit/help-modal-limitations.jpg)
+
+A rule with `codifiability: "low"` or a null condition never reaches the engine. It evaluates to `matched: null`, not `true` or `false`.
+
+```python
+def evaluate_rule(rule: Rule, facts: dict) -> RuleResult:
+    if rule.condition is None or rule.codifiability == "low":
+        matched = None
+    else:
+        try:
+            matched = bool(jsonLogic(rule.condition, facts))
+        except Exception:
+            matched = None
+    ...
+```
+
+Across all five domains, 153 of 262 extracted rules carry no evaluatable condition. That is not a pipeline failure. It is the measurement.
+
+The clearest case is the Notifiable Data Breaches scheme. All 54 rules extracted from Privacy Act sections 26WA to 26WR return `matched: null`. The scheme is built on "likely to result in serious harm" and "a reasonable person would conclude", tested against the specific circumstances of a breach. There is no fact schema that turns that into a boolean without smuggling the judgment call into a variable. The honest output is to say so.
+
+![A rule expanded to show its JSON Logic condition, source provision and codifiability badge](/static/images/clause-kit/rule-detail.jpg)
+
+The EU AI Act sits at the other end: 7 of 32 rules are high codifiability, because Article 5 prohibitions and the Annex III high-risk list are close to enumerable ("real-time remote biometric identification in publicly accessible spaces"). Even there, 12 of 32 are low.
+
+---
+
+## Finding 2: structured input changes what gets extracted
+
+The same section, run through the pipeline twice, produces different rules depending on whether the model sees plain text or Akoma Ntoso XML.
+
+![Compare flow: one section, strip tags for plain text or keep the XML, extract each, diff the rule sets](/static/images/clause-kit/compare-flow.svg)
+
+Compare mode does exactly this. It takes one AKN section and calls the same `extract_rules_from_chunk` twice with the same empty definitions: once on the tags stripped out by a regex, once on the raw XML with a short guidance note about `eId` and `<ref>` attributes prepended.
+
+```python
+plain_chunk = {"article_id": section_id, "article_label": label,
+               "text": _strip_xml_tags(section_xml)}
+akn_chunk   = {"article_id": section_id, "article_label": label,
+               "text": f"{_AKN_GUIDANCE}\n\n{section_xml}"}
+
+plain_rules = extract_rules_from_chunk(plain_chunk, definitions="", domain=domain, client=client)
+akn_rules   = extract_rules_from_chunk(akn_chunk,   definitions="", domain=domain, client=client)
+```
+
+On Privacy Act section 26WA (the definition of an eligible data breach), the plain-text path produces three rules, none rated above medium. It splits the trigger into two narrower rules and, on the "loss" branch, bolts on a `likely_recipient` condition the section does not require. The AKN path produces four rules, one of them rated high: a single trigger rule covering all three incident types, with the "reasonable person" harm test correctly isolated as its own low-codifiability rule.
+
+![Compare mode: plain text produces 3 rules capped at medium, AKN structured produces 4 with one rated high](/static/images/clause-kit/compare-mode.jpg)
+
+An earlier controlled run on the same section showed the plain-text path dropping the "loss" disjunct entirely, which collapsed the trigger rule's codifiability from high to low. The structure in the XML gives the model section boundaries and cross-references to follow instead of prose to guess at. For the AKN-sourced domains, the sandbox lets you toggle the raw corpus XML behind any rule.
+
+![The AKN source toggle showing the raw lex-au corpus XML behind a Privacy APP rule](/static/images/clause-kit/akn-source-toggle.jpg)
+
+---
+
+## The gap provenance does not close
+
+Every rule carries a `docref`. The pipeline verifies it in two steps.
+
+`verify_docref` normalises the rule's cited article label and checks it appears in a source chunk. This confirms the citation points at something real, but it is a loose substring match, not a check that the chunk actually supports the rule.
+
+`verify_numeric_grounding` was added after a rule stated "13 days" where the source said "30 days" and still passed, because the citation was correct. It now extracts every day, month and year figure from a rule's obligation text and requires each one to appear verbatim in the matched chunk.
+
+```python
+_NUMERIC_SPAN = re.compile(r"\d+\s*(?:day|month|year)s?", re.IGNORECASE)
+
+def verify_numeric_grounding(obligation: str, chunk: dict) -> GroundingResult:
+    spans = _NUMERIC_SPAN.findall(obligation)
+    chunk_text = _normalise(chunk["text"])
+    missing = [s for s in spans if _normalise(s) not in chunk_text]
+    if missing:
+        return GroundingResult(verified=False, matched_article_id=chunk["article_id"],
+                               note=f"Numeric span(s) not found in source chunk: {missing}")
+    return GroundingResult(verified=True, matched_article_id=chunk["article_id"])
+```
+
+What neither check does is verify that the JSON Logic condition faithfully captures the clause. The invented `likely_recipient` constraint from the plain-text 26WA run is a correct citation, correct numbers and a wrong condition. Nothing in the pipeline catches it. That is the open problem this experiment surfaces rather than solves: citation identity and numeric fidelity are mechanical, but condition fidelity is a reading of the law.
+
+---
+
+## What was hard
+
+The engine is the smallest file in the repo. The friction was everywhere else.
+
+**The rule engine's dependency ships Python 2 code.** `json-logic` 0.6.3 is pinned exactly, because 0.6.2 is worse, and both call `tests.keys()[0]` and use `reduce` without importing it. The venv is hand-patched with two edits, reapplied every time it is rebuilt.
+
+**A stale bytecode cache made every rule pass.** On the Modal deployment, the image build precompiled a `.pyc` for `json_logic` before the patch step rewrote the source. Python kept loading the old bytecode. Every rule evaluated to `matched: null` while every endpoint returned 200, so the app looked healthy. The fix was to delete `__pycache__` after patching and to smoke-test with a real evaluation that expects `true`, not just a 200 on `/domains`.
+
+**The schema has a field the engine ignores.** `Rule.exceptions` is populated by extraction and shown in the UI, but the engine never resolves an exception as an override of its parent rule. Statutory exceptions are stored as metadata, not evaluated. JSON Logic has no defeasibility, so "rule A applies unless rule B" cannot be expressed at all.
+
+**Codifiability is the model's call.** No domain expert has checked the high, medium and low assignments against the source. A wrong "high" is a rule that looks trustworthy and is not.
+
+---
+
+## Where it goes next
+
+![Generalised pattern: any regulation, typed fact schema, LLM extract, split into evaluatable conditions or a not-codifiable bucket](/static/images/clause-kit/pattern-flow.svg)
+
+The shape generalises to any regulation with a bounded set of facts: a compliance standard, an eligibility rule, an internal policy. The transferable part is not the extraction. It is keeping an explicit bucket for the provisions that should not be forced into a boolean and routing those to a person instead of a default answer.
+
+Two directions from here. The JSON Logic ceiling (no temporal constraints, no modal operators, no defeasibility, no role-relative obligations) is where a purpose-built formalism like [Catala](https://catala-lang.org/) or defeasible logic earns its complexity, for the subset of provisions that need it. And condition fidelity wants an independent second formalisation of the same provision, with disagreement between the two used as the signal to send a rule for human review.
+
+---
+
+## Code and further reading
+
+The source is on [GitHub](https://github.com/cchew/clause-kit) and the sandbox is live at [clause-kit.netlify.app](https://clause-kit.netlify.app). The stack is Python 3.12, FastAPI, Pydantic v2, `json-logic` and Vue 3.
+
+- [JSON Logic](https://jsonlogic.com/) for the condition format
+- [Akoma Ntoso](https://docs.oasis-open.org/legaldocml/akn-core/v1.0/akn-core-v1.0.html) and the [European Legislation Identifier](https://eur-lex.europa.eu/eli-register/about.html) for the provision URIs
+- The [lex-au](https://huggingface.co/datasets/cchew/lex-au) AKN 3.0 corpus on Hugging Face
+
+## AI Tools
+
+Claude Code was used to build the pipeline and sandbox. Claude Opus 4.8 is the extraction model inside the pipeline itself. Claude was used to draft this post.
