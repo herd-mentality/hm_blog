@@ -1,41 +1,49 @@
 ---
 title  : Can an AI Agent Reach an Australian Government Service?
-date   : '2026-08-31'
+date   : '2026-09-01'
 tags   : ['ai', 'claude', 'government', 'benchmark', 'python', 'playwright', 'legal-tech']
 draft  : false
 summary: 'au-radar replicates the World Bank RADAR instrument against Australian federal services. The overall score is 5.32 against a published 7.24, and an agent verifying legislation is more likely to be blocked by the free legal database than by the government register.'
 authors: ['chingchew']
 ---
 
-Point an AI agent at an Australian government service and it will describe the service well: what the payment is, who is eligible, roughly what the steps are. Ask the same agent to actually reach the service, to get to the form a real person would fill in, and it stalls. A hover-only navigation menu it cannot open. A login wall it must not cross. More than one in five Australians already ask a generative model how to deal with government, and nearly one in three of those who use AI daily, so the gap between describing and reaching is a live channel problem, not a curiosity.
+You can point an AI agent at an Australian government service and it will describe the service well: what the payment is, who is eligible, roughly what the steps are. Ask the same agent to actually reach the service, to get to the form a real person would fill in and it stalls: a hover-only navigation menu it cannot open or a login wall it must not cross.
 
-The World Bank measured that gap across 166 countries in a July 2026 preprint called RADAR (Readiness for AI Discovery and Agentic Reach). It found a positive guidance-to-reach gap in every one of them: AI describes public services far better than it operates them, by an average of 2.37 points on a 0 to 10 scale. Australia scored 7.24 overall, rank 27 of 166, under RADAR's own methodology. That is one composite number for the whole country and nothing underneath it.
+More than one in five Australians are comfortable using generative AI to reach government services, according to [Publicis Sapient's 2025 Digital Citizen Report](https://www.publicissapient.com/resources/research/citizen-insights-hub), so the gap between describing and reaching is a live channel problem, not a curiosity.
 
-au-radar runs RADAR's instrument against a federal-only Australian service basket, then extends it into a domain RADAR never tested: looking up the current text of legislation. This post covers how the harness works, the number it produced and the two findings that are specific to Australia and not derivable from RADAR.
+The World Bank measured that gap across 166 countries in a July 2026 preprint called [RADAR](https://agenticstate.org/projects/radar.html) (Readiness for AI Discovery and Agentic Reach). It found a positive guidance-to-reach gap in every one of them: AI describes public services far better than it operates them, by an average of 2.37 points on a 0 to 10 scale. Australia scored 7.24 overall, rank 27 of 166, under RADAR's own methodology.
 
-![Guidance-to-reach gap across the Australian service basket: chat scores against agent scores](/static/images/au-sovereign-legibility/guidance-to-reach-gap.jpg)
+[au-radar](https://github.com/cchew/au-radar) runs RADAR's instrument against a federal-only Australian service basket, then extends it into a domain RADAR never tested: looking up the current text of legislation. This post covers how the harness works, the number it produced and the two findings that are specific to Australia and not derivable from RADAR.
+
+![Guidance-to-reach gap for the four au-radar agent tasks](/static/images/au-sovereign-legibility/guidance-to-reach-gap.jpg)
+
+*Image 1: Guidance (chat score) against reach (agent score) for the four agent tasks, from au-radar's own run of 2026-08-21. This is au-radar output, not RADAR data.*
 
 ---
 
 ## What it measures
 
-Two harnesses, both scored 0 to 10 by an LLM judge.
+We conduct measurements using 2 harnesses, both scored 0 to 10 by an LLM judge:
 
 **Chat mode (informational legibility).** A three-turn citizen-style conversation per service: state a need in plain language, ask about online availability, probe a specific detail like cost or timeline. RADAR's four-dimension rubric is carried over verbatim: verifiability (0 to 3), specificity and actionability (0 to 3), depth and completeness (0 to 3), transparency and non-invention (0 to 1). The judge scores the answer text and its cited sources only, does not fill in facts from its own knowledge and treats broken or circular links as non-verifiable.
 
-**Agent mode (operability).** A tool-using agent tries to navigate to a service's entry point. It has `navigate`, `click`, `type_text`, `read_page` and `finish`, nothing else. Every run stops hard at any login or authentication boundary. It never authenticates, never submits data, never touches a myGov or Centrelink or ATO login flow.
+**Agent mode (operability).** A tool-using agent tries to navigate to a service's entry point. It has `navigate`, `click`, `type_text`, `read_page` and `finish`, nothing else. Every run stops hard at any login or authentication boundary. It never authenticates, never submits data, never touches a [myGov](https://my.gov.au) or Centrelink or [ATO](https://www.ato.gov.au) login flow.
 
-The bundled basket is 15 chat services and 4 agent tasks, all genuinely federal. Several of RADAR's original 20 services are state matters in Australia's federation (driver's licence, marriage certificate, school enrolment) and are excluded rather than remapped. A separate legislation extension applies both rubrics to a fifth object: retrieving a named legislative provision, tested against lex-au, the Federal Register of Legislation and AustLII.
+The bundled basket consists of 15 chat services and 4 agent tasks. Several of RADAR's original 20 services are state matters in Australia's federation (driver's licence, marriage certificate, school enrolment) and are excluded rather than remapped to keep things simple. A separate legislation extension applies both rubrics to a fifth object: retrieving a named legislative provision, tested against [lex-au](https://github.com/cchew/lex-au), the [Federal Register of Legislation](https://www.legislation.gov.au) and [AustLII](https://www.austlii.edu.au).
 
 ![au-radar --list showing the bundled catalogue](/static/images/au-sovereign-legibility/au-radar-list.jpg)
+
+*Image 2: The bundled catalogue, printed by `au-radar --list`.*
 
 ---
 
 ## Architecture
 
-The catalogue is a YAML file. Everything downstream is deterministic plumbing around two model-driven harnesses.
+The catalogue of which government services to test is inside a YAML file. Everything downstream is deterministic plumbing around the two model-driven harnesses described above.
 
 ![Catalogue feeding a chat harness and an agent harness into results JSON, an aggregator and a scorecard](/static/images/au-sovereign-legibility/architecture.svg)
+
+*Image 3: au-radar data flow, from the catalogue YAML through the two harnesses to the scorecard and charts.*
 
 Each prompt runs 2 to 3 times. Results are reported as mean and spread per service or task, never a single point score. The aggregator writes `chat-legibility.json` and `agent-operability.json`, then a scorecard, a legislation mini-scorecard, two charts and a findings summary. A `run-metadata.json` records the version, the git SHA and dirty flag, the Python and library versions, a hash of the prompt-and-rubric source, the model and judge-model ids, the catalogue path and its SHA-256, plus a `completed` flag set true only when the run finished.
 
@@ -46,6 +54,8 @@ Each prompt runs 2 to 3 times. Results are reported as mean and spread per servi
 The agent must never cross an authentication boundary. The design rule is that the model's own judgment about whether it has reached one is never trusted. A code-level check runs before every action, independent of what the model asks to do next.
 
 ![Guardrail sequence: after each action settle and poll for a login field in any frame, match the parsed URL against known IdP patterns, hard-stop before authentication](/static/images/au-sovereign-legibility/auth-boundary-stop.svg)
+
+*Image 4: The auth-boundary guardrail, run before every agent action. Any branch that detects a login field or an identity-provider URL stops the run.*
 
 ```python
 def _page_has_login_field(page) -> bool:
@@ -107,11 +117,11 @@ raw = (
 total = round((raw / 24) * 10, 1)
 ```
 
-Two deviations are stated rather than hidden.
+There are 2 deviations:
 
-Navigation efficiency is computed from step count, not scored by the judge. RADAR's spec says it should be computed, but does not give a formula, so au-radar uses a monotonic band mapping (3 or fewer steps scores 4, 5 or fewer scores 3, and so on down). That mapping is project-defined and flagged in every generated report.
+1. Navigation efficiency is computed from step count, not scored by the judge. RADAR's spec says it should be computed, but does not give a formula, so au-radar uses a monotonic band mapping (3 or fewer steps scores 4, 5 or fewer scores 3, and so on down). That mapping is project-defined and flagged in every generated report.
 
-The overall score is a 50/50 mean of the chat mean and the agent mean. RADAR weights chat, DOM and visual analysis one third each. au-radar does not run the DOM-versus-visual split, so a two-way mean is the honest equivalent rather than a silent substitution. A custom catalogue drops the RADAR anchor from the scorecard entirely:
+2. The overall score is a 50/50 mean of the chat mean and the agent mean. RADAR weights chat, DOM and visual analysis one third each. au-radar does not run the DOM-versus-visual split, so a two-way mean is the honest equivalent rather than a silent substitution. A custom catalogue drops the RADAR anchor from the scorecard entirely:
 
 ```python
 return Scorecard(
@@ -156,7 +166,9 @@ Overall Australia score: **5.32** (chat mean 6.1, agent mean 4.55), against the 
 
 The shape RADAR found reproduces here. Describing beats reaching, in this run by 1.55 points. That is expected. RADAR found it in all 166 countries, so a single-country result matching the pattern is a sign the instrument is tracking, not the finding.
 
-![Per-service chat and agent scores across the basket](/static/images/au-sovereign-legibility/service-scores.jpg)
+![Per-service chat legibility scores across the basket](/static/images/au-sovereign-legibility/service-scores.jpg)
+
+*Image 5: Chat (informational legibility) score per service, from au-radar's own run. Agent scores are in the tables below.*
 
 The four non-legislation agent tasks:
 
@@ -183,7 +195,7 @@ The legislation extension has no published RADAR score to check against, so it i
 
 The chat scores are all decent. Every one of these sources can be described well by a model. The agent scores are uniformly poor, and the ordering is the finding.
 
-An agent trying to verify a piece of Australian legislation is **more likely to be blocked by AustLII than by the government's own register**. AustLII is a free public-interest legal database run by a university consortium, not a government body, and it is the channel most people reach for. Its `robots.txt` has adopted the Content-Signal convention on the wildcard rule (`search=yes,ai-train=no,use=reference`) and then explicitly disallows every major AI crawler by name: ClaudeBot, GPTBot, CCBot, Google-Extended, Bytespider, Applebot-Extended, Amazonbot, meta-externalagent. That is internally inconsistent. The wildcard signal permits reference use; the named-bot rules block the fetch that reference use requires.
+An agent trying to verify a piece of Australian legislation is more likely to be blocked by AustLII than by the government's own register. AustLII is a free public-interest legal database run by a university consortium, not a government body, and it is the channel most people reach for. Its `robots.txt` has adopted the Content-Signal convention on the wildcard rule (`search=yes,ai-train=no,use=reference`) and then explicitly disallows every major AI crawler by name: ClaudeBot, GPTBot, CCBot, Google-Extended, Bytespider, Applebot-Extended, Amazonbot, meta-externalagent. That is internally inconsistent. The wildcard signal permits reference use; the named-bot rules block the fetch that reference use requires.
 
 The Commonwealth register, `legislation.gov.au`, says nothing about AI crawlers at all: a `Crawl-delay` and one `Disallow: /assets/`, nothing more. Being silent makes it the more permeable of the two by default. That is backwards from what you would expect. The same is true across all seven federal domains in the catalogue. Not one names any AI crawler, positively or negatively. None publishes an `llms.txt`. Silence is not neutral once a fifth of the population routes through an AI intermediary, but it is still more permeable than a policy that contradicts itself.
 
@@ -200,21 +212,7 @@ Where a machine-readable channel exists in the catalogue, it exists because a bu
 | Passport renewal | None | n/a |
 | Federal Register of Legislation | No bulk or API channel found | n/a |
 
-Where accounting software or practice-management software needed an API, one was built. Where the customer is a citizen, or now a citizen's agent, there is no equivalent anywhere in the basket except ABN Lookup, which is the one genuinely public, zero-friction case. ABN Lookup is proof the government can do this. It has just never been extended past business registration.
-
----
-
-## What was hard
-
-The model plumbing broke in ways that fixture tests could not see, because the fixtures used a fake Anthropic client that did not care about payload shape.
-
-**The first content block is not the text block.** Claude Sonnet 5 reliably emits a leading thinking block before the real content, so `response.content[0]` is often a `ThinkingBlock`. Every extraction now scans for the block by type and raises with the `stop_reason` attached if none exists, so an exhausted token budget reads as a token-budget problem rather than a mystery empty response.
-
-**Extra tool_use blocks.** When Claude emits more than one `tool_use` block in a turn, only the first is executed, but the API rejects the next call outright if the others have no matching `tool_result`. Every unexecuted `tool_use` id now gets an explicit "not executed" result.
-
-**A failed action used to crash the trial.** One bad click, a hover-only nav item or an invisible element, raised an unhandled exception and discarded every prior real API call in that trial. Action failures are now caught and fed back to the model as an observation, so it can adapt.
-
-**No ground truth.** There is no manual verification of the judge or the agent scores. That is the same tradeoff RADAR accepted, verifiability over accuracy, inherited here rather than re-litigated. The scores are a comparability signal, not a measurement with an error bar.
+Where accounting software or practice-management software needed an API, one was built. Where the customer is a citizen, or now a citizen's agent, there is no equivalent anywhere in the basket except [ABN Lookup](https://abr.business.gov.au), which is the one genuinely public, zero-friction case. ABN Lookup is proof the government can do this. It has just never been extended past business registration.
 
 ---
 
@@ -222,21 +220,18 @@ The model plumbing broke in ways that fixture tests could not see, because the f
 
 The harness is the deliverable. `--catalogue` takes any YAML domain list with three top-level sections (`chat_services`, `agent_tasks`, `legislation_comparators`), so the same instrument runs against a state jurisdiction, a portfolio or a single agency's services.
 
-The findings map onto a standard Australian government already has. The DTA's Digital Service Standard 2.0, in full effect from 1 July 2025, names *Connect services* and *Don't reinvent the wheel* among its criteria, and *Know your user* now covers an agent acting on a user's behalf. So the concrete asks are not new policy:
+The findings map onto a standard Australian government already has. The DTA's [Digital Service Standard 2.0](https://www.digital.gov.au/policy/digital-experience/digital-service-standard), in full effect from 1 July 2025, names *Connect services* and *Don't reinvent the wheel* among its criteria, and *Know your user* now covers an agent acting on a user's behalf.
 
-1. Publish an explicit AI-access policy for public informational content, per domain. `ai-input=yes, use=reference` at minimum. Silence is a choice not to make one.
-2. Extend the ABN Lookup pattern. A stable, citable, machine-readable provision-lookup API for the Federal Register of Legislation is the highest-value next candidate, and lex-au already demonstrates the shape.
-3. Keep bot challenges off the informational front door. None of the seven domains over-blocks today, which is worth stating as a positive. This is about not regressing as bot-management defaults get more aggressive.
-
-Named as out of scope for this version, not built: multilingual chat prompts (Australia's community languages are a real legibility gap), cross-model generation and judging (single model means self-evaluation bias is a live risk) and a `hover` tool so hover-only menus are measured rather than failed by default.
+A sensible next step could be to publish an explicit AI-access policy for public informational content, per domain. `ai-input=yes, use=reference` at minimum.
 
 ---
 
 ## Code and further reading
 
 - [github.com/cchew/au-radar](https://github.com/cchew/au-radar): the harness, the bundled catalogue, the recorded run provenance, MIT licensed
-- RADAR (Readiness for AI Discovery and Agentic Reach), World Bank preprint, Jordan, Peixoto and Ramos-Maqueda, July 2026: the rubrics, the agent formula, the 166-country baseline
-- [Digital Service Standard 2.0](https://www.dta.gov.au/help-and-advice/digital-service-standard/digital-service-standard-20): DTA, in full effect from 1 July 2025
+- [RADAR: Readiness for AI Discovery and Agentic Reach](https://agenticstate.org/projects/radar.html): Peixoto, Jordan and Ramos-Maqueda, World Bank, 30 July 2026. The rubrics, the agent formula and the 166-country baseline. [Preprint PDF](https://manuelramosmaqueda.com/wp-content/uploads/2026/07/radar_arxiv_preprint.pdf)
+- [Publicis Sapient 2025 Digital Citizen Report](https://www.publicissapient.com/resources/research/citizen-insights-hub): the source for AI use of Australian government services
+- [Digital Service Standard 2.0](https://www.digital.gov.au/policy/digital-experience/digital-service-standard): DTA, in full effect from 1 July 2025
 - [austlii.edu.au/robots.txt](https://www.austlii.edu.au/robots.txt): the Content-Signal and named-bot rules described above
 - [ABN Lookup web services](https://abr.business.gov.au/Tools/WebServices): the one genuinely public API in the basket
 
