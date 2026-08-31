@@ -7,7 +7,7 @@ summary: 'au-radar replicates the World Bank RADAR instrument against Australian
 authors: ['chingchew']
 ---
 
-You can point an AI agent at an Australian government service and it will describe the service well: what the payment is, who is eligible, roughly what the steps are. Ask the same agent to actually reach the service, to get to the form a real person would fill in and it stalls: a hover-only navigation menu it cannot open or a login wall it must not cross.
+You can point an AI agent at an Australian government service and it will describe the service well: what the payment is, who is eligible, roughly what the steps are. Ask the same agent to actually reach the service, to get to the form a real person would fill in, and it stalls: a hover-only navigation menu it cannot open or a login wall it must not cross.
 
 More than one in five Australians are comfortable using generative AI to reach government services, according to [Publicis Sapient's 2025 Digital Citizen Report](https://www.publicissapient.com/resources/research/citizen-insights-hub), so the gap between describing and reaching is a live channel problem, not a curiosity.
 
@@ -23,13 +23,13 @@ The World Bank measured that gap across 166 countries in a July 2026 preprint ca
 
 ## What it measures
 
-We conduct measurements using 2 harnesses, both scored 0 to 10 by an LLM judge:
+Two harnesses, both scored 0 to 10 by an LLM judge:
 
 **Chat mode (informational legibility).** A three-turn citizen-style conversation per service: state a need in plain language, ask about online availability, probe a specific detail like cost or timeline. RADAR's four-dimension rubric is carried over verbatim: verifiability (0 to 3), specificity and actionability (0 to 3), depth and completeness (0 to 3), transparency and non-invention (0 to 1). The judge scores the answer text and its cited sources only, does not fill in facts from its own knowledge and treats broken or circular links as non-verifiable.
 
 **Agent mode (operability).** A tool-using agent tries to navigate to a service's entry point. It has `navigate`, `click`, `type_text`, `read_page` and `finish`, nothing else. Every run stops hard at any login or authentication boundary. It never authenticates, never submits data, never touches a [myGov](https://my.gov.au) or Centrelink or [ATO](https://www.ato.gov.au) login flow.
 
-The bundled basket consists of 15 chat services and 4 agent tasks. Several of RADAR's original 20 services are state matters in Australia's federation (driver's licence, marriage certificate, school enrolment) and are excluded rather than remapped to keep things simple. A separate legislation extension applies both rubrics to a fifth object: retrieving a named legislative provision, tested against [lex-au](https://github.com/cchew/lex-au), the [Federal Register of Legislation](https://www.legislation.gov.au) and [AustLII](https://www.austlii.edu.au).
+The bundled basket consists of 15 chat services and 4 agent tasks. Several of RADAR's original 20 services are state matters in Australia's federation (driver's licence, marriage certificate, school enrolment) and are excluded rather than remapped, since they fall outside the federal scope this basket measures. A separate legislation extension applies both rubrics to a fifth object: retrieving a named legislative provision, tested against [lex-au](https://github.com/cchew/lex-au), the [Federal Register of Legislation](https://www.legislation.gov.au) and [AustLII](https://www.austlii.edu.au).
 
 ![au-radar --list showing the bundled catalogue](/static/images/au-sovereign-legibility/au-radar-list.jpg)
 
@@ -117,7 +117,7 @@ raw = (
 total = round((raw / 24) * 10, 1)
 ```
 
-There are 2 deviations:
+Two deviations:
 
 1. Navigation efficiency is computed from step count, not scored by the judge. RADAR's spec says it should be computed, but does not give a formula, so au-radar uses a monotonic band mapping (3 or fewer steps scores 4, 5 or fewer scores 3, and so on down). That mapping is project-defined and flagged in every generated report.
 
@@ -197,7 +197,7 @@ The chat scores are all decent. Every one of these sources can be described well
 
 An agent trying to verify a piece of Australian legislation is more likely to be blocked by AustLII than by the government's own register. AustLII is a free public-interest legal database run by a university consortium, not a government body, and it is the channel most people reach for. Its `robots.txt` has adopted the Content-Signal convention on the wildcard rule (`search=yes,ai-train=no,use=reference`) and then explicitly disallows every major AI crawler by name: ClaudeBot, GPTBot, CCBot, Google-Extended, Bytespider, Applebot-Extended, Amazonbot, meta-externalagent. That is internally inconsistent. The wildcard signal permits reference use; the named-bot rules block the fetch that reference use requires.
 
-The Commonwealth register, `legislation.gov.au`, says nothing about AI crawlers at all: a `Crawl-delay` and one `Disallow: /assets/`, nothing more. Being silent makes it the more permeable of the two by default. That is backwards from what you would expect. The same is true across all seven federal domains in the catalogue. Not one names any AI crawler, positively or negatively. None publishes an `llms.txt`. Silence is not neutral once a fifth of the population routes through an AI intermediary, but it is still more permeable than a policy that contradicts itself.
+The Commonwealth register, `legislation.gov.au`, says nothing about AI crawlers at all: a `Crawl-delay` and one `Disallow: /assets/`, nothing more. Being silent makes it the more permeable of the two by default. That is backwards from what you would expect. The same is true across all seven federal domains in the catalogue. Not one names any AI crawler, positively or negatively. None publishes an `llms.txt`. Silence is not neutral once a fifth of the population is willing to route through an AI intermediary, but it is still more permeable than a policy that contradicts itself.
 
 ### Structured access follows the business channel
 
