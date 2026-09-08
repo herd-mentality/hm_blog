@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 540" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+<title>The serve workflow and what runs where: the pod holds vLLM, the gateway, the watchdog and the GPU poller; the laptop runs the provisioning, load-test and chaos clients and Prometheus, and reaches the pod through one SSH tunnel.</title>
+<rect x="0.5" y="0.5" width="719" height="539" rx="10" fill="#f8f9fa" stroke="#e3e5e9"/>
+<text x="44" y="40" font-size="18" font-weight="600" fill="#1f2328">The serve workflow, and what runs where</text>
+<text x="44" y="61" font-size="12.5" fill="#565b63">The pod is the rented GPU box. The laptop drives it over one SSH tunnel.</text>
+
+<!-- step strip: the six moves -->
+<rect x="44" y="80" width="100" height="30" rx="5" fill="#eef0f2" stroke="#8b9199"/>
+<text x="94" y="99" font-size="11.5" font-weight="600" text-anchor="middle" fill="#2f343a">1 Rent pod</text>
+<rect x="152" y="80" width="100" height="30" rx="5" fill="#eef0f2" stroke="#8b9199"/>
+<text x="202" y="99" font-size="11.5" font-weight="600" text-anchor="middle" fill="#2f343a">2 Deploy</text>
+<rect x="260" y="80" width="100" height="30" rx="5" fill="#eef0f2" stroke="#8b9199"/>
+<text x="310" y="99" font-size="11.5" font-weight="600" text-anchor="middle" fill="#2f343a">3 Load-test</text>
+<rect x="368" y="80" width="100" height="30" rx="5" fill="#eef0f2" stroke="#8b9199"/>
+<text x="418" y="99" font-size="11.5" font-weight="600" text-anchor="middle" fill="#2f343a">4 Gateway</text>
+<rect x="476" y="80" width="100" height="30" rx="5" fill="#eef0f2" stroke="#8b9199"/>
+<text x="526" y="99" font-size="11.5" font-weight="600" text-anchor="middle" fill="#2f343a">5 Watchdog</text>
+<rect x="584" y="80" width="100" height="30" rx="5" fill="#eef0f2" stroke="#8b9199"/>
+<text x="634" y="99" font-size="11.5" font-weight="600" text-anchor="middle" fill="#2f343a">6 Break it</text>
+<path d="M144 95 H152 M252 95 H260 M360 95 H368 M468 95 H476 M576 95 H584" stroke="#8b9199" stroke-width="1.5"/>
+
+<!-- pod band -->
+<rect x="44" y="134" width="632" height="150" rx="8" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="60" y="157" font-size="13.5" font-weight="600" fill="#274b73">POD: rented GPU host (1x RTX A6000)</text>
+<rect x="60" y="170" width="150" height="34" rx="5" fill="#ffffff" stroke="#5b8fd4"/>
+<text x="135" y="191" font-size="11.5" font-weight="600" text-anchor="middle" fill="#274b73">vLLM :8000</text>
+<rect x="222" y="170" width="180" height="34" rx="5" fill="#ffffff" stroke="#5b8fd4"/>
+<text x="312" y="191" font-size="11.5" font-weight="600" text-anchor="middle" fill="#274b73">backpressure gateway :8080</text>
+<rect x="414" y="170" width="110" height="34" rx="5" fill="#ffffff" stroke="#5b8fd4"/>
+<text x="469" y="191" font-size="11.5" font-weight="600" text-anchor="middle" fill="#274b73">watchdog</text>
+<rect x="536" y="170" width="124" height="34" rx="5" fill="#ffffff" stroke="#5b8fd4"/>
+<text x="598" y="191" font-size="11.5" font-weight="600" text-anchor="middle" fill="#274b73">GPU poller</text>
+<rect x="60" y="214" width="220" height="34" rx="5" fill="#ffffff" stroke="#5b8fd4"/>
+<text x="170" y="235" font-size="11.5" font-weight="600" text-anchor="middle" fill="#274b73">kill / relaunch scripts</text>
+<text x="60" y="270" font-size="11" fill="#3d5a80">Anything that acts on the server lives here: it kills and relaunches local processes and reads local nvidia-smi.</text>
+<text x="376" y="306" font-size="11" text-anchor="middle" fill="#565b63">provider equivalent: AWS SageMaker endpoint · Azure ML online endpoint · GCP Vertex AI endpoint</text>
+
+<!-- tunnel -->
+<path d="M150 318 V360 M602 318 V360" stroke="#8b9199" stroke-width="1.5" stroke-dasharray="4 3"/>
+<rect x="236" y="322" width="248" height="30" rx="15" fill="#eef0f2" stroke="#8b9199"/>
+<text x="360" y="341" font-size="11.5" font-weight="600" text-anchor="middle" fill="#2f343a">SSH tunnel: port 22 only</text>
+<text x="360" y="373" font-size="11" text-anchor="middle" fill="#565b63">8000, 8080 and the metrics ports are all forwarded over this one connection</text>
+
+<!-- laptop band -->
+<rect x="44" y="388" width="632" height="128" rx="8" fill="#eef0f2" stroke="#8b9199"/>
+<text x="60" y="411" font-size="13.5" font-weight="600" fill="#2f343a">LAPTOP</text>
+<rect x="60" y="424" width="200" height="34" rx="5" fill="#ffffff" stroke="#8b9199"/>
+<text x="160" y="445" font-size="11.5" font-weight="600" text-anchor="middle" fill="#2f343a">runpod.py (provision / teardown)</text>
+<rect x="272" y="424" width="140" height="34" rx="5" fill="#ffffff" stroke="#8b9199"/>
+<text x="342" y="445" font-size="11.5" font-weight="600" text-anchor="middle" fill="#2f343a">load-test client</text>
+<rect x="424" y="424" width="120" height="34" rx="5" fill="#ffffff" stroke="#8b9199"/>
+<text x="484" y="445" font-size="11.5" font-weight="600" text-anchor="middle" fill="#2f343a">chaos client</text>
+<rect x="556" y="424" width="104" height="34" rx="5" fill="#ffffff" stroke="#8b9199"/>
+<text x="608" y="445" font-size="11.5" font-weight="600" text-anchor="middle" fill="#2f343a">Prometheus</text>
+<text x="60" y="482" font-size="11" fill="#565b63">Observes over HTTP only, through the tunnel. Never holds a GPU, so nothing here can restart the server.</text>
+</svg>
