@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 512" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+<title>Seven of Gemma-4 E4B’s 42 attention layers use head_dim 512, which the fast kernel cannot serve on an A10G, so the engine runs the slow kernel for all 42.</title>
+<rect x="0.5" y="0.5" width="719" height="511" rx="10" fill="#f8f9fa" stroke="#e3e5e9"/>
+<text x="44" y="42" font-size="18.5" font-weight="600" fill="#1f2328">7 layers at head_dim 512 disable the fast kernel for all 42</text>
+<text x="44" y="66" font-size="13.5" fill="#565b63">Each box is one of Gemma-4 E4B’s 42 attention layers. Positions here are illustrative.</text>
+<rect x="44" y="96" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="83" y="117" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="130" y="96" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="169" y="117" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="216" y="96" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="255" y="117" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="302" y="96" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="341" y="117" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="388" y="96" width="78" height="34" rx="5" fill="#fde3cf" stroke="#e0863c"/>
+<text x="427" y="117" font-size="12" font-weight="600" text-anchor="middle" fill="#7a3c10">d512</text>
+<rect x="474" y="96" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="513" y="117" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="560" y="96" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="599" y="117" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="44" y="140" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="83" y="161" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="130" y="140" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="169" y="161" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="216" y="140" width="78" height="34" rx="5" fill="#fde3cf" stroke="#e0863c"/>
+<text x="255" y="161" font-size="12" font-weight="600" text-anchor="middle" fill="#7a3c10">d512</text>
+<rect x="302" y="140" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="341" y="161" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="388" y="140" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="427" y="161" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="474" y="140" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="513" y="161" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="560" y="140" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="599" y="161" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="44" y="184" width="78" height="34" rx="5" fill="#fde3cf" stroke="#e0863c"/>
+<text x="83" y="205" font-size="12" font-weight="600" text-anchor="middle" fill="#7a3c10">d512</text>
+<rect x="130" y="184" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="169" y="205" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="216" y="184" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="255" y="205" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="302" y="184" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="341" y="205" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="388" y="184" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="427" y="205" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="474" y="184" width="78" height="34" rx="5" fill="#fde3cf" stroke="#e0863c"/>
+<text x="513" y="205" font-size="12" font-weight="600" text-anchor="middle" fill="#7a3c10">d512</text>
+<rect x="560" y="184" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="599" y="205" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="44" y="228" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="83" y="249" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="130" y="228" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="169" y="249" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="216" y="228" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="255" y="249" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="302" y="228" width="78" height="34" rx="5" fill="#fde3cf" stroke="#e0863c"/>
+<text x="341" y="249" font-size="12" font-weight="600" text-anchor="middle" fill="#7a3c10">d512</text>
+<rect x="388" y="228" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="427" y="249" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="474" y="228" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="513" y="249" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="560" y="228" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="599" y="249" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="44" y="272" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="83" y="293" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="130" y="272" width="78" height="34" rx="5" fill="#fde3cf" stroke="#e0863c"/>
+<text x="169" y="293" font-size="12" font-weight="600" text-anchor="middle" fill="#7a3c10">d512</text>
+<rect x="216" y="272" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="255" y="293" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="302" y="272" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="341" y="293" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="388" y="272" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="427" y="293" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="474" y="272" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="513" y="293" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="560" y="272" width="78" height="34" rx="5" fill="#fde3cf" stroke="#e0863c"/>
+<text x="599" y="293" font-size="12" font-weight="600" text-anchor="middle" fill="#7a3c10">d512</text>
+<rect x="44" y="316" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="83" y="337" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="130" y="316" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="169" y="337" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="216" y="316" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="255" y="337" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="302" y="316" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="341" y="337" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="388" y="316" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="427" y="337" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="474" y="316" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="513" y="337" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="560" y="316" width="78" height="34" rx="5" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="599" y="337" font-size="12" font-weight="600" text-anchor="middle" fill="#274b73">d256</text>
+<rect x="44" y="369" width="14" height="14" rx="3" fill="#dce9fb" stroke="#5b8fd4"/>
+<text x="65" y="381" font-size="12.5" fill="#1f2328">35 layers at head_dim 256: the fast kernel (FlashAttention) can serve these</text>
+<rect x="44" y="392" width="14" height="14" rx="3" fill="#fde3cf" stroke="#e0863c"/>
+<text x="65" y="404" font-size="12.5" fill="#1f2328">7 layers at head_dim 512: it cannot, on an A10G</text>
+<path d="M44 429 H676" stroke="#8b9199" stroke-width="1.5" fill="none"/>
+<path d="M44 429 v7 M676 429 v7 M360 429 v10" stroke="#8b9199" stroke-width="1.5" fill="none"/>
+<rect x="120" y="445" width="480" height="46" rx="7" fill="#eef0f2" stroke="#8b9199"/>
+<text x="360" y="465" font-size="13.5" font-weight="600" text-anchor="middle" fill="#2f343a">The engine runs one kernel for the whole model by default,</text>
+<text x="360" y="482" font-size="12.5" text-anchor="middle" fill="#2f343a">so all 42 layers use the slow one until you route them by hand</text>
+</svg>
