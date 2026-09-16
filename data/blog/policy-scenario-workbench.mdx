@@ -1,0 +1,158 @@
+---
+title  : Simulating Policy Adoption with Rules-as-Code, DCM and ABM
+date   : '2026-09-16'
+tags   : ['policy-simulation', 'python', 'statsmodels', 'mesa', 'agent-based-modelling', 'gov-tech']
+draft  : false
+summary: 'A three-layer pipeline (rules-as-code, discrete choice model, agent-based model) for behavioural policy simulation that keeps what is measured separate from what is assumed, calibrated against a real adoption survey.'
+authors: ['chingchew']
+---
+
+You get asked to put a number on it: ship this feature, and how many people will actually use it? The honest options are a made-up adoption curve, or increasingly, an LLM asked to roleplay a population of users. A 2025 review of generative social simulation put that second approach at roughly 12% accuracy against real observed behaviour. Neither option is auditable. Neither separates what the data actually shows from what someone assumed to fill the gap.
+
+That's the exact problem a toy policy scenario forced into the open while building this: a facilitating-conditions support program, calibrated on a real survey dataset, run through a three-layer pipeline that keeps the assumption honest and separable from the evidence, end to end.
+
+Rules-as-code decides who's in scope. A discrete choice model estimates one person's probability of adopting. An agent-based model simulates a population of those people, on a network, adopting (or not) over time.
+
+---
+
+## Architecture
+
+![Pipeline flow: Rules-as-code to Discrete choice model to Agent-based model to 7 output artefacts](/static/images/policy-scenario-workbench/pipeline-flow.svg)
+
+Three components, each a step up in familiarity for most developers:
+
+1. **Rules-as-code (RaC)**: eligibility as literal data (a JSON-Logic document), evaluated by a small generic rule engine. Not an `if` buried in application code.
+2. **Discrete choice model (DCM)**: a real statistical model of one person's choice, fit on real survey responses. Not a vibe, not an LLM guess.
+3. **Agent-based model (ABM)**: a population of agents, resampled from those same respondents, connected on a small-world network, updated over fixed timesteps as adoption spreads.
+
+The toy scenario: a facilitating-conditions support program (an invented training/support budget), eligibility gated by role, calibrated against a real survey of AI adoption at a Vietnamese university, 59 responses across four [UTAUT](https://en.wikipedia.org/wiki/Unified_theory_of_acceptance_and_use_of_technology) constructs. It's walked end to end here not as a demo showcase but because that's the only way to see where a pattern like this keeps its promises, and where it doesn't.
+
+![Causal DAG: lever affects facilitating conditions, four constructs feed individual adoption, adoption feeds network diffusion](/static/images/policy-scenario-workbench/causal-dag.svg)
+
+Every edge in that diagram maps to a row in an assumption-and-evidence register, covered in Results below.
+
+---
+
+## Implementation
+
+### 1. Rules-as-code as literal data, not a hardcoded conditional
+
+The eligibility rule is a JSON document, not Python:
+
+```json
+{
+  "rule": {"==": [{"var": "role"}, "staff"]},
+  "note": "Invented toy policy lever for demo purposes only..."
+}
+```
+
+A small generic engine evaluates it against whatever facts it's given:
+
+```python
+def evaluate_rule(rule: dict, facts: dict) -> bool:
+    op, args = next(iter(rule.items()))
+
+    def resolve(arg):
+        if isinstance(arg, dict) and "var" in arg:
+            return facts[arg["var"]]
+        return arg
+
+    if op == "var":
+        return facts[args]
+    if op == "in":
+        needle, haystack = resolve(args[0]), resolve(args[1])
+        return needle in haystack
+    if op == "and":
+        return all(evaluate_rule(sub, facts) for sub in args)
+    if op == "or":
+        return any(evaluate_rule(sub, facts) for sub in args)
+    if op == "==":
+        return resolve(args[0]) == resolve(args[1])
+    if op == "!=":
+        return resolve(args[0]) != resolve(args[1])
+    raise ValueError(f"Unsupported operator: {op}")
+```
+
+Anyone can read or change who's eligible without reading the code that runs it. The original plan gated eligibility on a `faculty` field the plan assumed would exist. The real dataset had no such column, only role, education level, age group and gender. Because the rule is data, that fix was a one-line change to a JSON file, not a code change.
+
+### 2. A statistical model of one choice, not an LLM roleplaying a population
+
+The DCM is `statsmodels` logistic regression on four UTAUT constructs, the two-alternative degenerate case of a proper discrete choice model:
+
+```python
+FEATURES = ["pe_score", "ee_score", "si_score", "fc_score"]
+
+def fit_dcm(df: pd.DataFrame):
+    X = sm.add_constant(df[FEATURES])
+    y = df["adopter"]
+    return sm.Logit(y, X).fit(disp=0, method="bfgs", maxiter=200)
+```
+
+BFGS instead of the default Newton solver: a 10-row test fixture had two near-perfectly collinear construct scores, and Newton failed to converge on it. BFGS matched Newton's coefficients to four decimal places on every dataset tested and didn't choke on the collinear fixture, so it's the default now, not just a fallback.
+
+This is a deliberate rejection of the "ask an LLM to be a synthetic citizen" pattern. It's grounded in a specific number: a 2025 critical review of generative social simulation found prompt-based LLM roleplay achieves roughly 12% accuracy against real observed behaviour. A logistic regression fit on 59 real responses is less exciting to build and more honest about what it actually knows.
+
+### 3. The step-hazard bug: a terminal probability isn't a per-step hazard
+
+The DCM produces each agent's probability of adopting by the end of the simulation, a lifetime probability. The first version of the diffusion loop reused that same number as every single timestep's adoption chance. That's wrong: reapplying a probability `p` at every one of `T` steps means the true probability of having adopted by step `T` is `1 - (1 - p)^T`, which saturates towards 1 within a handful of steps for any agent with `p` above roughly 15%, at the 20-step horizon this simulation runs. Nearly everyone "adopted" almost immediately, independent of the policy lever, the one thing this whole simulation exists to test.
+
+The fix converts the terminal probability into a genuine per-step hazard once, at construction:
+
+```python
+step_hazard = 1 - (1 - baseline_prob) ** (1 / self.timesteps)
+```
+
+And a regression test locks in the closed-form relationship that must hold for every agent, independent of any stochastic draw:
+
+```python
+recovered_terminal_prob = 1 - (1 - agent.step_hazard) ** timesteps
+assert recovered_terminal_prob == pytest.approx(agent.baseline_prob, abs=1e-9)
+```
+
+This kind of bug doesn't crash, doesn't fail a type check and doesn't show up in a unit test that only checks probabilities stay between 0 and 1. It shows up as a headline result that silently stops responding to the one input it's supposed to be testing.
+
+---
+
+## Results
+
+A full pipeline run produces seven artefacts: a register, a cohort breakdown, a sensitivity tornado chart, a scenario manifest, a deferral statement, a copy of the causal DAG and an uncertainty distribution.
+
+At a fixed seed, 300 agents and a 20-step horizon, the eligible cohort (staff) reaches a 58.5% adoption rate; the ineligible cohort (students, who never see the support program) reaches 44.0%. The lever moves the number it's supposed to move.
+
+![One-at-a-time sensitivity tornado chart: peer_influence_weight has the widest range, fc_uplift is narrower](/static/images/policy-scenario-workbench/sensitivity_tornado.jpg)
+
+The more useful result is in that chart. Sweeping each ABM parameter one at a time, `peer_influence_weight` (how strongly an agent is nudged by adopting neighbours) has a wider effect on the final adoption rate than `fc_uplift`, the actual size of the policy lever. In this calibration, network structure matters more to the outcome than the intervention itself. That's not a result to act on (see the deferral statement below), but it's exactly the kind of honest, unflattering finding a hand-waved adoption curve can't produce, because a hand-waved curve doesn't have parameters to sweep in the first place.
+
+Every number behind these results is tagged with an evidence strength in `register.csv`. The DCM's coefficients are tagged `observed`, fit from real data, with their p-value carried alongside. The ABM's diffusion parameters, network degree, rewiring probability, peer-influence weight, are tagged `expert-assumption`, because nothing in the source data justifies a specific value for any of them. `deferral_statement.md` states plainly, next to the results: this is a demo-grade architecture proof of concept, not a validated forecasting tool, and no individual decision should be made or informed by its output.
+
+---
+
+## What Was Hard
+
+The diffusion-saturation bug above was a real defect, and it was satisfying to find and fix. It's not the thing worth dwelling on.
+
+Two of the four UTAUT constructs, social influence and facilitating conditions, had no items in the source survey that directly measured them. They're reconstructed from the nearest available item blocks: institutional-readiness and interactivity items standing in for social influence, reverse-coded concern and barrier items standing in for facilitating conditions. Facilitating conditions' correlation with the adoption outcome came out weakly negative in the real data, the opposite sign UTAUT theory predicts. At 59 respondents, that could be genuine noise around zero, or it could mean the proxy isn't measuring what its name claims. No amount of code review catches that. It only shows up when someone reads the actual survey questions against the construct they're meant to represent.
+
+Statistical significance compounds it. Of the four DCM coefficients, only social influence reached conventional significance (p = 0.012). Performance expectancy, effort expectancy and facilitating conditions weren't distinguishable from zero at this sample size. The register's `observed` tag means "fit from real data." It does not mean "statistically significant." Those are two different claims, and a register that only carries the first one is an easy way to accidentally overstate what a small survey supports.
+
+If this pipeline gets rebuilt against a different dataset, the code barely changes. The schema-discovery and construct-mapping work, checking that what's labelled "social influence" actually resembles social influence, is the part that has to be redone from scratch every time, and it's the part most likely to go quietly wrong.
+
+---
+
+## Where It Goes Next
+
+The specific numbers here don't generalise: 59 respondents from one university, a scenario with an invented support program. What generalises is the pattern. Separate what's genuinely observed from what's assumed. Tag every number with its evidence strength. Ship an explicit statement of what the output can't be used for, alongside the results, not buried in an appendix. That's a mechanical habit, not a research finding, and it transfers to any behavioural simulation, adoption forecast or uptake model, regardless of domain.
+
+Retargeting the same pipeline onto a closer-to-real dataset is the obvious next step. The honest cost: the register, DCM and ABM code barely change, but the schema-discovery and construct-mapping work, the part that found the proxy-construct limitation above, has to happen again, close to from scratch, against whatever the new dataset's actual columns turn out to be.
+
+---
+
+## Code and Further Reading
+
+Full source is on [GitHub](https://github.com/cchew/policy-scenario-workbench). The stack is Python 3.12, pandas, `statsmodels`, [Mesa](https://mesa.readthedocs.io/), NetworkX and matplotlib.
+
+The survey data is [pyyjfthc84 on Mendeley Data](https://data.mendeley.com/datasets/pyyjfthc84/1), a UTAUT-based study of AI adoption at a Vietnamese university.
+
+## AI Tools
+
+Claude Code was used to plan and build the demo, including finding and fixing the diffusion-saturation bug during review, and Claude was used to draft this post.
