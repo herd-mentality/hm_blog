@@ -7,7 +7,7 @@ summary: 'A three-layer pipeline (rules-as-code, discrete choice model, agent-ba
 authors: ['chingchew']
 ---
 
-You get asked to put a number on it: ship this feature, and how many people will actually use it? The honest options are a made-up adoption curve, or increasingly, an LLM asked to roleplay a population of users. A 2025 review of generative social simulation put that second approach at roughly 12% accuracy against real observed behaviour. Neither option is auditable. Neither separates what the data actually shows from what someone assumed to fill the gap.
+You get asked to put a number on it: ship this feature, and how many people will actually use it? The honest options are a made-up adoption curve, or increasingly, an LLM asked to roleplay a population of users. A [2025 critical review of generative social simulation](https://arxiv.org/abs/2504.03274) found that most published studies validate this second approach only by asking whether the output looks believable, not by checking it against real behaviour, and that the minority of studies that do check find the two are substantially less similar than believability alone suggested. Neither option is auditable. Neither separates what the data actually shows from what someone assumed to fill the gap.
 
 That's the exact problem a toy policy scenario forced into the open while building this: a facilitating-conditions support program, calibrated on a real survey dataset, run through a three-layer pipeline that keeps the assumption honest and separable from the evidence, end to end.
 
@@ -90,7 +90,7 @@ def fit_dcm(df: pd.DataFrame):
 
 BFGS instead of the default Newton solver: a 10-row test fixture had two near-perfectly collinear construct scores, and Newton failed to converge on it. BFGS matched Newton's coefficients to four decimal places on every dataset tested and didn't choke on the collinear fixture, so it's the default now, not just a fallback.
 
-This is a deliberate rejection of the "ask an LLM to be a synthetic citizen" pattern. It's grounded in a specific number: a 2025 critical review of generative social simulation found prompt-based LLM roleplay achieves roughly 12% accuracy against real observed behaviour. A logistic regression fit on 59 real responses is less exciting to build and more honest about what it actually knows.
+This is a deliberate rejection of the "ask an LLM to be a synthetic citizen" pattern. It's grounded in a specific finding, not a vibe: the same review found most published studies validate LLM-agent populations only by asking whether the output looks believable, and the minority of studies that actually check against real behaviour find it's substantially less similar than believability alone suggested. A logistic regression fit on 59 real responses is less exciting to build and more honest about what it actually knows.
 
 ### 3. The step-hazard bug: a terminal probability isn't a per-step hazard
 
@@ -131,7 +131,9 @@ Every number behind these results is tagged with an evidence strength in `regist
 
 The diffusion-saturation bug above was a real defect, and it was satisfying to find and fix. It's not the thing worth dwelling on.
 
-Two of the four UTAUT constructs, social influence and facilitating conditions, had no items in the source survey that directly measured them. They're reconstructed from the nearest available item blocks: institutional-readiness and interactivity items standing in for social influence, reverse-coded concern and barrier items standing in for facilitating conditions. Facilitating conditions' correlation with the adoption outcome came out weakly negative in the real data, the opposite sign UTAUT theory predicts. At 59 respondents, that could be genuine noise around zero, or it could mean the proxy isn't measuring what its name claims. No amount of code review catches that. It only shows up when someone reads the actual survey questions against the construct they're meant to represent.
+Two of the four UTAUT constructs, social influence and facilitating conditions, had no items in the source survey that directly measured them. They're reconstructed from the nearest available item blocks: institutional-readiness and interactivity items standing in for social influence, reverse-coded concern and barrier items standing in for facilitating conditions.
+
+Facilitating conditions is the clearest case of what a proxy costs you. Its raw correlation with the adoption outcome is weakly negative (-0.04), the opposite sign UTAUT theory predicts. Once the other three constructs are controlled for, the fitted DCM coefficient in `register.csv` flips positive (+0.26), theory-consistent, but nowhere near significant (p = 0.65) at 59 respondents. Both numbers are correct. They answer different questions, and neither one settles whether the proxy is actually measuring facilitating conditions. No amount of code review catches that. It only shows up when someone reads the actual survey questions against the construct they're meant to represent and checks the register for more than its headline sign.
 
 Statistical significance compounds it. Of the four DCM coefficients, only social influence reached conventional significance (p = 0.012). Performance expectancy, effort expectancy and facilitating conditions weren't distinguishable from zero at this sample size. The register's `observed` tag means "fit from real data." It does not mean "statistically significant." Those are two different claims, and a register that only carries the first one is an easy way to accidentally overstate what a small survey supports.
 
@@ -141,9 +143,11 @@ If this pipeline gets rebuilt against a different dataset, the code barely chang
 
 ## Where It Goes Next
 
-The specific numbers here don't generalise: 59 respondents from one university, a scenario with an invented support program. What generalises is the pattern. Separate what's genuinely observed from what's assumed. Tag every number with its evidence strength. Ship an explicit statement of what the output can't be used for, alongside the results, not buried in an appendix. That's a mechanical habit, not a research finding, and it transfers to any behavioural simulation, adoption forecast or uptake model, regardless of domain.
+The specific numbers here don't generalise: 59 respondents from one university, a scenario with an invented support program. What generalises is the pattern. Separate what's genuinely observed from what's assumed. Tag every number with its evidence strength. Ship an explicit statement of what the output can't be used for, alongside the results, not buried in an appendix. That's a mechanical habit, not a research finding, and it transfers to any behavioural simulation, adoption forecast or uptake model.
 
-Retargeting the same pipeline onto a closer-to-real dataset is the obvious next step. The honest cost: the register, DCM and ABM code barely change, but the schema-discovery and construct-mapping work, the part that found the proxy-construct limitation above, has to happen again, close to from scratch, against whatever the new dataset's actual columns turn out to be.
+Retargeting the same pipeline onto a closer-to-real dataset is the obvious next step. The register, DCM and ABM code barely change; the schema-discovery and construct-mapping work, the part that found the proxy-construct limitation above, has to happen again, close to from scratch, against whatever the new dataset's actual columns turn out to be.
+
+If you're the one being asked to put a number on adoption, that's the part worth taking: separate what's observed from what's assumed, tag every number and ship the deferral statement next to the result. The code and the register are both on GitHub below.
 
 ---
 
