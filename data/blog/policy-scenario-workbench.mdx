@@ -7,9 +7,10 @@ summary: 'A three-layer pipeline (rules-as-code, discrete choice model, agent-ba
 authors: ['chingchew']
 ---
 
-You get asked to put a number on it: ship this feature, and how many people will actually use it? The honest options are a made-up adoption curve, or increasingly, an LLM asked to roleplay a population of users. A [2025 critical review of generative social simulation](https://arxiv.org/abs/2504.03274) found that most published studies validate this second approach only by asking whether the output looks believable, not by checking it against real behaviour, and that the minority of studies that do check find the two are substantially less similar than believability alone suggested. Neither option is auditable. Neither separates what the data actually shows from what someone assumed to fill the gap.
+I have noticed increased interest in predicting or simulating changes in behaviour 
+when policy or software features are introduced: like A/B testing but before anything actually happens. While there is a role for LLM agents to play in simulation, a [2025 critical review of generative social simulation](https://arxiv.org/abs/2504.03274) found that most published studies validate LLM agent simulation only by asking whether the output looks believable, not by checking it against real behaviour, and that the minority of studies that do check find the simulation substantially less similar than believability alone suggested.
 
-That's the exact problem a toy policy scenario forced into the open while building this: a facilitating-conditions support program, calibrated on a real survey dataset, run through a three-layer pipeline that keeps the assumption honest and separable from the evidence, end to end.
+That's the exact problem a toy policy scenario forced into the open while building this: a support program meant to help people actually use a new AI tool, calibrated on a real survey dataset, run through a three-layer pipeline that keeps the assumption honest and separable from the evidence, end to end.
 
 Rules-as-code decides who's in scope. A discrete choice model estimates one person's probability of adopting. An agent-based model simulates a population of those people, on a network, adopting (or not) over time.
 
@@ -19,13 +20,13 @@ Rules-as-code decides who's in scope. A discrete choice model estimates one pers
 
 ![Pipeline flow: Rules-as-code to Discrete choice model to Agent-based model to 7 output artefacts](/static/images/policy-scenario-workbench/pipeline-flow.svg)
 
-Three components, each a step up in familiarity for most developers:
+Three components, each more complicated if you are new to this space:
 
 1. **Rules-as-code (RaC)**: eligibility as literal data (a JSON-Logic document), evaluated by a small generic rule engine. Not an `if` buried in application code.
 2. **Discrete choice model (DCM)**: a real statistical model of one person's choice, fit on real survey responses. Not a vibe, not an LLM guess.
 3. **Agent-based model (ABM)**: a population of agents, resampled from those same respondents, connected on a small-world network, updated over fixed timesteps as adoption spreads.
 
-The toy scenario: a facilitating-conditions support program (an invented training/support budget), eligibility gated by role, calibrated against a real survey of AI adoption at a Vietnamese university, 59 responses across four [UTAUT](https://en.wikipedia.org/wiki/Unified_theory_of_acceptance_and_use_of_technology) constructs. It's walked end to end here not as a demo showcase but because that's the only way to see where a pattern like this keeps its promises, and where it doesn't.
+The toy scenario is calibrated against a real survey of AI adoption at a Vietnamese university, 59 responses scored against [UTAUT](https://en.wikipedia.org/wiki/Unified_theory_of_acceptance_and_use_of_technology) (Unified Theory of Acceptance and Use of Technology), a widely used model of why people adopt or reject a new technology. UTAUT splits that decision into four factors: **performance expectancy** (will it help me do my job), **effort expectancy** (is it easy to use), **social influence** (do people whose opinion I value think I should use it), and **facilitating conditions** (do I actually have the support and resources to use it, separate from whether I want to). The toy policy lever targets the last one directly: a facilitating-conditions support program, an invented training/support budget, eligibility gated by role. It's walked end to end here not as a demo showcase but because that's the only way to see where a pattern like this keeps its promises, and where it doesn't.
 
 ![Causal DAG: lever affects facilitating conditions, four constructs feed individual adoption, adoption feeds network diffusion](/static/images/policy-scenario-workbench/causal-dag.svg)
 
@@ -74,6 +75,8 @@ def evaluate_rule(rule: dict, facts: dict) -> bool:
 ```
 
 Anyone can read or change who's eligible without reading the code that runs it. The original plan gated eligibility on a `faculty` field the plan assumed would exist. The real dataset had no such column, only role, education level, age group and gender. Because the rule is data, that fix was a one-line change to a JSON file, not a code change.
+
+The rule here is hand-written. For what it takes to generate rules-as-code automatically from real legislation instead, see [How Executable Is Legislation as Code? An Experiment](/blog/clause-kit).
 
 ### 2. A statistical model of one choice, not an LLM roleplaying a population
 
