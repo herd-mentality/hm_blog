@@ -1,0 +1,101 @@
+---
+title  : "Lex AU Explorer: Reading Commonwealth Legislation With the Definitions Built In"
+date   : '2026-10-06'
+tags   : ['legislation', 'akn', 'vue', 'python', 'open-data', 'legal-tech']
+draft  : false
+summary: 'A public reader for Commonwealth Acts that shows defined terms where they are used, built from machine-readable AKN XML.'
+authors: ['chingchew']
+---
+
+In January 2025 I wrote down an idea: help humans and computers better understand legislation and other large documents. Three problems kept coming up:
+
+1. Technical language and terms that are not easy for the general public to understand
+2. Large documents that make it hard to see the big picture and the relationship between parts
+3. Content that needs to be rewritten for different human audiences and computer systems
+
+The first proof of concept was deliberately simple. Extract the key definitions and the legislation text from the source PDF, generate a website where the use of each defined term is highlighted and show the extracted definition when the reader hovers over it.
+
+![Proof of concept from January 2025: defined terms highlighted in section 296 of the Aged Care Bill 2024, with the definition shown on hover](/static/images/lex-au-explorer/original-poc.jpg)
+
+*Image 1: The January 2025 proof of concept. Highlighted terms in the Aged Care Bill 2024, with the extracted definition shown on hover.*
+
+It worked on one Bill. Extracting from PDF did not scale past that, and nothing about it was reusable by other systems.
+
+Lex AU Explorer is that idea rebuilt on a proper foundation: structured, machine-readable XML for every Commonwealth Act, and a build pipeline that turns it into a static reader at [lex-au-explorer.netlify.app](https://lex-au-explorer.netlify.app).
+
+---
+
+## Architecture
+
+The Explorer is the application layer of a small stack. [lex-au](https://github.com/cchew/lex-au) produces the corpus, [lex-au-graph](https://github.com/cchew/lex-au-graph) produces the definition graph and the Explorer renders both.
+
+![Component flow: legislation.gov.au DOCX to lex-au AKN XML corpus, lex-au-graph definition graph, Python build pipeline, per-Act JSON bundles and a Vue static site](/static/images/lex-au-explorer/component-flow.svg)
+
+*Image 2: From source DOCX to the published site. Currency checks run out of band; the build itself never touches the network.*
+
+1. **lex-au**: crawls [legislation.gov.au](https://www.legislation.gov.au) and converts each Act from DOCX to [AKN 3.0 XML](https://docs.oasis-open.org/legaldocml/akn-core/v1.0/os/part1-vocabulary/akn-core-v1.0-os-part1-vocabulary.html), the OASIS LegalDocML standard, with section-level identifiers. The corpus is published as a [Hugging Face dataset](https://huggingface.co/datasets/cchew/lex-au)
+2. **lex-au-graph**: builds a graph of defined terms and cross-references over that corpus, including which definition applies at which provision
+3. **Build pipeline**: parses AKN into a semantic intermediate representation (IR), renders it to HTML through a style map and writes one JSON bundle per Act (table of contents, sections, terms, resolved references and source status)
+4. **Vue 3 frontend**: a static site that loads bundles on demand. There is no live backend
+
+The same XML that feeds the reader is the machine-readable layer from problem 3. Anything that can parse AKN can use the corpus without going through the website.
+
+---
+
+## Features
+
+### Definitions where terms are used
+
+Terms are highlighted where they are used in operative provisions, not only where they are defined. This is the original proof of concept, now driven by the graph rather than hand extraction.
+
+- When an Act defines a term more than once, the nearest enclosing scope wins
+- Common generic words such as "act" and "corporation" are not highlighted
+- Pointer definitions ("has the same meaning as in the X Act") are followed one hop and inlined in the tooltip, with a "via X Act" line
+- Highlighting can be switched off with a reader toggle
+
+### Structure you can navigate
+
+Problem 2 is about the big picture. The reader shows the Act's table of contents alongside the text, renders a whole Part or Division at a time and scrolls to the section you pick.
+
+- Cross-references resolve to the target provision inside the reader where the target is unambiguous
+- Schedules render in every shape, including amending Acts, where each amendment item is navigable on its own
+- Large Acts load schedules lazily so the first view stays fast
+- Part, Chapter and Division introductory text, the Act's long title and its enacting words are all shown
+
+### Word-for-word text
+
+Body text is rendered exactly as it appears in the source. Inline italics and bold, tables, lists, figures, examples and penalty blocks are preserved and hanging-indent numbering matches the original. A figure is either shown or marked as a placeholder, never silently dropped.
+
+### Source-fidelity panel
+
+Each Act carries a panel stating whether the copy you are reading is the current compilation. A separate verification run checks every Act against the legislation.gov.au API and flags those with a newer compilation or a repeal. The build reads the result from a file, so publishing never depends on a live call to the government API.
+
+### Swappable rendering
+
+Parsing and rendering are separate steps. The semantic IR holds what the text means (a subsection, a defined term, a schedule item) and a style map decides how to show it. Replacing the style map produces a different rendering from the same IR. The Explorer ships one HTML style map; the split is what makes problem 3 reachable without re-parsing the corpus.
+
+---
+
+## Connected projects
+
+The Explorer links out to two other projects that build on the same corpus.
+
+- **[Act Alike](https://www.herdmentality.xyz/blog/act-alike)**: where a term is defined in several Acts, its tooltip carries an "Open in Act Alike" link to a side-by-side comparison of those definitions
+- **[ClauseKit](https://www.herdmentality.xyz/blog/clause-kit)**: converts legislation into evaluatable rules grounded back to the source clause. It takes problem 3 in the computer-facing direction
+
+The Explorer is the reading surface. Act Alike answers "how is this term defined elsewhere?" and ClauseKit answers "can this clause be run as a rule?".
+
+---
+
+## Code and Further Reading
+
+- [lex-au-explorer](https://github.com/cchew/lex-au-explorer): this project, MIT licensed
+- [lex-au](https://github.com/cchew/lex-au): the AKN XML corpus and converter
+- [lex-au-graph](https://github.com/cchew/lex-au-graph): the definition and cross-reference graph
+- [Live site](https://lex-au-explorer.netlify.app)
+
+---
+
+## AI Tools
+
+Claude Code was used to plan and build the Explorer, and Claude was used to draft this post.
