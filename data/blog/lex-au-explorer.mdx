@@ -7,9 +7,7 @@ summary: 'A public reader for Commonwealth Acts that shows defined terms where t
 authors: ['chingchew']
 ---
 
-In January 2025 I sketched a tool to help humans and computers better understand legislation and other large documents. Lex AU Explorer is that tool, now live for about 3,000 Commonwealth Acts: read an Act, hover a defined term and see its definition where you are reading.
-
-The sketch started from three problems:
+In January 2025 I wrote down an idea: help humans and computers better understand legislation and other large documents. Three problems kept coming up:
 
 1. Technical language and terms that are not easy for the general public to understand
 2. Large documents that make it hard to see the big picture and the relationship between parts
@@ -29,7 +27,9 @@ The first proof of concept was deliberately simple. Extract the key definitions 
 
 It worked on one Bill. Extracting from PDF did not scale past that, and nothing about it was reusable by other systems.
 
-The rebuild starts from structured, machine-readable [Akoma Ntoso (AKN)](https://docs.oasis-open.org/legaldocml/akn-core/v1.0/os/part1-vocabulary/akn-core-v1.0-os-part1-vocabulary.html) XML for every Commonwealth Act on [legislation.gov.au](https://www.legislation.gov.au), and a build pipeline that turns it into a static reader at [lex-au-explorer.netlify.app](https://lex-au-explorer.netlify.app). Here is the same provision, now section 296 of the enacted _Aged Care Act 2024_.
+Lex AU Explorer is that idea rebuilt on a proper foundation: structured, machine-readable [Akoma Ntoso (AKN)](https://docs.oasis-open.org/legaldocml/akn-core/v1.0/os/part1-vocabulary/akn-core-v1.0-os-part1-vocabulary.html) XML for about 3,000 Commonwealth Acts on [legislation.gov.au](https://www.legislation.gov.au), and a build pipeline that turns it into a static reader at [lex-au-explorer.netlify.app](https://lex-au-explorer.netlify.app).
+
+Here is the same provision, now section 296 of the enacted _Aged Care Act 2024_, in the live Explorer.
 
 ![Section 296 of the Aged Care Act 2024 in Lex AU Explorer, with the definition of "accommodation payment" shown in a tooltip](/static/images/lex-au-explorer/live-hover-definition.jpg)
 
@@ -46,73 +46,63 @@ The Explorer is the application layer of a small stack. [lex-au](https://github.
 *Image 3: From source DOCX to the published site. Currency checks run as a separate step before the build; the build itself never touches the network.*
 
 1. **lex-au**: crawls legislation.gov.au and converts each Act from DOCX to AKN 3.0 XML, the [OASIS LegalDocML](https://www.oasis-open.org/committees/tc_home.php?wg_abbrev=legaldocml) standard, with section-level identifiers. The corpus is published as a [Hugging Face dataset](https://huggingface.co/datasets/cchew/lex-au)
-2. **lex-au-graph**: builds a graph of defined terms and cross-references over that corpus, including which definitions an Act holds and where
-3. **Build pipeline**: parses AKN into a semantic intermediate representation (IR), renders it to HTML through a style map and writes one JSON bundle per Act (table of contents, sections, terms, resolved references and source status)
+2. **lex-au-graph**: builds a graph of defined terms and cross-references over that corpus, including which definition applies at which provision
+3. **Build pipeline**: parses AKN into a semantic intermediate representation (IR, a JSON tree of typed nodes such as section, provision, term and reference, with no HTML), renders it to HTML through a style map and writes one JSON bundle per Act (table of contents, sections, terms, resolved references and source status)
 4. **[Vue 3](https://vuejs.org) frontend**: a static site that loads bundles on demand. There is no live backend
 
-### Why AKN
-
-AKN gives every provision a stable identifier (`eId`) and marks up defined terms and cross-references as elements. It is the same standard the UK uses on legislation.gov.uk, so tooling carries across. A scraped PDF or DOCX gives you the text and none of that structure, which is exactly what the 2025 proof of concept had to guess at.
-
-The cost sits in the conversion. lex-au rebuilds structure from DOCX styles and recovers definitions from plain prose, and it documents the cases it gets wrong. The Explorer inherits both the structure and those limits. Anything that can parse AKN can use the same corpus without going through the website.
+The same XML that feeds the reader is the machine-readable starting point for problem 3. Anything that can parse AKN can use the corpus without going through the website.
 
 ---
 
-## Design decisions
+## Features
 
 ### Definitions where terms are used
 
-The proof of concept highlighted terms by hand extraction. The Explorer highlights them from the graph, in operative provisions as well as at the point of definition.
+Terms are highlighted where they are used in operative provisions, not only where they are defined. This is the original proof of concept, now driven by the graph rather than hand extraction.
 
-- When an Act defines a term more than once, the definition nearest the use in the Act's structure wins. A term that cannot be placed is left unhighlighted
-- A short curated stoplist (act, corporation, person and similar) suppresses the commonest generic terms
-- Pointer definitions ("has the same meaning as in the X Act") are followed one hop and inlined in the tooltip with a "via X Act" line. About 59% resolve to a section in the corpus; the rest show the raw pointer text
-- About 29% of Acts carry defined terms at all
+- When an Act defines a term more than once, the definition nearest the use in the Act's structure wins
+- A short stoplist of generic terms (act, corporation and similar) is not highlighted
+- Pointer definitions ("has the same meaning as in the X Act") are followed one hop and inlined in the tooltip, with a "via X Act" line
+- Highlighting can be switched off with a reader toggle
 
 ### Structure you can navigate
 
-Problem 2 is the big picture. The reader shows the table of contents beside the text, renders a whole Part or Division at a time and scrolls to the section you pick. Cross-references resolve to the target provision inside the reader where the target is unambiguous; ambiguous ones render as plain text. Schedules render in every shape the corpus uses, and in amending Acts each amendment item is navigable on its own.
+Problem 2 is about the big picture. The reader shows the Act's table of contents alongside the text, renders a whole Part or Division at a time and scrolls to the section you pick.
 
-### The IR is the contract
+- Cross-references resolve to the target provision inside the reader where the target is unambiguous
+- Schedules render in every shape the corpus uses, including amending Acts, where each amendment item is navigable on its own
+- Large Acts load schedules lazily so the first view stays fast
+- Part, Chapter and Division introductory text, the Act's long title and its enacting words are all shown
 
-Parsing and rendering are separate steps. The IR holds what the text means and a style map decides how to show it. The IR is a JSON tree of typed nodes with no HTML. This is one paragraph (simplified):
+### Word-for-word text
 
-```json
-{
-  "kind": "para",
-  "children": [
-    {"kind": "text", "text": "A registered provider must not charge an "},
-    {"kind": "term", "attrs": {"term": "accommodation payment", "display": "accommodation payment"}},
-    {"kind": "text", "text": " above the amount in "},
-    {"kind": "ref", "attrs": {"href": "#sec-297", "text": "section 297", "target_eid": "sec-297", "status": "resolved"}}
-  ]
-}
-```
+Body text is rendered word-for-word. The exception is footnotes in the schedules of 6 Acts (international instruments), which are not extracted. Inline italics and bold, tables, lists, figures, examples and penalty blocks are preserved and hanging-indent numbering matches the original. A figure is either shown or marked as a placeholder, never silently dropped.
 
-Unrecognised elements fall back to a generic `raw` or `inline_raw` node, so operative text is never dropped for lack of a rule. `lex-au-explorer-build --emit-ir` writes this JSON per section. Only one HTML style map ships today; the split is what makes other renderings possible without re-parsing the corpus.
+### Source-fidelity panel
 
-### Source fidelity
-
-Each Act carries a panel stating whether the copy you are reading is the current compilation. A separate verification run checks every Act against the legislation.gov.au API and flags those with a newer compilation or a repeal. The build reads the result from a file, so publishing never depends on a live call to the government API, and stale legal text is flagged instead of presented as current.
+Each Act carries a panel stating whether the copy you are reading is the current compilation. A separate verification run checks every Act against the legislation.gov.au API and flags those with a newer compilation or a repeal. The build reads the result from a file, so publishing never depends on a live call to the government API.
 
 ![Source-fidelity panel for the Privacy Act 1988 showing the compilation identifier, effective date and verification date](/static/images/lex-au-explorer/live-source-fidelity.jpg)
 
 *Image 4: The source-fidelity panel, with links to legislation.gov.au and the raw AKN XML.*
 
+### Swappable rendering
+
+Parsing and rendering are separate steps. The semantic IR holds what the text means (a subsection, a defined term, a schedule item) and a style map decides how to show it. Replacing the style map produces a different rendering from the same IR. Only the HTML style map ships today; the split is what makes other renderings possible without re-parsing the corpus.
+
 ---
 
 ## Known limits
 
-- **Body text is word-for-word, with exceptions.** Footnotes in the schedules of 6 Acts (international instruments) are not extracted. Some figures show a placeholder where the source image could not be converted
-- **A silent drop, now fixed.** Until v0.4.5, a body section that shared an `eId` with an earlier one overwrote it: 104 sections across 79 Acts went missing with no error. Later duplicates are now kept as `<eid>~2`, `<eid>~3`. A cross-reference to a repeated section number still resolves to the first one
-- **Tooltips can run on.** Where an Act lists several definitions together, some tooltips include the text of the neighbouring definitions
-- **Highlighting is not perfect.** Some generic words ("and", "daily") highlight, and terms the resolver cannot place are left plain. "Registered provider" is highlighted in the 2025 proof of concept and not in section 296 today
+- Some tooltips run on into neighbouring definitions where an Act lists several together
+- Some generic words (for example "and") still highlight, and terms that cannot be placed in scope are left plain
+- A cross-reference to a repeated section number resolves to the first one
 
 ---
 
 ## Connected projects
 
-Two other projects build on the same corpus.
+The Explorer links out to two other projects that build on the same corpus.
 
 - **[Act Alike](https://www.herdmentality.xyz/blog/act-alike)**: where a term is defined in several Acts, its tooltip carries an "Open in Act Alike" link to a side-by-side comparison of those definitions
 - **[ClauseKit](https://www.herdmentality.xyz/blog/clause-kit)**: converts legislation into evaluatable rules grounded back to the source clause. It takes problem 3 in the computer-facing direction
@@ -122,12 +112,6 @@ Two other projects build on the same corpus.
 *Image 5: The tooltip for "rules" links through to Act Alike.*
 
 The Explorer is the reading surface. Act Alike answers "how is this term defined elsewhere?" and ClauseKit answers "can this clause be run as a rule?".
-
----
-
-## Try it
-
-Open the [Aged Care Act 2024](https://lex-au-explorer.netlify.app/reader/aged-care-act-2024), go to section 296 and hover "accommodation payment". If a definition is wrong or missing, [raise an issue](https://github.com/cchew/lex-au-explorer/issues) with the Act and section.
 
 ---
 
@@ -144,4 +128,4 @@ Open the [Aged Care Act 2024](https://lex-au-explorer.netlify.app/reader/aged-ca
 
 ## AI Tools
 
-Claude Code planned and built most of the pipeline and frontend, and Claude drafted this post. Its output needed independent checks: a final code review caught a regression in v0.4.3 that dropped the Customs Tariff schedule, and an earlier release deployed test fixtures in place of the real corpus.
+Claude Code was used to plan and build the Explorer, and Claude was used to draft this post.
