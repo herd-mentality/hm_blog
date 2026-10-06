@@ -15,9 +15,15 @@ In January 2025 I wrote down an idea: help humans and computers better understan
 
 The first proof of concept was deliberately simple. Extract the key definitions and the legislation text from the source PDF, generate a website where the use of each defined term is highlighted and show the extracted definition when the reader hovers over it.
 
-![Proof of concept from January 2025: defined terms highlighted in section 296 of the Aged Care Bill 2024, with the definition shown on hover](/static/images/lex-au-explorer/original-poc.jpg)
+<div className="flex justify-center">
+    <Image src="/static/images/lex-au-explorer/original-poc.jpg" alt="Proof of concept from January 2025: defined terms highlighted in section 296 of the Aged Care Bill 2024, with the definition shown on hover" width={525} height={862} />
+</div>
+
+<div className="text-center">
 
 *Image 1: The January 2025 proof of concept. Highlighted terms in the Aged Care Bill 2024, with the extracted definition shown on hover.*
+
+</div>
 
 It worked on one Bill. Extracting from PDF did not scale past that, and nothing about it was reusable by other systems.
 
@@ -37,11 +43,11 @@ The Explorer is the application layer of a small stack. [lex-au](https://github.
 
 ![Component flow: legislation.gov.au DOCX to lex-au AKN XML corpus, lex-au-graph definition graph, Python build pipeline, per-Act JSON bundles and a Vue static site](/static/images/lex-au-explorer/component-flow.svg)
 
-*Image 3: From source DOCX to the published site. Currency checks run out of band; the build itself never touches the network.*
+*Image 3: From source DOCX to the published site. Currency checks run as a separate step before the build; the build itself never touches the network.*
 
 1. **lex-au**: crawls [legislation.gov.au](https://www.legislation.gov.au) and converts each Act from DOCX to [AKN 3.0 XML](https://docs.oasis-open.org/legaldocml/akn-core/v1.0/os/part1-vocabulary/akn-core-v1.0-os-part1-vocabulary.html), the OASIS LegalDocML standard, with section-level identifiers. The corpus is published as a [Hugging Face dataset](https://huggingface.co/datasets/cchew/lex-au)
 2. **lex-au-graph**: builds a graph of defined terms and cross-references over that corpus, including which definition applies at which provision
-3. **Build pipeline**: parses AKN into a semantic intermediate representation (IR), renders it to HTML through a style map and writes one JSON bundle per Act (table of contents, sections, terms, resolved references and source status)
+3. **Build pipeline**: parses AKN into a semantic intermediate representation (IR, a JSON tree of typed nodes such as section, provision, term and reference, with no HTML), renders it to HTML through a style map and writes one JSON bundle per Act (table of contents, sections, terms, resolved references and source status)
 4. **Vue 3 frontend**: a static site that loads bundles on demand. There is no live backend
 
 The same XML that feeds the reader is the machine-readable layer from problem 3. Anything that can parse AKN can use the corpus without going through the website.
